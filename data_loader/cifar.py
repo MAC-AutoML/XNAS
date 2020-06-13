@@ -199,7 +199,7 @@ def get_cifar_iter_torch(type, image_dir, batch_size, num_threads, cutout=0):
 
 
 def test():
-    train_loader = get_cifar_iter_dali(type='train', image_dir='/userhome/memory_data/cifar10', batch_size=256,
+    train_loader = get_cifar_iter_dali(type='train', image_dir='/gdata/cifar10', batch_size=256,
                                        num_threads=4)
     print('start iterate')
     start = time.time()
@@ -212,7 +212,7 @@ def test():
     print('end iterate')
     print('dali iterate time: %fs' % (end - start))
 
-    train_loader = get_cifar_iter_torch(type='train', image_dir='/userhome/memory_data/cifar10', batch_size=256,
+    train_loader = get_cifar_iter_torch(type='train', image_dir='/gdata/cifar10', batch_size=256,
                                         num_threads=4)
     print('start iterate')
     start = time.time()

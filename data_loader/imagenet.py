@@ -112,7 +112,7 @@ def get_imagenet_iter_torch(type, image_dir, batch_size, num_threads, device_id,
 
 
 def test():
-    train_loader = get_imagenet_iter_dali(type='train', image_dir='/gdata/cifar10', batch_size=256,
+    train_loader = get_imagenet_iter_dali(type='train', image_dir='/gdata/ImageNet2012', batch_size=256,
                                           num_threads=4, crop=224, device_id=0, num_gpus=1)
     print('start iterate')
     start = time.time()
@@ -125,7 +125,7 @@ def test():
     print('end iterate')
     print('dali iterate time: %fs' % (end - start))
 
-    train_loader = get_imagenet_iter_torch(type='train', image_dir='/gdata/cifar10', batch_size=256,
+    train_loader = get_imagenet_iter_torch(type='train', image_dir='/gdata/ImageNet2012', batch_size=256,
                                            num_threads=4, crop=224, device_id=0, num_gpus=1)
     print('start iterate')
     start = time.time()
