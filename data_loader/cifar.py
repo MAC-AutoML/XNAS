@@ -198,7 +198,7 @@ def get_cifar_iter_torch(type, image_dir, batch_size, num_threads, cutout=0):
         return test_iter
 
 
-if __name__ == '__main__':
+def test():
     train_loader = get_cifar_iter_dali(type='train', image_dir='/userhome/memory_data/cifar10', batch_size=256,
                                        num_threads=4)
     print('start iterate')
@@ -207,6 +207,8 @@ if __name__ == '__main__':
         images = data[0]["data"].cuda(non_blocking=True)
         labels = data[0]["label"].squeeze().long().cuda(non_blocking=True)
     end = time.time()
+    print(images.shape)
+    print(labels.shape)
     print('end iterate')
     print('dali iterate time: %fs' % (end - start))
 
@@ -218,5 +220,11 @@ if __name__ == '__main__':
         images = data[0].cuda(non_blocking=True)
         labels = data[1].cuda(non_blocking=True)
     end = time.time()
+    print(images.shape)
+    print(labels.shape)
     print('end iterate')
     print('dali iterate time: %fs' % (end - start))
+
+
+if __name__ == '__main__':
+    test()
