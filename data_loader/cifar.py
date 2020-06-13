@@ -1,16 +1,19 @@
 import os
+import pickle
 import sys
 import time
-import torch
-import pickle
+
 import numpy as np
-import nvidia.dali.ops as ops
-import nvidia.dali.types as types
+import torch
+import torchvision.transforms as transforms
 from sklearn.utils import shuffle
 from torchvision.datasets import CIFAR10
+
+import nvidia.dali.ops as ops
+import nvidia.dali.types as types
 from nvidia.dali.pipeline import Pipeline
-import torchvision.transforms as transforms
-from nvidia.dali.plugin.pytorch import DALIClassificationIterator, DALIGenericIterator
+from nvidia.dali.plugin.pytorch import (DALIClassificationIterator,
+                                        DALIGenericIterator)
 
 
 class HybridTrainPipe_CIFAR(Pipeline):
