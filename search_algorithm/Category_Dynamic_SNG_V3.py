@@ -12,6 +12,7 @@ class Dynamic_SNG:
     """
     Stochastic Natural Gradient for Categorical Distribution
     """
+
     def __init__(self, categories,
                  delta_init=1., step=3, pruning=True,
                  init_theta=None, max_mize=True, sample_with_prob=False,
@@ -71,7 +72,8 @@ class Dynamic_SNG:
         for i in range(self.p_model.d):
             # get the prob
             if self.sample_with_prob:
-                prob = copy.deepcopy(self.p_model.theta[i, self.sample_index[i]])
+                prob = copy.deepcopy(
+                    self.p_model.theta[i, self.sample_index[i]])
                 prob = prob / prob.sum()
                 sample.append(np.random.choice(self.sample_index[i], p=prob))
             else:
@@ -96,19 +98,21 @@ class Dynamic_SNG:
             objective = np.array(self.objective)
             if len(np.array(self.sample).shape) == 2:
                 for sample in self.sample:
-                    sample_array.append(utils.index_to_one_hot(sample, self.p_model.Cmax))
+                    sample_array.append(utils.index_to_one_hot(
+                        sample, self.p_model.Cmax))
             sample_array = np.array(sample_array)
             self.update_function(sample_array, objective)
             self.sample = []
             self.objective = []
             self.current_step += 1
             if self.pruning and self.current_step > self.steps:
-                #pruning the index
+                # pruning the index
                 pruned_weight = copy.deepcopy(self.p_model.theta)
                 for index in range(self.p_model.d):
                     if not len(self.pruned_index[index]) == 0:
                         pruned_weight[index, self.pruned_index[index]] = np.nan
-                    self.pruned_index[index].append(np.nanargmin(pruned_weight[index, :]))
+                    self.pruned_index[index].append(
+                        np.nanargmin(pruned_weight[index, :]))
                 if len(self.pruned_index[0]) >= (self.p_model.Cmax - 1):
                     self.training_finish = True
                 self.current_step = 1
@@ -116,7 +120,8 @@ class Dynamic_SNG:
 
     def update_sample_index(self):
         for i in range(self.p_model.d):
-            self.sample_index[i] = list(set(range(self.p_model.Cmax)) - set(self.pruned_index[i]))
+            self.sample_index[i] = list(
+                set(range(self.p_model.Cmax)) - set(self.pruned_index[i]))
 
     def update_function(self, c_one, fxc, range_restriction=True):
 
@@ -127,7 +132,8 @@ class Dynamic_SNG:
             # In this case, we skip the rest of the code.
             return
 
-        ng = np.mean(aru[:, np.newaxis, np.newaxis] * (c_one[idx] - self.p_model.theta), axis=0)
+        ng = np.mean(aru[:, np.newaxis, np.newaxis] *
+                     (c_one[idx] - self.p_model.theta), axis=0)
         # more readable
         sl = []
         for i, K in enumerate(self.p_model.C):
@@ -139,7 +145,8 @@ class Dynamic_SNG:
         pnorm = np.sqrt(np.dot(sl, sl)) + 1e-8
         self.eps = self.delta / pnorm
         if self.Momentum:
-            self.velocity = self.gamma * self.velocity + (1 - self.gamma) * self.eps * ng
+            self.velocity = self.gamma * self.velocity + \
+                (1 - self.gamma) * self.eps * ng
             self.p_model.theta += self.velocity
         else:
             self.p_model.theta += self.eps * ng
@@ -147,11 +154,14 @@ class Dynamic_SNG:
         for i in range(self.p_model.d):
             ci = self.p_model.C[i]
             # Constraint for theta (minimum value of theta and sum of theta = 1.0)
-            theta_min = 1. / (self.valid_d * (ci - 1)) if range_restriction and ci > 1 else 0.
-            self.p_model.theta[i, :ci] = np.maximum(self.p_model.theta[i, :ci], theta_min)
+            theta_min = 1. / (self.valid_d * (ci - 1)
+                              ) if range_restriction and ci > 1 else 0.
+            self.p_model.theta[i, :ci] = np.maximum(
+                self.p_model.theta[i, :ci], theta_min)
             theta_sum = self.p_model.theta[i, :ci].sum()
             tmp = theta_sum - theta_min * ci
-            self.p_model.theta[i, :ci] -= (theta_sum - 1.) * (self.p_model.theta[i, :ci] - theta_min) / tmp
+            self.p_model.theta[i, :ci] -= (theta_sum - 1.) * \
+                (self.p_model.theta[i, :ci] - theta_min) / tmp
             # Ensure the summation to 1
             self.p_model.theta[i, :ci] /= self.p_model.theta[i, :ci].sum()
 
@@ -188,12 +198,14 @@ class Dynamic_SNG:
             _w = np.zeros(lam)
             _x = np.array([i+1 for i in range(lam)])
             _x = (_x - np.mean(_x)) / np.max(_x) * 1.5
-            _w = np.flip(np.clip(self.utility_function_hyper * np.log((1+_x)/(1-_x)), a_min=-1, a_max=1))
+            _w = np.flip(np.clip(self.utility_function_hyper *
+                                 np.log((1+_x)/(1-_x)), a_min=-1, a_max=1))
         elif self.utility_function == 'distance_log':
             _w = np.zeros(lam)
             _f = np.sort(f) - np.min(f)
             _x = (_f / np.max(_f) - 0.5)
-            _w = np.flip(np.clip(self.utility_function_hyper * np.log((1 + _x) / (1 - _x)), a_min=-1, a_max=1))
+            _w = np.flip(np.clip(self.utility_function_hyper *
+                                 np.log((1 + _x) / (1 - _x)), a_min=-1, a_max=1))
         else:
             raise NotImplementedError
 
@@ -215,15 +227,18 @@ class Dynamic_SNG:
         header_list = ['delta', 'eps', 'theta_converge']
         if theta_log:
             for i in range(self.p_model.d):
-                header_list += ['theta%d_%d' % (i, j) for j in range(self.C[i])]
+                header_list += ['theta%d_%d' %
+                                (i, j) for j in range(self.C[i])]
         return header_list
 
     def log(self, theta_log=False):
-        log_list = [self.delta, self.eps, self.p_model.theta.max(axis=1).mean()]
+        log_list = [self.delta, self.eps,
+                    self.p_model.theta.max(axis=1).mean()]
 
         if theta_log:
             for i in range(self.p_model.d):
-                log_list += ['%f' % self.p_model.theta[i, j] for j in range(self.C[i])]
+                log_list += ['%f' % self.p_model.theta[i, j]
+                             for j in range(self.C[i])]
         return log_list
 
     def load_theta_from_log(self, theta_log):

@@ -31,7 +31,8 @@ category = [M]*N
 # ['index_sum', 'rastrigin', 'rosenbrock ']
 epoc_function = 'linear'
 func = 'rastrigin'
-test_function = EpochSumCategoryTestFunction(category, epoch_func=epoc_function, func=func)
+test_function = EpochSumCategoryTestFunction(
+    category, epoch_func=epoc_function, func=func)
 
 
 def get_function_and_bound(N, M):
@@ -50,7 +51,8 @@ def get_function_and_bound(N, M):
     def_str += "  input_ = np.zeros({}) \n".format(str(N))
     for i in range(N):
         bound[this_name_list[i]] = (0, M)
-        def_str += "  input_[{}] = int({}) \n".format(str(i), this_name_list[i])
+        def_str += "  input_[{}] = int({}) \n".format(str(i),
+                                                      this_name_list[i])
     def_str += '  return test_function.objective_function(input_)'
     return def_str, bound
 

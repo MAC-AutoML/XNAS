@@ -1,21 +1,24 @@
 """ Search cell """
+import json
 import os
+import random
+
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
 from tensorboardX import SummaryWriter
-from config.config import SearchConfig
+
 import utils.utils as utils
-from model.darts_cnn import SelectSearchCNN, NASBench201CNN
-from model.mb_v3_cnn import get_super_net
+from config.config import SearchConfig
 from datasets import get_data
-from search_algorithm import Category_MDENAS, Category_DDPNAS, Category_SNG, Category_ASNG, \
-    Category_Dynamic_ASNG, Category_Dynamic_SNG, Category_Dynamic_SNG_V3, Category_DDPNAS_V2, \
-    Category_DDPNAS_V3
-from utils import genotypes
-import random
-import json
+from model.darts_cnn import NASBench201CNN, SelectSearchCNN
+from model.mb_v3_cnn import get_super_net
 from network_generator import *
+from search_algorithm import (Category_ASNG, Category_DDPNAS,
+                              Category_Dynamic_ASNG, Category_Dynamic_SNG,
+                              Category_Dynamic_SNG_V3, Category_MDENAS,
+                              Category_SNG)
+from utils import genotypes
 
 
 def mkdir(path):
@@ -77,7 +80,8 @@ def main():
     elif config.search_space == 'nas_bench_201':
         from nas_201_api import NASBench201API as API
         api = API('/userhome/data/AutoML/NAS-Bench-102-v1_0-e61699.pth')
-        model = NASBench201CNN(config.init_channels, config.layers, config.n_nodes, n_classes, config.search_space)
+        model = NASBench201CNN(config.init_channels, config.layers,
+                               config.n_nodes, n_classes, config.search_space)
         total_edges = model.num_edges
         num_ops = len(genotypes.NAS_BENCH_201)
         model = model.to(device)
@@ -88,9 +92,11 @@ def main():
         total_edges = len(model.blocks) - 1
         num_ops = len(config.conv_candidates) + 1
         model = model.to(device)
-        super_net_config_path = os.path.join(config.network_info_path, 'supernet.json')
+        super_net_config_path = os.path.join(
+            config.network_info_path, 'supernet.json')
         super_net_config = model.config
-        logger.info("Saving search supernet to {}".format(super_net_config_path))
+        logger.info("Saving search supernet to {}".format(
+            super_net_config_path))
         json.dump(super_net_config, open(super_net_config_path, 'a+'))
         flops_path = os.path.join(config.network_info_path, 'flops.json')
         flops_ = model.flops_counter_per_layer(input_size=[1, 3, 224, 224])
@@ -108,8 +114,10 @@ def main():
     indices = list(range(n_train))
     # shuffle data
     np.random.shuffle(indices)
-    train_sampler = torch.utils.data.sampler.SubsetRandomSampler(indices[:split])
-    valid_sampler = torch.utils.data.sampler.SubsetRandomSampler(indices[split:])
+    train_sampler = torch.utils.data.sampler.SubsetRandomSampler(
+        indices[:split])
+    valid_sampler = torch.utils.data.sampler.SubsetRandomSampler(
+        indices[split:])
     train_loader = torch.utils.data.DataLoader(train_data,
                                                batch_size=config.batch_size,
                                                sampler=train_sampler,
@@ -126,12 +134,6 @@ def main():
             [num_ops]*total_edges, learning_rate=config.theta_lr)
     elif config.name == 'DDPNAS':
         distribution_optimizer = Category_DDPNAS.CategoricalDDPNAS(
-            [num_ops]*total_edges, config.pruning_step)
-    elif config.name == 'DDPNAS_V2':
-        distribution_optimizer = Category_DDPNAS_V2.CategoricalDDPNASV2(
-            [num_ops]*total_edges, config.pruning_step)
-    elif config.name == 'DDPNAS_V3':
-        distribution_optimizer = Category_DDPNAS_V3.CategoricalDDPNASV3(
             [num_ops] * total_edges, config.pruning_step, gamma=config.gamma)
     elif config.name == 'SNG':
         distribution_optimizer = Category_SNG.SNG(
@@ -157,7 +159,8 @@ def main():
         raise NotImplementedError
     # training loop
     # step
-    config.w_lr_step = config.w_lr_step * (num_ops / 8.) * (config.pruning_step / 3)
+    config.w_lr_step = config.w_lr_step * \
+        (num_ops / 8.) * (config.pruning_step / 3)
     logger.info("learning rate step is: {}".format(str(config.w_lr_step)))
 
     logger.info("start warm up training")
@@ -165,11 +168,13 @@ def main():
         # lr_scheduler.step()
         lr = w_optim.param_groups[0]['lr']
         # warm up training
-        array_sample = [random.sample(list(range(num_ops)), num_ops) for i in range(total_edges)]
+        array_sample = [random.sample(list(range(num_ops)), num_ops)
+                        for i in range(total_edges)]
         array_sample = np.array(array_sample)
         for i in range(num_ops):
             sample = np.transpose(array_sample[:, i])
-            train(train_loader, valid_loader, model, w_optim, lr, epoch, sample, net_crit)
+            train(train_loader, valid_loader, model,
+                  w_optim, lr, epoch, sample, net_crit)
     logger.info("end warm up training")
     logger.info("start One shot searching")
     best_top1 = 0.
@@ -183,7 +188,8 @@ def main():
         sample = distribution_optimizer.sampling_index()
 
         # training
-        train(train_loader, valid_loader, model, w_optim, lr, epoch, sample, net_crit)
+        train(train_loader, valid_loader, model,
+              w_optim, lr, epoch, sample, net_crit)
 
         # validation
         cur_step = (epoch+1) * len(train_loader)
@@ -215,8 +221,10 @@ def main():
             if config.search_space == 'nas_bench_201':
                 index = api.query_index_by_arch(best_genotype)
                 if index > 0:
-                    info = api.arch2infos_full[index].get_metrics('cifar10', 'ori-test')
-                    logger.info('Test loss on CIFAR10 is: {}'.format(info['accuracy']))
+                    info = api.arch2infos_full[index].get_metrics(
+                        'cifar10', 'ori-test')
+                    logger.info(
+                        'Test loss on CIFAR10 is: {}'.format(info['accuracy']))
         else:
             is_best = False
         utils.save_checkpoint(model, config.path, is_best)
@@ -225,22 +233,27 @@ def main():
     logger.info("Final best Prec@1 = {:.4%}".format(best_top1))
     logger.info("Best Genotype = {}".format(best_genotype))
     logger.info("Training is done, saving the probability")
-    np.save(os.path.join(config.network_info_path, 'probability.npy'), distribution_optimizer.p_model.theta)
+    np.save(os.path.join(config.network_info_path, 'probability.npy'),
+            distribution_optimizer.p_model.theta)
     if config.search_space in ['proxyless', 'ofa', 'google']:
         logger.info("Generate the network config with 600M, 400M, 200M FLOPS")
         for i in [100, 200, 300, 400, 500, 600]:
             flops_save_name = '{0}_{1}_{2}_{3}_{4}'.format(config.name, config.search_space,
-                                                           config.dataset, 'width_multi_' + str(config.width_mult),
+                                                           config.dataset, 'width_multi_' +
+                                                           str(config.width_mult),
                                                            str(i))
-            path = get_MB_network(config.network_info_path, flops_constraint=i, name=flops_save_name)
+            path = get_MB_network(config.network_info_path,
+                                  flops_constraint=i, name=flops_save_name)
             logger.info("FLOPS {}M: {}".format(str(i), str(path)))
     elif config.search_space == 'darts':
         for i in [2, 3, 4, 5, 6]:
             best_gene_constrain = get_gene_with_skip_connection_constraints(distribution_optimizer.p_model.theta,
                                                                             skip_constraint=i)
-            logger.info("Best Genotype with N constraint {0} = {1}".format(str(i),best_gene_constrain))
+            logger.info("Best Genotype with N constraint {0} = {1}".format(
+                str(i), best_gene_constrain))
         logger.info("Generate the network config with different constraints")
-        get_gene_by_prob(config.network_info_path, distribution_optimizer.p_model.theta)
+        get_gene_by_prob(config.network_info_path,
+                         distribution_optimizer.p_model.theta)
     logger.info("Done")
 
 
@@ -282,7 +295,8 @@ def train(train_loader, valid_loader, model, w_optim, lr, epoch, sample, net_cri
         writer.add_scalar('train/top5', prec5.item(), cur_step)
         cur_step += 1
 
-    logger.info("Train: [{:2d}/{}] Final Prec@1 {:.4%}".format(epoch+1, config.epochs, top1.avg))
+    logger.info(
+        "Train: [{:2d}/{}] Final Prec@1 {:.4%}".format(epoch+1, config.epochs, top1.avg))
 
 
 def validate(valid_loader, model, epoch, cur_step, sample, net_crit):
@@ -318,7 +332,8 @@ def validate(valid_loader, model, epoch, cur_step, sample, net_crit):
     writer.add_scalar('val/top1', top1.avg, cur_step)
     writer.add_scalar('val/top5', top5.avg, cur_step)
 
-    logger.info("Valid: [{:2d}/{}] Final Prec@1 {:.4%}".format(epoch+1, config.epochs, top1.avg))
+    logger.info(
+        "Valid: [{:2d}/{}] Final Prec@1 {:.4%}".format(epoch+1, config.epochs, top1.avg))
 
     return top1.avg
 
