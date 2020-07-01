@@ -229,7 +229,7 @@ class ImageList_torch(torch.utils.data.Dataset):
                  min_crop_size=0.08,
                  random_flip=False):
         logger.info("Using Torch (PIL and torchvison transformer) as backend.")
-        self._list = _list
+        self._imdb = _list
         self._bgr_normalized_mean = _rgb_normalized_mean
         self._bgr_normalized_std = _rgb_normalized_std
         self.crop = crop
@@ -253,7 +253,7 @@ class ImageList_torch(torch.utils.data.Dataset):
         self.transform = torch_transforms.Compose(transformer)
 
     def __getitem__(self, index):
-        impath, target = self.imlist[index]
+        impath, target = self._imdb[index]
         img = self.loader(os.path.join(self.root, impath))
         if self.transform is not None:
             img = self.transform(img)
@@ -261,7 +261,7 @@ class ImageList_torch(torch.utils.data.Dataset):
         return img, target
 
     def __len__(self):
-        return len(self._list)
+        return len(self._imdb)
 
 
 # DALI pipeline
