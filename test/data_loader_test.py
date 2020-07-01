@@ -6,7 +6,8 @@ if __name__ == "__main__":
         print('Testing the dataloader with backend: {}'.format(backend))
         dataset = XNAS_ImageFolder('/gdata/Caltech256/256_ObjectCategories',
                                    [0.8, 0.2],
-                                   backend=backend)
+                                   backend=backend,
+                                   dataset_name='caltech_256')
         [train_, val_] = dataset.generate_data_loader()
 
         for i, (inputs, labels) in enumerate(train_):
