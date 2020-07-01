@@ -13,7 +13,11 @@ if __name__ == "__main__":
         for i, (inputs, labels) in enumerate(train_):
             inputs = inputs.cuda()
             labels = labels.cuda()
+            print(inputs)
+            print(labels)
         for i, (inputs, labels) in enumerate(val_):
             inputs = inputs.cuda()
             labels = labels.cuda()
+            print(inputs)
+            print(labels)
         print('testing passed')
