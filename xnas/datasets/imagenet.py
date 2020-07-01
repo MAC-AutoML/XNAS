@@ -22,7 +22,7 @@ import torchvision.datasets as datasets
 import torchvision.transforms as torch_transforms
 from PIL import Image
 from torch.utils.data.distributed import DistributedSampler
-from torchvision.datasets.folder import default_loader
+from torchvision.datasets.folder import default_loader, is_image_file
 
 import xnas.core.logging as logging
 import xnas.datasets.transforms as custom_transforms
@@ -104,7 +104,8 @@ class XNAS_ImageFolder():
             im_dir = os.path.join(self._data_path, class_id)
             for im_name in os.listdir(im_dir):
                 im_path = os.path.join(im_dir, im_name)
-                self._imdb.append({"im_path": im_path, "class": cont_id})
+                if is_image_file(im_path):
+                    self._imdb.append({"im_path": im_path, "class": cont_id})
         print("Number of images: {}".format(len(self._imdb)))
         print("Number of classes: {}".format(len(self._class_ids)))
 
