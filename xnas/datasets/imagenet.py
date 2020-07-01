@@ -63,14 +63,11 @@ class XNAS_ImageFolder():
         self.pin_memory = pin_memory
         self.world_size = world_size
         if transformers is None:
-            assert len(
-                self._split) == 2, "you should assign transformers when the split is not 2"
             self.transformers = [{'crop': 'random', 'crop_size': 224, 'min_crop_size': 0.08, 'random_flip': True},
                                  {'crop': 'center', 'crop_size': 256, 'min_crop_size': 224, 'random_flip': False}]
         else:
             self.transformers = transformers
-        assert len(
-            self.transformers) == self._split, "The length of split and transformer must be consitent"
+        assert len(self.transformers) == self._split, "The length of split and transformer must be consitent"
         # read all dataset
         logger.info("Constructing xnas_ImageFolder")
         self._construct_imdb()
