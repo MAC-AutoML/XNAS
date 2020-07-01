@@ -119,7 +119,8 @@ class XNAS_ImageFolder():
             _current_partition = pre_partition + _split
             _current_index = int(len(self._imdb) * _current_partition)
             _current_indices = indices[pre_index: _current_index]
-            assert not len(_current_indices) == 0, "The length of indices is zero!"
+            assert not len(
+                _current_indices) == 0, "The length of indices is zero!"
             if self.backend in ['custom', 'torch']:
                 if self.backend == 'custom':
                     dataset = ImageList_custom(_current_indices,
@@ -131,9 +132,9 @@ class XNAS_ImageFolder():
                                               _rgb_normalized_std=self._rgb_normalized_std, **self.transformers[i])
                 sampler = DistributedSampler(
                     dataset) if cfg.NUM_GPUS > 1 else None
-                
+
                 loader = torch.utils.data.DataLoader(dataset,
-                                                     batch_size=self.batch_size,
+                                                     batch_size=self.batch_size[i],
                                                      shuffle=(
                                                          False if sampler else True),
                                                      sampler=sampler,
@@ -142,7 +143,7 @@ class XNAS_ImageFolder():
                                                      )
             elif self.backend in ['dali_cpu', 'dali_gpu']:
                 dali_cpu = True if self.backend == 'dali_cpu' else False
-                loader = ImageList_DALI(self, _current_indices, self.batch_size,
+                loader = ImageList_DALI(self, _current_indices, self.batch_size[i],
                                         _rgb_normalized_mean=self._rgb_normalized_mean,
                                         _rgb_normalized_std=self._rgb_normalized_std,
                                         num_workers=self.num_workers,
