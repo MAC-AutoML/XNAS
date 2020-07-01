@@ -67,7 +67,7 @@ class XNAS_ImageFolder():
                                  {'crop': 'center', 'crop_size': 256, 'min_crop_size': 224, 'random_flip': False}]
         else:
             self.transformers = transformers
-        assert len(self.transformers) == self._split, "The length of split and transformer must be consitent"
+        assert len(self.transformers) == len(self._split), "The length of split and transformer must be consitent"
         # read all dataset
         logger.info("Constructing xnas_ImageFolder")
         self._construct_imdb()
