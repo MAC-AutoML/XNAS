@@ -254,7 +254,7 @@ class ImageList_torch(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         impath, target = self._imdb[index]
-        img = self.loader(os.path.join(self.root, impath))
+        img = self.loader(impath)
         if self.transform is not None:
             img = self.transform(img)
 
