@@ -237,7 +237,7 @@ class ImageList_torch(torch.utils.data.Dataset):
         self.min_crop_size = min_crop_size
         self.random_flip = random_flip
         self.loader = default_loader
-        self._construct_transformer
+        self._construct_transformer()
 
     def _construct_transformer(self):
         transformer = []
