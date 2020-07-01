@@ -119,8 +119,7 @@ class XNAS_ImageFolder():
             _current_partition = pre_partition + _split
             _current_index = int(len(self._imdb) * _current_partition)
             _current_indices = indices[pre_index: _current_index]
-            import pdb; pdb.set_trace()
-            assert len(_current_indices) == 0, "The length of indices is zero!"
+            assert not len(_current_indices) == 0, "The length of indices is zero!"
             if self.backend in ['custom', 'torch']:
                 if self.backend == 'custom':
                     dataset = ImageList_custom(_current_indices,
