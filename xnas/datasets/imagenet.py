@@ -247,7 +247,7 @@ class ImageList_torch(torch.utils.data.Dataset):
         elif self.crop == 'center':
             # Scale and center crop
             transformer.append(torch_transforms.Resize(self.min_crop_size))
-            transformer.append(torch_transforms.CenterCrop(self.size))
+            transformer.append(torch_transforms.CenterCrop(self.crop_size))
         transformer.append(torch_transforms.ToTensor())
         transformer.append(torch_transforms.Normalize(
             mean=self._bgr_normalized_mean, std=self._bgr_normalized_std))
