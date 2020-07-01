@@ -52,7 +52,8 @@ class XNAS_ImageFolder():
                  transformers=None,
                  num_workers=8,
                  pin_memory=True,
-                 world_size=1):
+                 world_size=1,
+                 shuffle=True):
         assert os.path.exists(
             data_path), "Data path '{}' not found".format(data_path)
         assert sum(split) == 1, "The summation of split should be 1!"
@@ -62,12 +63,14 @@ class XNAS_ImageFolder():
         self.num_workers = num_workers
         self.pin_memory = pin_memory
         self.world_size = world_size
+        self.shuffle = shuffle
         if transformers is None:
             self.transformers = [{'crop': 'random', 'crop_size': 224, 'min_crop_size': 0.08, 'random_flip': True},
                                  {'crop': 'center', 'crop_size': 256, 'min_crop_size': 224, 'random_flip': False}]
         else:
             self.transformers = transformers
-        assert len(self.transformers) == len(self._split), "The length of split and transformer must be consitent"
+        assert len(self.transformers) == len(
+            self._split), "The length of split and transformer must be consitent"
         # read all dataset
         logger.info("Constructing xnas_ImageFolder")
         self._construct_imdb()
@@ -102,8 +105,8 @@ class XNAS_ImageFolder():
             for im_name in os.listdir(im_dir):
                 im_path = os.path.join(im_dir, im_name)
                 self._imdb.append({"im_path": im_path, "class": cont_id})
-        logger.info("Number of images: {}".format(len(self._imdb)))
-        logger.info("Number of classes: {}".format(len(self._class_ids)))
+        print("Number of images: {}".format(len(self._imdb)))
+        print("Number of classes: {}".format(len(self._class_ids)))
 
     def generate_data_loader(self):
         indices = list(range(len(self._imdb)))
@@ -116,6 +119,7 @@ class XNAS_ImageFolder():
             _current_partition = pre_partition + _split
             _current_index = int(len(self._imdb) * _current_partition)
             _current_indices = indices[pre_index: _current_index]
+            assert len(_current_indices) == 0, "The length of indices is zero!"
             if self.backend in ['custom', 'torch']:
                 if self.backend == 'custom':
                     dataset = ImageList_custom(_current_indices,
@@ -127,14 +131,15 @@ class XNAS_ImageFolder():
                                               _rgb_normalized_std=self._rgb_normalized_std, **self.transformers[i])
                 sampler = DistributedSampler(
                     dataset) if cfg.NUM_GPUS > 1 else None
-                loader = torch.utils.data.DataLoader(
-                    dataset,
-                    batch_size=self.batch_size,
-                    shuffle=(False if sampler else True),
-                    sampler=sampler,
-                    num_workers=self.num_workers,
-                    pin_memory=self.pin_memory,
-                )
+                
+                loader = torch.utils.data.DataLoader(dataset,
+                                                     batch_size=self.batch_size,
+                                                     shuffle=(
+                                                         False if sampler else True),
+                                                     sampler=sampler,
+                                                     num_workers=self.num_workers,
+                                                     pin_memory=self.pin_memory,
+                                                     )
             elif self.backend in ['dali_cpu', 'dali_gpu']:
                 dali_cpu = True if self.backend == 'dali_cpu' else False
                 loader = ImageList_DALI(self, _current_indices, self.batch_size,
@@ -163,7 +168,7 @@ class ImageList_custom(torch.utils.data.Dataset):
                  min_crop_size=0.08,
                  random_flip=False):
         logger.info("Using Custom (opencv2 and numpy array) as backend.")
-        self.self_list = _list
+        self._imdb = _list
         self._bgr_normalized_mean = _rgb_normalized_mean.reverse()
         self._bgr_normalized_std = _rgb_normalized_std.reverse()
         self.crop = crop
