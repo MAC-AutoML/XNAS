@@ -123,11 +123,11 @@ class XNAS_ImageFolder():
                 _current_indices) == 0, "The length of indices is zero!"
             if self.backend in ['custom', 'torch']:
                 if self.backend == 'custom':
-                    dataset = ImageList_custom([self._imdb[j] for j in _current_index],
+                    dataset = ImageList_custom([self._imdb[j] for j in _current_indices],
                                                _rgb_normalized_mean=self._rgb_normalized_mean,
                                                _rgb_normalized_std=self._rgb_normalized_std, **self.transformers[i])
                 else:
-                    dataset = ImageList_torch([self._imdb[j] for j in _current_index],
+                    dataset = ImageList_torch([self._imdb[j] for j in _current_indices],
                                               _rgb_normalized_mean=self._rgb_normalized_mean,
                                               _rgb_normalized_std=self._rgb_normalized_std, **self.transformers[i])
                 sampler = DistributedSampler(
@@ -143,7 +143,7 @@ class XNAS_ImageFolder():
                                                      )
             elif self.backend in ['dali_cpu', 'dali_gpu']:
                 dali_cpu = True if self.backend == 'dali_cpu' else False
-                loader = ImageList_DALI([self._imdb[j] for j in _current_index], self.batch_size[i],
+                loader = ImageList_DALI([self._imdb[j] for j in _current_indices], self.batch_size[i],
                                         _rgb_normalized_mean=self._rgb_normalized_mean,
                                         _rgb_normalized_std=self._rgb_normalized_std,
                                         num_workers=self.num_workers,
