@@ -9,10 +9,10 @@
 
 import gc
 import importlib
+import math
 import os
 import re
 import time
-import math
 
 import cv2
 import numpy as np
@@ -22,12 +22,12 @@ import torchvision.datasets as datasets
 import torchvision.transforms as torch_transforms
 from PIL import Image
 from torch.utils.data.distributed import DistributedSampler
-from torchvision.datasets.folder import default_loader, is_image_file
 
 import xnas.core.logging as logging
 import xnas.datasets.transforms as custom_transforms
 from xnas.core.config import cfg
 from xnas.core.utils import random_time_string
+from xnas.datasets.utils import default_loader, is_image_file
 
 try:
     from nvidia.dali.plugin.pytorch import DALIClassificationIterator
