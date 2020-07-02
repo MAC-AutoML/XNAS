@@ -178,6 +178,7 @@ class ImageList_custom(torch.utils.data.Dataset):
         self.crop_size = crop_size
         self.min_crop_size = min_crop_size
         self.random_flip = random_flip
+        import pdb; pdb.set_trace()
 
     def _prepare_im(self, im):
         """Prepares the image for network input."""
