@@ -66,7 +66,7 @@ class XNAS_ImageFolder():
         self.shuffle = shuffle
         if transformers is None:
             self.transformers = [{'crop': 'random', 'crop_size': 224, 'min_crop_size': 0.08, 'random_flip': True},
-                                 {'crop': 'center', 'crop_size': 256, 'min_crop_size': 224, 'random_flip': False}]
+                                 {'crop': 'center', 'crop_size': 224, 'min_crop_size': 256, 'random_flip': False}]
         else:
             self.transformers = transformers
         assert len(self.transformers) == len(
@@ -155,7 +155,6 @@ class XNAS_ImageFolder():
                                         **self.transformers[i]
                                         )
                 loader = loader.get_data_iter()
-                print("building passed!")
             data_loaders.append(loader)
             pre_partition = _current_partition
             pre_index = _current_index
