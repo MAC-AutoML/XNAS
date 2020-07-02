@@ -286,8 +286,8 @@ class ImageList_DALI():
                  ):
         logger.info("Using DALI as backend.")
         self._list = _list
-        self._bgr_normalized_mean = _rgb_normalized_mean
-        self._bgr_normalized_std = _rgb_normalized_std
+        _rgb_mean = [i * 255. for i in _rgb_normalized_mean]
+        _rgb_std = [i * 255. for i in _rgb_normalized_std]
         self.crop = crop
         self.crop_size = crop_size
         self.min_crop_size = min_crop_size
@@ -307,7 +307,7 @@ class ImageList_DALI():
         # construct pipeline
         device_id = torch.cuda.current_device()
         local_rank = torch.cuda.current_device()
-        self.pipeline = ListPipe(batch_size, _temp_save_file, _rgb_normalized_mean, _rgb_normalized_std,
+        self.pipeline = ListPipe(batch_size, _temp_save_file, _rgb_mean, _rgb_std,
                                  data_dir='', crop=crop, crop_size=crop_size, min_crop_size=min_crop_size,
                                  random_flip=random_flip, device_id=device_id, num_threads=num_workers, local_rank=local_rank,
                                  world_size=world_size, dali_cpu=dali_cpu, shuffle=True)
@@ -379,7 +379,7 @@ class ListPipe(Pipeline):
             rng = self.coin()
             output = self.cmn(images, mirror=rng)
         else:
-            output = self.cmnp(images)
+            output = self.cmn(images)
         self.labels = self.labels.gpu()
         return [output, self.labels]
 
