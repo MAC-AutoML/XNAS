@@ -155,6 +155,7 @@ class XNAS_ImageFolder():
                                         **self.transformers[i]
                                         )
                 loader = loader.get_data_iter()
+                print("building passed!")
             data_loaders.append(loader)
             pre_partition = _current_partition
             pre_index = _current_index
