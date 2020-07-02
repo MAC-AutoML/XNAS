@@ -172,13 +172,14 @@ class ImageList_custom(torch.utils.data.Dataset):
                  random_flip=False):
         logger.info("Using Custom (opencv2 and numpy array) as backend.")
         self._imdb = _list
-        self._bgr_normalized_mean = _rgb_normalized_mean.reverse()
-        self._bgr_normalized_std = _rgb_normalized_std.reverse()
+        _rgb_normalized_mean.reverse()
+        _rgb_normalized_std.reverse()
+        self._bgr_normalized_mean = _rgb_normalized_mean
+        self._bgr_normalized_std = _rgb_normalized_std
         self.crop = crop
         self.crop_size = crop_size
         self.min_crop_size = min_crop_size
         self.random_flip = random_flip
-        import pdb; pdb.set_trace()
 
     def _prepare_im(self, im):
         """Prepares the image for network input."""
