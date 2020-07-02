@@ -3,7 +3,7 @@ from xnas.datasets.imagenet import XNAS_ImageFolder
 
 if __name__ == "__main__":
     for backend in ['torch', 'dali_cpu', 'dali_gpu', 'custom']:
-        if backend in ['torch']:
+        if backend in ['torch', 'dali_cpu', 'dali_gpu']:
             continue
         print('Testing the dataloader with backend: {}'.format(backend))
         dataset = XNAS_ImageFolder('/gdata/Caltech256/256_ObjectCategories',
