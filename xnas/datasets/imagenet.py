@@ -301,7 +301,7 @@ class ImageList_DALI():
         logger.info("saveing the list to file")
         with open(_temp_save_file, "w") as f:
             for index, item in enumerate(self._list):
-                f.write(item['im_path'] + ' ' + item['class'])
+                f.write(item['im_path'] + ' ' + str(item['class']))
         f.close()
         # construct pipeline
         device_id = torch.cuda.current_device()
