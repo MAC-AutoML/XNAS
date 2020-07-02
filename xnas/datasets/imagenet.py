@@ -154,6 +154,7 @@ class XNAS_ImageFolder():
                                         temp_folder='/tmp',
                                         **self.transformers[i]
                                         )
+                loader = loader.get_data_iter()
             data_loaders.append(loader)
             pre_partition = _current_partition
             pre_index = _current_index
