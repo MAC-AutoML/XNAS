@@ -313,6 +313,7 @@ class ImageList_DALI():
                                  world_size=world_size, dali_cpu=dali_cpu, shuffle=True)
 
     def get_data_iter(self):
+        self.pipeline.build()
         return DaliIterator(pipelines=self.pipeline, size=self.get_size(
         ) / self.world_size)
 
