@@ -4,6 +4,7 @@ import torch.nn as nn
 from utils import genotypes as gt
 import numpy as np
 import torch.nn.functional as F
+from collections import namedtuple
 
 OPS_ = {
     'none': lambda C_in, C_out, stride, affine: Zero(stride),
@@ -32,6 +33,46 @@ def darts_weight_unpack(weight, n_nodes, input_nodes=2):
         start_index = end_index
         end_index += input_nodes + i + 1
     return w_dag
+
+
+def parse_from_numpy(alpha, k, basic_op_list=None):
+    """
+    parse continuous alpha to discrete gene.
+    alpha is ParameterList:
+    ParameterList [
+        Parameter(n_edges1, n_ops),
+        Parameter(n_edges2, n_ops),
+        ...
+    ]
+
+    gene is list:
+    [
+        [('node1_ops_1', node_idx), ..., ('node1_ops_k', node_idx)],
+        [('node2_ops_1', node_idx), ..., ('node2_ops_k', node_idx)],
+        ...
+    ]
+    each node has two edges (k=2) in CNN.
+    """
+
+    gene = []
+    assert basic_op_list[-1] == 'none'  # assume last PRIMITIVE is 'none'
+
+    # 1) Convert the mixed op to discrete edge (single op) by choosing top-1 weight edge
+    # 2) Choose top-k edges per node by edge score (top-1 weight in edge)
+    for edges in alpha:
+        # edges: Tensor(n_edges, n_ops)
+        edge_max, primitive_indices = torch.topk(
+            torch.tensor(edges[:, :-1]), 1)  # ignore 'none'
+        topk_edge_values, topk_edge_indices = torch.topk(edge_max.view(-1), k)
+        node_gene = []
+        for edge_idx in topk_edge_indices:
+            prim_idx = primitive_indices[edge_idx]
+            prim = basic_op_list[prim_idx]
+            node_gene.append((prim, edge_idx.item()))
+
+        gene.append(node_gene)
+
+    return gene
 
 
 class ReLUConvBN(nn.Module):
@@ -369,8 +410,81 @@ class DartsCell(nn.Module):
         s_out = torch.cat(states[2:], dim=1)
         return s_out
 
+# DartsCNN
+
+
+class DartsCNN(nn.Module):
+
+    def __init__(self, C_in=3, C=16, n_classes=10, n_layers=8, n_nodes=4, net_ceri=None, basic_op_list=None):
+        super().__init__()
+        stem_multiplier = 3
+        self.criterion = net_ceri
+        self.C_in = C_in  # 3
+        self.C = C  # 16
+        self.n_classes = n_classes  # 10
+        self.n_layers = n_layers  # 8
+        self.n_nodes = n_nodes  # 4
+        self.basic_op_list = ['max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3',
+                              'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5', 'none'] if basic_op_list is None else basic_op_list
+        C_cur = stem_multiplier * C  # 3 * 16 = 48
+        self.stem = nn.Sequential(
+            nn.Conv2d(C_in, C_cur, 3, 1, 1, bias=False),
+            nn.BatchNorm2d(C_cur)
+        )
+        # for the first cell, stem is used for both s0 and s1
+        # [!] C_pp and C_p is output channel size, but C_cur is input channel size.
+        C_pp, C_p, C_cur = C_cur, C_cur, C
+        # 48   48   16
+        self.cells = nn.ModuleList()
+        reduction_p = False
+        for i in range(n_layers):
+            # Reduce featuremap size and double channels in 1/3 and 2/3 layer.
+            if i in [n_layers // 3, 2 * n_layers // 3]:
+                C_cur *= 2
+                reduction = True
+            else:
+                reduction = False
+            cell = DartsCell(n_nodes, C_pp, C_p, C_cur,
+                             reduction_p, reduction, self.basic_op_list)
+            reduction_p = reduction
+            self.cells.append(cell)
+            C_cur_out = C_cur * n_nodes
+            C_pp, C_p = C_p, C_cur_out
+        self.gap = nn.AdaptiveAvgPool2d(1)
+        self.linear = nn.Linear(C_p, n_classes)
+        # number of edges per cell
+        self.num_edges = sum(list(range(2, self.n_nodes + 2)))
+
+    def forward(self, x, sample):
+        s0 = s1 = self.stem(x)
+
+        for cell in self.cells:
+            weights = sample[self.num_edges:] if cell.reduction else sample[0:self.num_edges]
+            s0, s1 = s1, cell(s0, s1, weights)
+
+        out = self.gap(s1)
+        out = out.view(out.size(0), -1)  # flatten
+        logits = self.linear(out)
+        return logits
+
+    def genotype(self, theta):
+        Genotype = namedtuple(
+            'Genotype', 'normal normal_concat reduce reduce_concat')
+        theta_norm = darts_weight_unpack(
+            theta[0:self.num_edges], self.n_nodes)
+        theta_reduce = darts_weight_unpack(
+            theta[self.num_edges:], self.n_nodes)
+        gene_normal = parse_from_numpy(theta_norm, k=2, basic_op_list=self.basic_op_list)
+        gene_reduce = parse_from_numpy(theta_reduce, k=2, basic_op_list=self.basic_op_list)
+        concat = range(2, 2+self.n_nodes)  # concat all intermediate nodes
+
+        return Genotype(normal=gene_normal, normal_concat=concat,
+                        reduce=gene_reduce, reduce_concat=concat)
+
 
 # This module is used for NAS-Bench-201, represents a small search space with a complete DAG
+
+
 class NAS201SearchCell(nn.Module):
 
     def __init__(self, n_nodes, C_in, C_out, stride, basic_op_list):
@@ -385,9 +499,11 @@ class NAS201SearchCell(nn.Module):
             for j in range(i):
                 node_str = '{:}<-{:}'.format(i, j)
                 if j == 0:
-                    self.edges[node_str] = _MixedOp(C_in, C_out, stride, basic_op_list)
+                    self.edges[node_str] = _MixedOp(
+                        C_in, C_out, stride, basic_op_list)
                 else:
-                    self.edges[node_str] = _MixedOp(C_in, C_out, 1, basic_op_list)
+                    self.edges[node_str] = _MixedOp(
+                        C_in, C_out, 1, basic_op_list)
         self.edge_keys = sorted(list(self.edges.keys()))
         self.edge2index = {key: i for i, key in enumerate(self.edge_keys)}
         self.num_edges = len(self.edges)
@@ -402,3 +518,74 @@ class NAS201SearchCell(nn.Module):
                 inter_nodes.append(self.edges[node_str](nodes[j], weights))
             nodes.append(sum(inter_nodes))
         return nodes[-1]
+
+
+class NASBench201CNN(nn.Module):
+    # def __init__(self, C, N, max_nodes, num_classes, search_space, affine=False, track_running_stats=True):
+    def __init__(self, C, N, max_nodes, num_classes, basic_op_list=None):
+        super(NASBench201CNN, self).__init__()
+        self._C = C
+        self._layerN = N
+        self.max_nodes = max_nodes
+        self.basic_op_list = ['none', 'skip_connect', 'nor_conv_1x1',
+                              'nor_conv_3x3', 'avg_pool_3x3'] if basic_op_list is None else basic_op_list
+        self.stem = nn.Sequential(
+            nn.Conv2d(3, C, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(C))
+
+        layer_channels = [C] * N + [C * 2] + \
+            [C * 2] * N + [C * 4] + [C * 4] * N
+        layer_reductions = [False] * N + [True] + \
+            [False] * N + [True] + [False] * N
+
+        C_prev, num_edge, edge2index = C, None, None
+        self.cells = nn.ModuleList()
+        for index, (C_curr, reduction) in enumerate(zip(layer_channels, layer_reductions)):
+            if reduction:
+                cell = ResNetBasicblock(C_prev, C_curr, 2)
+            else:
+                cell = NAS201SearchCell(
+                    max_nodes, C_prev, C_curr, 1, basic_op_list)
+                if num_edge is None:
+                    num_edge, edge2index = cell.num_edges, cell.edge2index
+                else:
+                    assert num_edge == cell.num_edges and edge2index == cell.edge2index, 'invalid {:} vs. {:}.'.format(
+                        num_edge, cell.num_edges)
+            self.cells.append(cell)
+            C_prev = cell.out_dim
+        self._Layer = len(self.cells)
+        self.edge2index = edge2index
+        self.num_edges = num_edge
+        self.lastact = nn.Sequential(
+            nn.BatchNorm2d(C_prev), nn.ReLU(inplace=True))
+        self.global_pooling = nn.AdaptiveAvgPool2d(1)
+        self.classifier = nn.Linear(C_prev, num_classes)
+
+    def genotype(self, theta):
+        genotypes = ''
+        for i in range(1, self.max_nodes):
+            sub_geno = '|'
+            for j in range(i):
+                node_str = '{:}<-{:}'.format(i, j)
+                weights = theta[self.edge2index[node_str]]
+                op_name = self.basic_op_list[np.argmax(weights)]
+                sub_geno += '{0}~{1}|'.format(op_name, str(j))
+            if i == 1:
+                genotypes += sub_geno
+            else:
+                genotypes += '+' + sub_geno
+        return genotypes
+
+    def forward(self, inputs, weight):
+
+        feature = self.stem(inputs)
+        for i, cell in enumerate(self.cells):
+            if isinstance(cell, ResNetBasicblock):
+                feature = cell(feature)
+            else:
+                feature = cell(feature, weight)
+        out = self.lastact(feature)
+        out = self.global_pooling(out)
+        out = out.view(out.size(0), -1)
+        logits = self.classifier(out)
+        return logits
