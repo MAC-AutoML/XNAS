@@ -23,6 +23,17 @@ OPS_ = {
 }
 
 
+def darts_weight_unpack(weight, n_nodes, input_nodes=2):
+    w_dag = []
+    start_index = 0
+    end_index = input_nodes
+    for i in range(n_nodes):
+        w_dag.append(weight[start_index:end_index])
+        start_index = end_index
+        end_index += input_nodes + i + 1
+    return w_dag
+
+
 class ReLUConvBN(nn.Module):
 
     def __init__(self, C_in, C_out, kernel_size, stride, padding, affine=True):
@@ -270,3 +281,124 @@ class BasicBlock(nn.Module):
         out += self.shortcut(x)
         out = F.relu(out)
         return out
+
+
+class ResNetBasicblock(nn.Module):
+    def __init__(self, inplanes, planes, stride, affine=True):
+        super(ResNetBasicblock, self).__init__()
+        assert stride == 1 or stride == 2, 'invalid stride {:}'.format(stride)
+        self.conv_a = ReLUConvBN(inplanes, planes, 3, stride, 1)
+        self.conv_b = ReLUConvBN(planes, planes, 3, 1, 1)
+        if stride == 2:
+            self.downsample = nn.Sequential(
+                nn.AvgPool2d(kernel_size=2, stride=2, padding=0),
+                nn.Conv2d(inplanes, planes, kernel_size=1, stride=1, padding=0, bias=False))
+        elif inplanes != planes:
+            self.downsample = ReLUConvBN(inplanes, planes, 1, 1, 0)
+        else:
+            self.downsample = None
+        self.in_dim = inplanes
+        self.out_dim = planes
+        self.stride = stride
+        self.num_conv = 2
+
+    def extra_repr(self):
+        string = '{name}(inC={in_dim}, outC={out_dim}, stride={stride})'.format(
+            name=self.__class__.__name__, **self.__dict__)
+        return string
+
+    def forward(self, inputs):
+
+        basicblock = self.conv_a(inputs)
+        basicblock = self.conv_b(basicblock)
+
+        if self.downsample is not None:
+            residual = self.downsample(inputs)
+        else:
+            residual = inputs
+        return residual + basicblock
+
+# the search cell in darts
+
+
+class DartsCell(nn.Module):
+    def __init__(self, n_nodes, C_pp, C_p, C, reduction_p, reduction, basic_op_list):
+        """
+        Args:
+            n_nodes: # of intermediate n_nodes
+            C_pp: C_out[k-2]
+            C_p : C_out[k-1]
+            C   : C_in[k] (current)
+            reduction_p: flag for whether the previous cell is reduction cell or not
+            reduction: flag for whether the current cell is reduction cell or not
+        """
+        super().__init__()
+        self.reduction = reduction
+        self.n_nodes = n_nodes
+        self.basic_op_list = basic_op_list
+
+        # If previous cell is reduction cell, current input size does not match with
+        # output size of cell[k-2]. So the output[k-2] should be reduced by preprocessing.
+        if reduction_p:
+            self.preproc0 = FactorizedReduce(C_pp, C, affine=False)
+        else:
+            self.preproc0 = StdConv(C_pp, C, 1, 1, 0, affine=False)
+        self.preproc1 = StdConv(C_p, C, 1, 1, 0, affine=False)
+
+        # generate dag
+        self.dag = nn.ModuleList()
+        for i in range(self.n_nodes):
+            self.dag.append(nn.ModuleList())
+            for j in range(2+i):  # include 2 input nodes
+                # reduction should be used only for input node
+                stride = 2 if reduction and j < 2 else 1
+                op = _MixedOp(C, C, stride, self.basic_op_list)
+                self.dag[i].append(op)
+
+    def forward(self, s0, s1, sample):
+        s0 = self.preproc0(s0)
+        s1 = self.preproc1(s1)
+
+        states = [s0, s1]
+        w_dag = darts_weight_unpack(sample, self.n_nodes)
+        for edges, w_list in zip(self.dag, w_dag):
+            s_cur = sum(edges[i](s, w)
+                        for i, (s, w) in enumerate(zip(states, w_list)))
+            states.append(s_cur)
+
+        s_out = torch.cat(states[2:], dim=1)
+        return s_out
+
+
+# This module is used for NAS-Bench-201, represents a small search space with a complete DAG
+class NAS201SearchCell(nn.Module):
+
+    def __init__(self, n_nodes, C_in, C_out, stride, basic_op_list):
+        super(NAS201SearchCell, self).__init__()
+        self.basic_op_list = basic_op_list
+        # generate dag
+        self.edges = nn.ModuleDict()
+        self.in_dim = C_in
+        self.out_dim = C_out
+        self.n_nodes = n_nodes
+        for i in range(1, n_nodes):
+            for j in range(i):
+                node_str = '{:}<-{:}'.format(i, j)
+                if j == 0:
+                    self.edges[node_str] = _MixedOp(C_in, C_out, stride, basic_op_list)
+                else:
+                    self.edges[node_str] = _MixedOp(C_in, C_out, 1, basic_op_list)
+        self.edge_keys = sorted(list(self.edges.keys()))
+        self.edge2index = {key: i for i, key in enumerate(self.edge_keys)}
+        self.num_edges = len(self.edges)
+
+    def forward(self, inputs, sample):
+        nodes = [inputs]
+        for i in range(1, self.n_nodes):
+            inter_nodes = []
+            for j in range(i):
+                node_str = '{:}<-{:}'.format(i, j)
+                weights = sample[self.edge2index[node_str]]
+                inter_nodes.append(self.edges[node_str](nodes[j], weights))
+            nodes.append(sum(inter_nodes))
+        return nodes[-1]
