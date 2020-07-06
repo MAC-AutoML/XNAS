@@ -10,5 +10,5 @@ if __name__ == "__main__":
     search_net = DartsCNN()
     _random_architecture_weight = torch.randn([search_net.num_edges * 2, len(search_net.basic_op_list)])
     _input = torch.randn([2, 3, 32, 32])
-    _out_put = search_net(_input, search_net)
+    _out_put = search_net(_input, _random_architecture_weight)
     pass
