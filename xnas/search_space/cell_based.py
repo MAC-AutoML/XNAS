@@ -211,57 +211,19 @@ class FactorizedReduce(nn.Module):
         return out
 
 
-class MixedOp(nn.Module):
-    """ Mixed operation """
+'''
+Basic operation of the cell based search space
+'''
 
-    def __init__(self, C, stride):
+
+class _MixedOp(nn.Module):
+    """ define the basic search space operation according to string """
+
+    def __init__(self, C_in, C_out, stride, basic_op_list=None):
         super().__init__()
         self._ops = nn.ModuleList()
-        for primitive in gt.PRIMITIVES:
-            op = OPS_[primitive](C, stride, affine=False)
-            self._ops.append(op)
-
-    def forward(self, x, weights):
-        """
-        Args:
-            x: input
-            weights: weight for each operation
-        """
-        return sum(w * op(x) for w, op in zip(weights, self._ops))
-
-
-class SelectOp(nn.Module):
-    """darts Mixed operation """
-
-    def __init__(self, C, stride):
-        super().__init__()
-        self._ops = nn.ModuleList()
-        for primitive in gt.PRIMITIVES:
-            op = OPS_[primitive](C, stride, affine=False)
-            self._ops.append(op)
-
-    def forward(self, x, weights):
-        """
-        Args:
-            x: input
-            weights: weight for each operation
-        """
-        op = self._ops[int(weights)]
-        return op(x)
-
-
-class SelectBasicOperation(nn.Module):
-    """ define the search space according to string """
-
-    def __init__(self, C_in, C_out, stride, search_space='nas_bench_201'):
-        super().__init__()
-        self._ops = nn.ModuleList()
-        if search_space == 'nas_bench_201':
-            basic_primitives = gt.NAS_BENCH_201
-        elif search_space == 'darts':
-            basic_primitives = gt.PRIMITIVES
-        else:
-            raise NotImplementedError
+        assert basic_op_list is not None, "the basic op list cannot be none!"
+        basic_primitives = basic_op_list
         for primitive in basic_primitives:
             op = OPS_[primitive](C_in, C_out, stride, affine=False)
             self._ops.append(op)
@@ -272,8 +234,14 @@ class SelectBasicOperation(nn.Module):
             x: input
             weights: weight for each operation
         """
-        op = self._ops[int(weights)]
-        return op(x)
+        assert len(self._ops) == len(weights)
+        _x = 0
+        for i, value in enumerate(weights):
+            if value == 1:
+                _x += self._ops[i](x)
+            if 0 < value < 1:
+                _x += value * self._ops[i](x)
+        return _x
 
 
 class BasicBlock(nn.Module):
