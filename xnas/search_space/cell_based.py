@@ -1,7 +1,6 @@
 """ Cell based search space """
 import torch
 import torch.nn as nn
-from utils import genotypes as gt
 import numpy as np
 import torch.nn.functional as F
 from collections import namedtuple
