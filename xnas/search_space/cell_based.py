@@ -521,7 +521,7 @@ class NAS201SearchCell(nn.Module):
 
 class NASBench201CNN(nn.Module):
     # def __init__(self, C, N, max_nodes, num_classes, search_space, affine=False, track_running_stats=True):
-    def __init__(self, C, N, max_nodes, num_classes, basic_op_list=None):
+    def __init__(self, C=16, N=5, max_nodes=4, num_classes=10, basic_op_list=None):
         super(NASBench201CNN, self).__init__()
         self._C = C
         self._layerN = N
