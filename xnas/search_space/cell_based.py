@@ -544,7 +544,7 @@ class NASBench201CNN(nn.Module):
                 cell = ResNetBasicblock(C_prev, C_curr, 2)
             else:
                 cell = NAS201SearchCell(
-                    max_nodes, C_prev, C_curr, 1, basic_op_list)
+                    max_nodes, C_prev, C_curr, 1, self.basic_op_list)
                 if num_edge is None:
                     num_edge, edge2index = cell.num_edges, cell.edge2index
                 else:
