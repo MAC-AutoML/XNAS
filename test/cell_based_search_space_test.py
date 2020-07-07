@@ -24,7 +24,7 @@ if __name__ == "__main__":
                                    np.random.choice(len(search_net.basic_op_list), search_net.num_edges * 2)])
     _input = torch.randn([2, 3, 32, 32])
     time_.tic()
-    _out_put = search_net(_input, _random_architecture_weight)
+    _out_put = search_net(_input, _random_one_hot)
     time_.toc()
     print(_out_put.shape)
     print(time_.average_time)
