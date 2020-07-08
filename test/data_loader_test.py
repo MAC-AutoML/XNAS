@@ -27,6 +27,8 @@ def image_folder_test():
 
 
 def cifar10_test():
+    from xnas.core.config import cfg
+    cfg.TRAIN.IM_SIZE = 32
     [train_, val_] = Xnas_Cifar10('/gdata/cifar10/cifar-10-batches-py', [0.8, 0.2])
     for i, (inputs, labels) in enumerate(train_):
         inputs = inputs.cuda()
