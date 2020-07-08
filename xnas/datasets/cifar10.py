@@ -23,14 +23,50 @@ logger = logging.get_logger(__name__)
 _MEAN = [125.3, 123.0, 113.9]
 _SD = [63.0, 62.1, 66.7]
 
+'''Xnas cifar10, generate dataloader from cifar10 train according split and beckend, do not support distributed now'''
+
+
+def Xnas_Cifar10(data_path, split, backend='custom', batch_size=256, works=4):
+    assert backend == 'custom'
+    if backend == 'custom':
+        train_data = Cifar10(data_path, 'train')
+        n_train = len(train_data)
+        indices = list(range(n_train))
+        # shuffle data
+        np.random.shuffle(indices)
+        data_loaders = []
+        pre_partition = 0.
+        pre_index = 0
+        for i, _split in enumerate(split):
+            _current_partition = pre_partition + _split
+            _current_index = int(len(train_data) * _current_partition)
+            _current_indices = indices[pre_index: _current_index]
+            assert not len(
+                _current_indices) == 0, "The length of indices is zero!"
+            _sampler = torch.utils.data.sampler.SubsetRandomSampler(
+                _current_indices)
+            _data_loader = torch.utils.data.DataLoader(train_data,
+                                                       batch_size=batch_size,
+                                                       sampler=_sampler,
+                                                       num_workers=works,
+                                                       pin_memory=True)
+            data_loaders.append(_data_loader)
+            pre_partition = _current_partition
+            pre_index = _current_index
+        return data_loaders
+    else:
+        raise NotImplementedError
+
 
 class Cifar10(torch.utils.data.Dataset):
     """CIFAR-10 dataset."""
 
     def __init__(self, data_path, split):
-        assert os.path.exists(data_path), "Data path '{}' not found".format(data_path)
+        assert os.path.exists(
+            data_path), "Data path '{}' not found".format(data_path)
         splits = ["train", "test"]
-        assert split in splits, "Split '{}' not supported for cifar".format(split)
+        assert split in splits, "Split '{}' not supported for cifar".format(
+            split)
         logger.info("Constructing CIFAR-10 {}...".format(split))
         self._data_path, self._split = data_path, split
         self._inputs, self._labels = self._load_data()
@@ -61,7 +97,8 @@ class Cifar10(torch.utils.data.Dataset):
         im = transforms.color_norm(im, _MEAN, _SD)
         if self._split == "train":
             im = transforms.horizontal_flip(im=im, p=0.5)
-            im = transforms.random_crop(im=im, size=cfg.TRAIN.IM_SIZE, pad_size=4)
+            im = transforms.random_crop(
+                im=im, size=cfg.TRAIN.IM_SIZE, pad_size=4)
         return im
 
     def __getitem__(self, index):

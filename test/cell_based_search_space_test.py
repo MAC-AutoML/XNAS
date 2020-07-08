@@ -33,7 +33,7 @@ def basic_darts_cnn_test():
 def basic_nas_bench_201_cnn():
     #  nas_bench_201 test
     time_ = Timer()
-    print("Testing darts CNN")
+    print("Testing nas bench 201 CNN")
     search_net = NASBench201CNN()
     _random_architecture_weight = torch.randn(
         [search_net.num_edges, len(search_net.basic_op_list)])

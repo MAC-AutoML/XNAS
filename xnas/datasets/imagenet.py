@@ -57,6 +57,7 @@ class XNAS_ImageFolder():
         assert os.path.exists(
             data_path), "Data path '{}' not found".format(data_path)
         assert sum(split) == 1, "The summation of split should be 1!"
+        assert backend in ['torch', 'custom', 'dali_cpu', 'dali_gpu'], "Corresponding backend {} is not supported!".format(backend)
         self._data_path, self._split, self.backend, self.dataset_name = data_path, split, backend, dataset_name
         self._rgb_normalized_mean, self._rgb_normalized_std = _rgb_normalized_mean, _rgb_normalized_std
         self.batch_size = [256, 200] if batch_size is None else batch_size
