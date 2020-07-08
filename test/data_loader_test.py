@@ -1,6 +1,7 @@
 from xnas.datasets.imagenet import XNAS_ImageFolder
 from xnas.datasets.cifar10 import Xnas_Cifar10
 
+
 def image_folder_test():
     for backend in ['torch', 'dali_cpu', 'dali_gpu', 'custom']:
         print('Testing the dataloader with backend: {}'.format(backend))
@@ -28,18 +29,19 @@ def image_folder_test():
 def cifar10_test():
     [train_, val_] = Xnas_Cifar10('/gdata/cifar10', [0.8, 0.2])
     for i, (inputs, labels) in enumerate(train_):
-            inputs = inputs.cuda()
-            labels = labels.cuda()
-            print(inputs)
-            print(labels)
-            break
-        for i, (inputs, labels) in enumerate(val_):
-            inputs = inputs.cuda()
-            labels = labels.cuda()
-            print(inputs)
-            print(labels)
-            break
-        print('testing passed')
+        inputs = inputs.cuda()
+        labels = labels.cuda()
+        print(inputs)
+        print(labels)
+        break
+    for i, (inputs, labels) in enumerate(val_):
+        inputs = inputs.cuda()
+        labels = labels.cuda()
+        print(inputs)
+        print(labels)
+        break
+    print('testing passed')
+
 
 if __name__ == "__main__":
     cifar10_test()
