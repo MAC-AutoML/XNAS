@@ -9,12 +9,12 @@
 
 import torch
 from xnas.core.config import cfg
-from xnas.search_space.cell_based import DartsCNN
-from xnas.search_space.cell_based import NASBench201CNN
+from xnas.search_space.cell_based import _DartsCNN
+from xnas.search_space.cell_based import _NASbench201
 
 
 # Supported models
-_spaces = {"darts": DartsCNN, "nasbench201": NASBench201CNN}
+_spaces = {"darts": _DartsCNN, "nasbench201": _NASbench201}
 
 # Supported loss functions
 _loss_funs = {"cross_entropy": torch.nn.CrossEntropyLoss}
