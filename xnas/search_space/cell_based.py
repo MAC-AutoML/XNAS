@@ -414,11 +414,10 @@ class DartsCell(nn.Module):
 
 class DartsCNN(nn.Module):
 
-    def __init__(self, C_in=3, C=16, n_classes=10, n_layers=8, n_nodes=4, net_ceri=None, basic_op_list=None):
+    def __init__(self, C=16, n_classes=10, n_layers=8, n_nodes=4, basic_op_list=None):
         super().__init__()
         stem_multiplier = 3
-        self.criterion = net_ceri
-        self.C_in = C_in  # 3
+        self.C_in = 3  # 3
         self.C = C  # 16
         self.n_classes = n_classes  # 10
         self.n_layers = n_layers  # 8
@@ -427,7 +426,7 @@ class DartsCNN(nn.Module):
                               'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5', 'none'] if basic_op_list is None else basic_op_list
         C_cur = stem_multiplier * C  # 3 * 16 = 48
         self.stem = nn.Sequential(
-            nn.Conv2d(C_in, C_cur, 3, 1, 1, bias=False),
+            nn.Conv2d(self.C_in, C_cur, 3, 1, 1, bias=False),
             nn.BatchNorm2d(C_cur)
         )
         # for the first cell, stem is used for both s0 and s1
@@ -473,8 +472,10 @@ class DartsCNN(nn.Module):
             theta[0:self.num_edges], self.n_nodes)
         theta_reduce = darts_weight_unpack(
             theta[self.num_edges:], self.n_nodes)
-        gene_normal = parse_from_numpy(theta_norm, k=2, basic_op_list=self.basic_op_list)
-        gene_reduce = parse_from_numpy(theta_reduce, k=2, basic_op_list=self.basic_op_list)
+        gene_normal = parse_from_numpy(
+            theta_norm, k=2, basic_op_list=self.basic_op_list)
+        gene_reduce = parse_from_numpy(
+            theta_reduce, k=2, basic_op_list=self.basic_op_list)
         concat = range(2, 2+self.n_nodes)  # concat all intermediate nodes
 
         return Genotype(normal=gene_normal, normal_concat=concat,
@@ -588,3 +589,24 @@ class NASBench201CNN(nn.Module):
         out = out.view(out.size(0), -1)
         logits = self.classifier(out)
         return logits
+
+
+# build API
+
+def _DartsCNN():
+    from xnas.core.config import cfg
+    return DartsCNN(
+        C=cfg.SPACE.CHANNEL,
+        n_classes=cfg.SPACE.NUM_CLASSES,
+        n_layers=cfg.SPACE.LAYERS,
+        n_nodes=cfg.SPACE.NODES,
+        basic_op_list=cfg.SPACE.BASIC_OP)
+
+
+def _NASbench201():
+    from xnas.core.config import cfg
+    return NASBench201CNN(C=cfg.SPACE.CHANNEL,
+                          N=cfg.SPACE.LAYERS,
+                          max_nodes=cfg.SPACE.NODES,
+                          num_classes=cfg.SPACE.NUM_CLASSES,
+                          basic_op_list=cfg.SPACE.BASIC_OP)

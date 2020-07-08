@@ -9,15 +9,12 @@
 
 import torch
 from xnas.core.config import cfg
-from xnas.models.anynet import AnyNet
-from xnas.models.effnet import EffNet
-from xnas.models.regnet import RegNet
-from xnas.models.resnet import ResNet
-from xnas.models.mobilenet import MobileNet
+from xnas.search_space.cell_based import DartsCNN
+from xnas.search_space.cell_based import NASBench201CNN
 
 
 # Supported models
-_models = {"anynet": AnyNet, "effnet": EffNet, "resnet": ResNet, "regnet": RegNet, "mobilenet": MobileNet}
+_spaces = {"darts": DartsCNN, "nasbench201": NASBench201CNN}
 
 # Supported loss functions
 _loss_funs = {"cross_entropy": torch.nn.CrossEntropyLoss}
@@ -26,8 +23,8 @@ _loss_funs = {"cross_entropy": torch.nn.CrossEntropyLoss}
 def get_model():
     """Gets the model class specified in the config."""
     err_str = "Model type '{}' not supported"
-    assert cfg.MODEL.TYPE in _models.keys(), err_str.format(cfg.MODEL.TYPE)
-    return _models[cfg.MODEL.TYPE]
+    assert cfg.MODEL.TYPE in _spaces.keys(), err_str.format(cfg.MODEL.TYPE)
+    return _spaces[cfg.MODEL.TYPE]
 
 
 def get_loss_fun():
@@ -49,7 +46,7 @@ def build_loss_fun():
 
 def register_model(name, ctor):
     """Registers a model dynamically."""
-    _models[name] = ctor
+    _spaces[name] = ctor
 
 
 def register_loss_fun(name, ctor):

@@ -12,6 +12,7 @@ import os
 
 import numpy as np
 import torch
+import random
 
 import xnas.core.benchmark as benchmark
 import xnas.core.builders as builders
@@ -40,11 +41,18 @@ def setup_env():
     # Log the config as both human readable and as a json
     logger.info("Config:\n{}".format(cfg))
     logger.info(logging.dump_log_data(cfg, "cfg"))
-    # Fix the RNG seeds (see RNG comment in core/config.py for discussion)
-    np.random.seed(cfg.RNG_SEED)
-    torch.manual_seed(cfg.RNG_SEED)
-    # Configure the CUDNN backend
-    torch.backends.cudnn.benchmark = cfg.CUDNN.BENCHMARK
+    if cfg.DETERMINSTIC:
+        # Fix the RNG seeds (see RNG comment in core/config.py for discussion)
+        np.random.seed(cfg.RNG_SEED)
+        torch.manual_seed(cfg.RNG_SEED)
+        torch.cuda.seed(cfg.RNG_SEED)
+        random.seed(cfg.RNG_SEED)
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.enabled = True
+    else:
+        # Configure the CUDNN backend
+        torch.backends.cudnn.benchmark = cfg.CUDNN.BENCHMARK
 
 
 def setup_model():

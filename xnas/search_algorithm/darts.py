@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import logging
 import copy
 
 '''
@@ -49,10 +48,6 @@ class DartsCNNController(nn.Module):
             #                                         zip(xs, wnormal_copies, wreduce_copies)),
             #                                     devices=self.device_ids)
             # return nn.parallel.gather(outputs, self.device_ids[0])
-
-    def loss(self, X, y):
-        logits = self.forward(X)
-        return self.criterion(logits, y)
 
     def genotype(self):
         self.net.genotype(self.alpha)
@@ -178,3 +173,4 @@ class Architect():
 
         hessian = [(p-n) / 2.*eps for p, n in zip(dalpha_pos, dalpha_neg)]
         return hessian
+
