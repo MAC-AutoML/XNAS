@@ -110,7 +110,6 @@ _C.DATA_LOADER.MEMORY_DATA = False
 # transformers
 _C.DATA_LOADER.PCA_JITTER = False
 _C.DATA_LOADER.COLOR_JITTER = False
-_C.DATA_LOADER.SPLIT_LIST = []
 
 # ------------------------------------------------------------------------------------ #
 # Training options
@@ -118,50 +117,29 @@ _C.DATA_LOADER.SPLIT_LIST = []
 _C.TRAIN = CfgNode()
 
 # Dataset and split
-_C.TRAIN.DATASET = ""
-_C.TRAIN.SPLIT = "train"
+_C.SEARCH.DATASET = "cifar10"
+_C.SEARCH.SPLIT = []
 
 # Total mini-batch size
-_C.TRAIN.BATCH_SIZE = 128
+_C.SEARCH.BATCH_SIZE = 256
 
 # Image size
-_C.TRAIN.IM_SIZE = 224
+_C.SEARCH.IM_SIZE = 32
 
 # Evaluate model on test data every eval period epochs
-_C.TRAIN.EVAL_PERIOD = 1
+_C.SEARCH.EVAL_PERIOD = 1
 
 # Save model checkpoint every checkpoint period epochs
-_C.TRAIN.CHECKPOINT_PERIOD = 1
+_C.SEARCH.CHECKPOINT_PERIOD = 1
 
 # Resume training from the latest checkpoint in the output directory
-_C.TRAIN.AUTO_RESUME = True
+_C.SEARCH.AUTO_RESUME = True
 
 # Weights to start training from
-_C.TRAIN.WEIGHTS = ""
+_C.SEARCH.WEIGHTS = ""
 
 # using FP16
-_C.TRAIN.AMP = False
-
-# ------------------------------------------------------------------------------------ #
-# Testing options
-# ------------------------------------------------------------------------------------ #
-_C.TEST = CfgNode()
-
-# Dataset and split
-_C.TEST.DATASET = ""
-_C.TEST.SPLIT = "val"
-
-# Total mini-batch size
-_C.TEST.BATCH_SIZE = 200
-
-# Image size
-_C.TEST.IM_SIZE = 256
-
-# Weights to use for testing
-_C.TEST.WEIGHTS = ""
-
-# using FP16
-_C.TEST.AMP = False
+_C.SEARCH.AMP = False
 
 # ------------------------------------------------------------------------------------ #
 # Precise timing options
