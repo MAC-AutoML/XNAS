@@ -20,11 +20,11 @@ _spaces = {"darts": _DartsCNN, "nasbench201": _NASbench201}
 _loss_funs = {"cross_entropy": torch.nn.CrossEntropyLoss}
 
 
-def get_model():
+def get_space():
     """Gets the model class specified in the config."""
     err_str = "Model type '{}' not supported"
-    assert cfg.MODEL.TYPE in _spaces.keys(), err_str.format(cfg.MODEL.TYPE)
-    return _spaces[cfg.MODEL.TYPE]
+    assert cfg.SPACE.NAME in _spaces.keys(), err_str.format(cfg.SPACE.NAME)
+    return _spaces[cfg.SPACE.NAME]
 
 
 def get_loss_fun():
@@ -34,9 +34,9 @@ def get_loss_fun():
     return _loss_funs[cfg.MODEL.LOSS_FUN]
 
 
-def build_model():
+def build_space():
     """Builds the model."""
-    return get_model()()
+    return get_space()()
 
 
 def build_loss_fun():
@@ -44,7 +44,7 @@ def build_loss_fun():
     return get_loss_fun()()
 
 
-def register_model(name, ctor):
+def register_space(name, ctor):
     """Registers a model dynamically."""
     _spaces[name] = ctor
 

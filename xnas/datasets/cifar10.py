@@ -26,7 +26,7 @@ _SD = [63.0, 62.1, 66.7]
 '''Xnas cifar10, generate dataloader from cifar10 train according split and beckend, do not support distributed now'''
 
 
-def Xnas_Cifar10(data_path, split, backend='custom', batch_size=256, works=4):
+def XNAS_Cifar10(data_path, split, backend='custom', batch_size=256, works=4):
     assert backend == 'custom'
     if backend == 'custom':
         train_data = Cifar10(data_path, 'train')
