@@ -135,11 +135,12 @@ def train_epoch(train_loader, model, loss_fun, optimizer, train_meter, cur_epoch
 
 
 @torch.no_grad()
-def test_epoch(test_loader, model, test_meter, cur_epoch):
+def test_epoch(test_loader, model, test_meter, cur_epoch, tensorboard_writer=None):
     """Evaluates the model on the test set."""
     # Enable eval mode
     model.eval()
     test_meter.iter_tic()
+
     for cur_iter, (inputs, labels) in enumerate(test_loader):
         # Transfer the data to the current GPU device
         inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
@@ -163,6 +164,13 @@ def test_epoch(test_loader, model, test_meter, cur_epoch):
             top1_err, top5_err, inputs.size(0) * cfg.NUM_GPUS)
         test_meter.log_iter_stats(cur_epoch, cur_iter)
         test_meter.iter_tic()
+    if tensorboard_writer is not None:
+        tensorboard_writer.add_scalar(
+            'val/loss', test_meter.loss.get_win_median(), cur_epoch)
+        tensorboard_writer.add_scalar(
+            'val/top1', test_meter.mb_top1_err.get_win_median(), cur_epoch)
+        tensorboard_writer.add_scalar(
+            'val/top5', test_meter.mb_top5_err.get_win_median(), cur_epoch)
     # Log epoch stats
     test_meter.log_epoch_stats(cur_epoch)
     test_meter.reset()

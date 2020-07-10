@@ -8,6 +8,10 @@ from xnas.core.trainer import setup_env, test_epoch
 from xnas.datasets.loader import _construct_loader
 from xnas.search_algorithm.darts import *
 from xnas.search_space.cell_based import DartsCNN, NASBench201CNN
+from torch.utils.tensorboard import SummaryWriter
+
+# tensorboard
+writer = SummaryWriter(log_dir=os.path.join(cfg.OUT_DIR, "tb"))
 
 logger = logging.get_logger(__name__)
 
@@ -52,7 +56,7 @@ def main():
         next_epoch = cur_epoch + 1
         if next_epoch % cfg.SEARCH.EVAL_PERIOD == 0 or next_epoch == cfg.OPTIM.MAX_EPOCH:
             logger.info("Start testing")
-            test_epoch(test_loader, darts_controller, val_meter, cur_epoch)
+            test_epoch(test_loader, darts_controller, val_meter, cur_epoch, tensorboard_writer=writer)
         if torch.cuda.is_available():
             torch.cuda.synchronize()
             torch.cuda.empty_cache()  # https://forums.fast.ai/t/clearing-gpu-memory-pytorch/14637
@@ -62,6 +66,8 @@ def main():
 def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimizer, alpha_optimizer, lr, train_meter, cur_epoch):
     model.train()
     train_meter.iter_tic()
+    cur_step = cur_epoch*len(train_loader)
+    writer.add_scalar('train/lr', lr, cur_step)
     # scale the grad in amp, amp only support the newest version
     scaler = torch.cuda.amp.GradScaler() if cfg.TRAIN.AMP & hasattr(
         torch.cuda.amp, 'autocast') else None
@@ -110,6 +116,11 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         train_meter.update_stats(top1_err, top5_err, loss, lr, mb_size)
         train_meter.log_iter_stats(cur_epoch, cur_iter)
         train_meter.iter_tic()
+        # write to tensorboard
+        writer.add_scalar('train/loss', loss.item(), cur_step)
+        writer.add_scalar('train/top1', prec1.item(), cur_step)
+        writer.add_scalar('train/top5', prec5.item(), cur_step)
+        cur_step += 1
     # Log epoch stats
     train_meter.log_epoch_stats(cur_epoch)
     train_meter.reset()
