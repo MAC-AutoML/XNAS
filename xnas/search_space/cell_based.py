@@ -422,7 +422,7 @@ class DartsCNN(nn.Module):
         self.n_layers = n_layers  # 8
         self.n_nodes = n_nodes  # 4
         self.basic_op_list = ['max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3',
-                              'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5', 'none'] if len(basic_op_list)==0 else basic_op_list
+                              'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5', 'none'] if len(basic_op_list) == 0 else basic_op_list
         C_cur = stem_multiplier * C  # 3 * 16 = 48
         self.stem = nn.Sequential(
             nn.Conv2d(self.C_in, C_cur, 3, 1, 1, bias=False),
@@ -527,7 +527,7 @@ class NASBench201CNN(nn.Module):
         self._layerN = N
         self.max_nodes = max_nodes
         self.basic_op_list = ['none', 'skip_connect', 'nor_conv_1x1',
-                              'nor_conv_3x3', 'avg_pool_3x3'] if len(basic_op_list)==0 else basic_op_list
+                              'nor_conv_3x3', 'avg_pool_3x3'] if len(basic_op_list) == 0 else basic_op_list
         self.stem = nn.Sequential(
             nn.Conv2d(3, C, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(C))
