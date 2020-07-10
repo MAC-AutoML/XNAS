@@ -4,7 +4,6 @@ SPACE:
   CHANNEL: 16
   LAYERS: 8
   NODES: 4
-  BASIC_OP: None
 DATA_LOADER:
   BACKEND: 'custom'
 SEARCH:
