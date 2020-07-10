@@ -1,4 +1,4 @@
-import pytorch_cls.core.checkpoint as checkpoint
+import xnas.core.checkpoint as checkpoint
 import xnas.core.config as config
 import xnas.core.logging as logging
 import xnas.core.meters as meters
