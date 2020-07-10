@@ -42,7 +42,7 @@ _C.SPACE.LAYERS = 8
 _C.SPACE.NODES = 4
 
 # number of nodes in a cell
-_C.SPACE.BASIC_OP = None
+_C.SPACE.BASIC_OP = []
 
 
 # ------------------------------------------------------------------------------------ #
@@ -217,6 +217,7 @@ _C.DETERMINSTIC = True
 # ------------------------------------------------------------------------------------ #
 #  keys in DARTS
 # ------------------------------------------------------------------------------------ #
+_C.DARTS = CfgNode()
 _C.DARTS.ALPHA_LR = 3e-4
 _C.DARTS.ALPHA_WEIGHT_DECAY = 1e-3
 # ------------------------------------------------------------------------------------ #
@@ -260,7 +261,6 @@ def load_cfg_fom_args(description="Config file options."):
 def assert_and_infer_cfg(cache_urls=True):
     """Checks config values invariants."""
     err_str = "Mini-batch size should be a multiple of NUM_GPUS."
-    assert _C.TRAIN.BATCH_SIZE % _C.NUM_GPUS == 0, err_str
-    assert _C.TEST.BATCH_SIZE % _C.NUM_GPUS == 0, err_str
+    assert _C.SEARCH.BATCH_SIZE % _C.NUM_GPUS == 0, err_str
     err_str = "Log destination '{}' not supported"
     assert _C.LOG_DEST in ["stdout", "file"], err_str.format(_C.LOG_DEST)

@@ -1,3 +1,5 @@
+import os
+
 import xnas.core.checkpoint as checkpoint
 import xnas.core.config as config
 import xnas.core.logging as logging

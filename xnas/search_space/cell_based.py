@@ -414,7 +414,7 @@ class DartsCell(nn.Module):
 
 class DartsCNN(nn.Module):
 
-    def __init__(self, C=16, n_classes=10, n_layers=8, n_nodes=4, basic_op_list=None):
+    def __init__(self, C=16, n_classes=10, n_layers=8, n_nodes=4, basic_op_list=[]):
         super().__init__()
         stem_multiplier = 3
         self.C_in = 3  # 3
@@ -423,7 +423,7 @@ class DartsCNN(nn.Module):
         self.n_layers = n_layers  # 8
         self.n_nodes = n_nodes  # 4
         self.basic_op_list = ['max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3',
-                              'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5', 'none'] if basic_op_list is None else basic_op_list
+                              'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5', 'none'] if len(basic_op_list)==0 else basic_op_list
         C_cur = stem_multiplier * C  # 3 * 16 = 48
         self.stem = nn.Sequential(
             nn.Conv2d(self.C_in, C_cur, 3, 1, 1, bias=False),
@@ -522,13 +522,13 @@ class NAS201SearchCell(nn.Module):
 
 class NASBench201CNN(nn.Module):
     # def __init__(self, C, N, max_nodes, num_classes, search_space, affine=False, track_running_stats=True):
-    def __init__(self, C=16, N=5, max_nodes=4, num_classes=10, basic_op_list=None):
+    def __init__(self, C=16, N=5, max_nodes=4, num_classes=10, basic_op_list=[]):
         super(NASBench201CNN, self).__init__()
         self._C = C
         self._layerN = N
         self.max_nodes = max_nodes
         self.basic_op_list = ['none', 'skip_connect', 'nor_conv_1x1',
-                              'nor_conv_3x3', 'avg_pool_3x3'] if basic_op_list is None else basic_op_list
+                              'nor_conv_3x3', 'avg_pool_3x3'] if len(basic_op_list)==0 else basic_op_list
         self.stem = nn.Sequential(
             nn.Conv2d(3, C, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(C))

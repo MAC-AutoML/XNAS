@@ -27,7 +27,6 @@ _SD = [63.0, 62.1, 66.7]
 
 
 def XNAS_Cifar10(data_path, split, backend='custom', batch_size=256, works=4):
-    assert backend == 'custom'
     if backend == 'custom':
         train_data = Cifar10(data_path, 'train')
         n_train = len(train_data)

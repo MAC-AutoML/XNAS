@@ -45,7 +45,7 @@ def setup_env():
         # Fix the RNG seeds (see RNG comment in core/config.py for discussion)
         np.random.seed(cfg.RNG_SEED)
         torch.manual_seed(cfg.RNG_SEED)
-        torch.cuda.seed(cfg.RNG_SEED)
+        torch.cuda.manual_seed_all(cfg.RNG_SEED)
         random.seed(cfg.RNG_SEED)
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
