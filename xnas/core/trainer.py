@@ -168,9 +168,9 @@ def test_epoch(test_loader, model, test_meter, cur_epoch, tensorboard_writer=Non
         tensorboard_writer.add_scalar(
             'val/loss', test_meter.loss.get_win_median(), cur_epoch)
         tensorboard_writer.add_scalar(
-            'val/top1', test_meter.mb_top1_err.get_win_median(), cur_epoch)
+            'val/top1_error', test_meter.mb_top1_err.get_win_median(), cur_epoch)
         tensorboard_writer.add_scalar(
-            'val/top5', test_meter.mb_top5_err.get_win_median(), cur_epoch)
+            'val/top5_error', test_meter.mb_top5_err.get_win_median(), cur_epoch)
     # Log epoch stats
     test_meter.log_epoch_stats(cur_epoch)
     test_meter.reset()

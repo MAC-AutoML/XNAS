@@ -405,7 +405,7 @@ class DartsCell(nn.Module):
             s_cur = sum(edges[i](s, w)
                         for i, (s, w) in enumerate(zip(states, w_list)))
             states.append(s_cur)
-        s_out = torch.cat(states[2:], dim=1)
+        s_out = torch.cat(states[2:], 1)
         return s_out
 
 # DartsCNN
@@ -451,6 +451,8 @@ class DartsCNN(nn.Module):
         self.linear = nn.Linear(C_p, n_classes)
         # number of edges per cell
         self.num_edges = sum(list(range(2, self.n_nodes + 2)))
+        # whole edges
+        self.all_edges = 2 * self.num_edges
 
     def forward(self, x, sample):
         s0 = s1 = self.stem(x)
@@ -555,6 +557,7 @@ class NASBench201CNN(nn.Module):
         self._Layer = len(self.cells)
         self.edge2index = edge2index
         self.num_edges = num_edge
+        self.all_edges = self.num_edges
         self.lastact = nn.Sequential(
             nn.BatchNorm2d(C_prev), nn.ReLU(inplace=True))
         self.global_pooling = nn.AdaptiveAvgPool2d(1)

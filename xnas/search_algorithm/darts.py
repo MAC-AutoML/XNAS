@@ -19,7 +19,7 @@ class DartsCNNController(nn.Module):
         self.device_ids = device_ids
         self.n_ops = len(self.net.basic_op_list)
         self.alpha = nn.Parameter(
-            1e-3*torch.randn(self.net.num_edges, self.n_ops))
+            1e-3*torch.randn(self.net.all_edges, self.n_ops))
         self.criterion = criterion
 
         # setup alphas list

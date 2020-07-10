@@ -25,9 +25,9 @@ def main():
     # init controller and architect
     loss_fun = nn.CrossEntropyLoss().cuda()
     darts_controller = DartsCNNController(search_space, loss_fun)
+    darts_controller.cuda()
     architect = Architect(
         darts_controller, cfg.OPTIM.MOMENTUM, cfg.OPTIM.WEIGHT_DECAY)
-    darts_controller.cuda()
     # load dataset
     [train_, val_] = _construct_loader(
         cfg.SEARCH.DATASET, cfg.SEARCH.SPLIT, cfg.SEARCH.BATCH_SIZE)
@@ -88,9 +88,9 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         if scaler is not None:
             with torch.cuda.amp.autocast():
                 # Perform the forward pass in AMP
-                preds = model(inputs)
+                preds = model(trn_X)
                 # Compute the loss in AMP
-                loss = loss_fun(preds, labels)
+                loss = loss_fun(preds, trn_y)
                 # Perform the backward pass in AMP
                 w_optimizer.zero_grad()
                 scaler.scale(loss).backward()
@@ -98,9 +98,9 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
                 # Updates the scale for next iteration.
                 scaler.update()
         else:
-            preds = model(inputs)
+            preds = model(trn_X)
             # Compute the loss
-            loss = loss_fun(preds, labels)
+            loss = loss_fun(preds, trn_y)
             # Perform the backward pass
             w_optimizer.zero_grad()
             loss.backward()
@@ -109,20 +109,19 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
             # Update the parameters
             w_optimizer.step()
         # Compute the errors
-        top1_err, top5_err = meters.topk_errors(preds, labels, [1, 5])
+        top1_err, top5_err = meters.topk_errors(preds, trn_y, [1, 5])
         # Copy the stats from GPU to CPU (sync point)
         loss, top1_err, top5_err = loss.item(), top1_err.item(), top5_err.item()
         train_meter.iter_toc()
         # Update and log stats
-        mb_size = inputs.size(0) * cfg.NUM_GPUS
-        mb_size = inputs.size(0) * cfg.NUM_GPUS
+        mb_size = trn_X.size(0) * cfg.NUM_GPUS
         train_meter.update_stats(top1_err, top5_err, loss, lr, mb_size)
         train_meter.log_iter_stats(cur_epoch, cur_iter)
         train_meter.iter_tic()
         # write to tensorboard
-        writer.add_scalar('train/loss', loss.item(), cur_step)
-        writer.add_scalar('train/top1', prec1.item(), cur_step)
-        writer.add_scalar('train/top5', prec5.item(), cur_step)
+        writer.add_scalar('train/loss', loss, cur_step)
+        writer.add_scalar('train/top1_error', top1_err, cur_step)
+        writer.add_scalar('train/top5_error', top5_err, cur_step)
         cur_step += 1
     # Log epoch stats
     train_meter.log_epoch_stats(cur_epoch)
