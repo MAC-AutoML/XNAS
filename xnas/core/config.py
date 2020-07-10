@@ -124,7 +124,7 @@ _C.SEARCH = CfgNode()
 
 # Dataset and split
 _C.SEARCH.DATASET = "cifar10"
-_C.SEARCH.SPLIT = []
+_C.SEARCH.SPLIT = [0.8, 0.2]
 
 # Total mini-batch size
 _C.SEARCH.BATCH_SIZE = 256
