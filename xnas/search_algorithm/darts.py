@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import copy
+import logging
 
 '''
 Darts: highly copyed from https://github.com/khanrc/pt.darts
@@ -65,6 +66,22 @@ class DartsCNNController(nn.Module):
     def named_alphas(self):
         for n, p in self._alphas:
             yield n, p
+
+    def print_alphas(self, logger):
+        # remove formats
+        org_formatters = []
+        for handler in logger.handlers:
+            org_formatters.append(handler.formatter)
+            handler.setFormatter(logging.Formatter("%(message)s"))
+
+        logger.info("####### ALPHA #######")
+        for alpha in self.alpha:
+            logger.info(F.softmax(alpha, dim=-1))
+        logger.info("#####################")
+
+        # restore formats
+        for handler, formatter in zip(logger.handlers, org_formatters):
+            handler.setFormatter(formatter)
 
 
 class Architect():
@@ -173,4 +190,3 @@ class Architect():
 
         hessian = [(p-n) / 2.*eps for p, n in zip(dalpha_pos, dalpha_neg)]
         return hessian
-

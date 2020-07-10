@@ -46,7 +46,7 @@ _C.SPACE.BASIC_OP = None
 
 
 # ------------------------------------------------------------------------------------ #
-# Optimizer options
+# Optimizer options in network
 # ------------------------------------------------------------------------------------ #
 _C.OPTIM = CfgNode()
 
@@ -68,6 +68,9 @@ _C.OPTIM.LR_MULT = 0.1
 # Maximal number of epochs
 _C.OPTIM.MAX_EPOCH = 200
 
+# Minimal learning rate in cosine
+_C.OPTIM.MIN_LR = 0.001
+
 # Momentum
 _C.OPTIM.MOMENTUM = 0.9
 
@@ -85,6 +88,9 @@ _C.OPTIM.WARMUP_FACTOR = 0.1
 
 # Gradually warm up the OPTIM.BASE_LR over this number of epochs
 _C.OPTIM.WARMUP_EPOCHS = 0
+
+# Momentum dampening
+_C.OPTIM.GRAD_CLIP = 5.0
 
 
 # ------------------------------------------------------------------------------------ #
@@ -114,7 +120,7 @@ _C.DATA_LOADER.COLOR_JITTER = False
 # ------------------------------------------------------------------------------------ #
 # Training options
 # ------------------------------------------------------------------------------------ #
-_C.TRAIN = CfgNode()
+_C.SEARCH = CfgNode()
 
 # Dataset and split
 _C.SEARCH.DATASET = "cifar10"
@@ -130,7 +136,7 @@ _C.SEARCH.IM_SIZE = 32
 _C.SEARCH.EVAL_PERIOD = 1
 
 # Save model checkpoint every checkpoint period epochs
-_C.SEARCH.CHECKPOINT_PERIOD = 1
+_C.SEARCH.CHECKPOINT_PERIOD = 5
 
 # Resume training from the latest checkpoint in the output directory
 _C.SEARCH.AUTO_RESUME = True
@@ -208,6 +214,11 @@ _C.DOWNLOAD_CACHE = "/tmp/pycls-download-cache"
 # If we use a determinstic to stablize the search process
 _C.DETERMINSTIC = True
 
+# ------------------------------------------------------------------------------------ #
+#  keys in DARTS
+# ------------------------------------------------------------------------------------ #
+_C.DARTS.ALPHA_LR = 3e-4
+_C.DARTS.ALPHA_WEIGHT_DECAY = 1e-3
 # ------------------------------------------------------------------------------------ #
 # Deprecated keys
 # ------------------------------------------------------------------------------------ #
