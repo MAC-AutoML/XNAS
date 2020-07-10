@@ -19,7 +19,7 @@ _C = CfgNode()
 #   from core.config import cfg
 cfg = _C
 
-_C.MODEL = CfgNode()
+_C.SPACE = CfgNode()
 
 # ------------------------------------------------------------------------------------ #
 # Search Space options
