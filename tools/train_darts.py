@@ -23,7 +23,8 @@ def main():
     # loadiong search space
     search_space = build_space()
     # init controller and architect
-    darts_controller = DartsCNNController(search_space)
+    loss_fun = nn.CrossEntropyLoss().cuda()
+    darts_controller = DartsCNNController(search_space, loss_fun)
     architect = Architect(
         darts_controller, cfg.OPTIM.MOMENTUM, cfg.OPTIM.WEIGHT_DECAY)
     darts_controller.cuda()
@@ -40,16 +41,15 @@ def main():
         w_optim, cfg.OPTIM.MAX_EPOCH, eta_min=cfg.OPTIM.MIN_LR)
     train_meter = meters.TrainMeter(len(train_))
     val_meter = meters.TestMeter(len(val_))
-    loss_fun = nn.CrossEntropyLoss().cuda()
     start_epoch = 0
     # Perform the training loop
     logger.info("Start epoch: {}".format(start_epoch + 1))
     for cur_epoch in range(start_epoch, cfg.OPTIM.MAX_EPOCH):
-        lr = lr_scheduler.get_lr()[0]
+        lr = lr_scheduler.get_last_lr()[0]
         darts_controller.print_alphas(logger)
         train_epoch(train_, val_, darts_controller, architect, loss_fun, w_optim, alpha_optim, lr, train_meter, cur_epoch)
         # Save a checkpoint
-        if (cur_epoch + 1) % cfg.TRAIN.CHECKPOINT_PERIOD == 0:
+        if (cur_epoch + 1) % cfg.SEARCH.CHECKPOINT_PERIOD == 0:
             checkpoint_file = checkpoint.save_checkpoint(
                 model, optimizer, cur_epoch)
             logger.info("Wrote checkpoint to: {}".format(checkpoint_file))
@@ -71,8 +71,9 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
     cur_step = cur_epoch*len(train_loader)
     writer.add_scalar('train/lr', lr, cur_step)
     # scale the grad in amp, amp only support the newest version
-    scaler = torch.cuda.amp.GradScaler() if cfg.TRAIN.AMP & hasattr(
+    scaler = torch.cuda.amp.GradScaler() if cfg.SEARCH.AMP & hasattr(
         torch.cuda.amp, 'autocast') else None
+    valid_loader = iter(valid_loader)
     for cur_iter, (trn_X, trn_y) in enumerate(train_loader):
         (val_X, val_y) = next(valid_loader)
         # Transfer the data to the current GPU device
@@ -80,7 +81,7 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         val_X, val_y = val_X.cuda(), val_y.cuda(non_blocking=True)
         # phase 2. architect step (alpha)
         alpha_optimizer.zero_grad()
-        architect.unrolled_backward(trn_X, trn_y, val_X, val_y, lr, w_optim)
+        architect.unrolled_backward(trn_X, trn_y, val_X, val_y, lr, w_optimizer)
         alpha_optimizer.step()
 
         # phase 1. child network step (w)

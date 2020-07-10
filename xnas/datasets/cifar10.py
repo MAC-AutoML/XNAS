@@ -88,7 +88,7 @@ class Cifar10(torch.utils.data.Dataset):
             labels += data[b"labels"]
         # Combine and reshape the inputs
         inputs = np.vstack(inputs).astype(np.float32)
-        inputs = inputs.reshape((-1, 3, cfg.TRAIN.IM_SIZE, cfg.TRAIN.IM_SIZE))
+        inputs = inputs.reshape((-1, 3, cfg.SEARCH.IM_SIZE, cfg.SEARCH.IM_SIZE))
         return inputs, labels
 
     def _prepare_im(self, im):
@@ -97,7 +97,7 @@ class Cifar10(torch.utils.data.Dataset):
         if self._split == "train":
             im = transforms.horizontal_flip(im=im, p=0.5)
             im = transforms.random_crop(
-                im=im, size=cfg.TRAIN.IM_SIZE, pad_size=4)
+                im=im, size=cfg.SEARCH.IM_SIZE, pad_size=4)
         return im
 
     def __getitem__(self, index):
