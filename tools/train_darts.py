@@ -52,7 +52,7 @@ def main():
         # Save a checkpoint
         if (cur_epoch + 1) % cfg.SEARCH.CHECKPOINT_PERIOD == 0:
             checkpoint_file = checkpoint.save_checkpoint(
-                darts_controller, optimizer, cur_epoch)
+                darts_controller, w_optim, cur_epoch)
             logger.info("Wrote checkpoint to: {}".format(checkpoint_file))
         lr_scheduler.step()
         # Evaluate the model
@@ -76,6 +76,8 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         torch.cuda.amp, 'autocast') else None
     valid_loader_iter = iter(valid_loader)
     for cur_iter, (trn_X, trn_y) in enumerate(train_loader):
+        if cur_iter == 10:
+            break
         try:
             (val_X, val_y) = next(valid_loader_iter)
         except StopIteration:
