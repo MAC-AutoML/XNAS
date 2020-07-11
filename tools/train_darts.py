@@ -73,9 +73,13 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
     # scale the grad in amp, amp only support the newest version
     scaler = torch.cuda.amp.GradScaler() if cfg.SEARCH.AMP & hasattr(
         torch.cuda.amp, 'autocast') else None
-    valid_loader = iter(valid_loader)
+    valid_loader_iter = iter(valid_loader)
     for cur_iter, (trn_X, trn_y) in enumerate(train_loader):
-        (val_X, val_y) = next(valid_loader)
+        try:
+            (val_X, val_y) = next(valid_loader_iter)
+        except StopIteration:
+            valid_loader_iter = iter(valid_loader)
+            (val_X, val_y) = next(valid_loader_iter)
         # Transfer the data to the current GPU device
         trn_X, trn_y = trn_X.cuda(), trn_y.cuda(non_blocking=True)
         val_X, val_y = val_X.cuda(), val_y.cuda(non_blocking=True)
