@@ -8,7 +8,9 @@ DATA_LOADER:
   BACKEND: 'custom'
 SEARCH:
   DATASET: 'cifar10'
-  SPLIT: [0.8, 0.2]
+  SPLIT: [0.5, 0.5]
   BATCH_SIZE: 32
   IM_SIZE: 32
-OUT_DIR: './experiment/darts'
+OPTIM:
+  MAX_EPOCH: 50
+OUT_DIR: '/userhome/project/XNAS/experiment/darts'

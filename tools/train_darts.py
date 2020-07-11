@@ -1,4 +1,5 @@
 import os
+import gc
 
 import xnas.core.checkpoint as checkpoint
 import xnas.core.config as config
@@ -51,14 +52,14 @@ def main():
         # Save a checkpoint
         if (cur_epoch + 1) % cfg.SEARCH.CHECKPOINT_PERIOD == 0:
             checkpoint_file = checkpoint.save_checkpoint(
-                model, optimizer, cur_epoch)
+                darts_controller, optimizer, cur_epoch)
             logger.info("Wrote checkpoint to: {}".format(checkpoint_file))
         lr_scheduler.step()
         # Evaluate the model
         next_epoch = cur_epoch + 1
         if next_epoch % cfg.SEARCH.EVAL_PERIOD == 0 or next_epoch == cfg.OPTIM.MAX_EPOCH:
             logger.info("Start testing")
-            test_epoch(test_loader, darts_controller, val_meter, cur_epoch, tensorboard_writer=writer)
+            test_epoch(val_, darts_controller, val_meter, cur_epoch, tensorboard_writer=writer)
         if torch.cuda.is_available():
             torch.cuda.synchronize()
             torch.cuda.empty_cache()  # https://forums.fast.ai/t/clearing-gpu-memory-pytorch/14637
@@ -137,3 +138,4 @@ if __name__ == "__main__":
     config.assert_and_infer_cfg()
     cfg.freeze()
     main()
+    writer.close()

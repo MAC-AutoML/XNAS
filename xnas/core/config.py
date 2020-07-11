@@ -136,7 +136,7 @@ _C.SEARCH.IM_SIZE = 32
 _C.SEARCH.EVAL_PERIOD = 1
 
 # Save model checkpoint every checkpoint period epochs
-_C.SEARCH.CHECKPOINT_PERIOD = 5
+_C.SEARCH.CHECKPOINT_PERIOD = 1
 
 # Resume training from the latest checkpoint in the output directory
 _C.SEARCH.AUTO_RESUME = True

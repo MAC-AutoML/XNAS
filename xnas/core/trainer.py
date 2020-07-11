@@ -145,7 +145,7 @@ def test_epoch(test_loader, model, test_meter, cur_epoch, tensorboard_writer=Non
         # Transfer the data to the current GPU device
         inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
         # using AMP
-        if cfg.TEST.AMP & hasattr(torch.cuda.amp, 'autocast'):
+        if cfg.SEARCH.AMP & hasattr(torch.cuda.amp, 'autocast'):
             with torch.cuda.amp.autocast():
                 # Compute the predictions
                 preds = model(inputs)
@@ -155,7 +155,7 @@ def test_epoch(test_loader, model, test_meter, cur_epoch, tensorboard_writer=Non
         # Compute the errors
         top1_err, top5_err = meters.topk_errors(preds, labels, [1, 5])
         # Combine the errors across the GPUs  (no reduction if 1 GPU used)
-        top1_err, top5_err = dist.scaled_all_reduce([top1_err, top5_err])
+        # top1_err, top5_err = dist.scaled_all_reduce([top1_err, top5_err])
         # Copy the errors from GPU to CPU (sync point)
         top1_err, top5_err = top1_err.item(), top5_err.item()
         test_meter.iter_toc()
@@ -165,8 +165,6 @@ def test_epoch(test_loader, model, test_meter, cur_epoch, tensorboard_writer=Non
         test_meter.log_iter_stats(cur_epoch, cur_iter)
         test_meter.iter_tic()
     if tensorboard_writer is not None:
-        tensorboard_writer.add_scalar(
-            'val/loss', test_meter.loss.get_win_median(), cur_epoch)
         tensorboard_writer.add_scalar(
             'val/top1_error', test_meter.mb_top1_err.get_win_median(), cur_epoch)
         tensorboard_writer.add_scalar(
