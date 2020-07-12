@@ -47,7 +47,6 @@ def main():
     logger.info("Start epoch: {}".format(start_epoch + 1))
     for cur_epoch in range(start_epoch, cfg.OPTIM.MAX_EPOCH):
         lr = lr_scheduler.get_last_lr()[0]
-        darts_controller.print_alphas(logger)
         train_epoch(train_, val_, darts_controller, architect, loss_fun, w_optim, alpha_optim, lr, train_meter, cur_epoch)
         # Save a checkpoint
         if (cur_epoch + 1) % cfg.SEARCH.CHECKPOINT_PERIOD == 0:
@@ -60,6 +59,10 @@ def main():
         if next_epoch % cfg.SEARCH.EVAL_PERIOD == 0 or next_epoch == cfg.OPTIM.MAX_EPOCH:
             logger.info("Start testing")
             test_epoch(val_, darts_controller, val_meter, cur_epoch, tensorboard_writer=writer)
+            logger.info("###############Optimal genotype at epoch: {}############".format(cur_epoch))
+            logger.info(darts_controller.genotype())
+            logger.info("########################################################")
+            darts_controller.print_alphas(logger)
         if torch.cuda.is_available():
             torch.cuda.synchronize()
             torch.cuda.empty_cache()  # https://forums.fast.ai/t/clearing-gpu-memory-pytorch/14637
@@ -76,8 +79,6 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         torch.cuda.amp, 'autocast') else None
     valid_loader_iter = iter(valid_loader)
     for cur_iter, (trn_X, trn_y) in enumerate(train_loader):
-        if cur_iter == 10:
-            break
         try:
             (val_X, val_y) = next(valid_loader_iter)
         except StopIteration:

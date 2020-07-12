@@ -242,7 +242,10 @@ def load_cfg(out_dir, cfg_dest="config.yaml"):
 
 
 def load_cfg_fom_args(description="Config file options."):
-    """Load config from command line arguments and set any specified options."""
+    """Load config from command line arguments and set any specified options.
+       How to use: python xx.py --cfg path_to_your_config.cfg test1 0 test2 True
+       opts will return a list with ['test1', '0', 'test2', 'True'], yacs will compile to corresponding values
+    """
     parser = argparse.ArgumentParser(description=description)
     help_s = "Config file location"
     parser.add_argument("--cfg", dest="cfg_file",
