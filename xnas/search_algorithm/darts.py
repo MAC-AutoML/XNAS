@@ -51,7 +51,7 @@ class DartsCNNController(nn.Module):
             # return nn.parallel.gather(outputs, self.device_ids[0])
 
     def genotype(self):
-        self.net.genotype(self.alpha)
+        return self.net.genotype(self.alpha.cpu().detach().numpy())
 
     def weights(self):
         return self.net.parameters()
@@ -70,7 +70,7 @@ class DartsCNNController(nn.Module):
     def print_alphas(self, logger):
         logger.info("####### ALPHA #######")
         for alpha in self.alpha:
-            logger.info(F.softmax(alpha, dim=-1))
+            logger.info(F.softmax(alpha, dim=-1).cpu().detach().numpy())
         logger.info("#####################")
 
     def loss(self, X, y):
