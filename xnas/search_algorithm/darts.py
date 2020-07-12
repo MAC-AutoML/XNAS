@@ -72,7 +72,7 @@ class DartsCNNController(nn.Module):
         for alpha in self.alpha:
             logger.info(F.softmax(alpha, dim=-1))
         logger.info("#####################")
-    
+
     def loss(self, X, y):
         logits = self.forward(X)
         return self.criterion(logits, y)
