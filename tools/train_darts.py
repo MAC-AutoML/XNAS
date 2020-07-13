@@ -13,6 +13,10 @@ from xnas.search_algorithm.darts import *
 from xnas.search_space.cell_based import DartsCNN, NASBench201CNN
 from torch.utils.tensorboard import SummaryWriter
 
+# config load and assert
+config.load_cfg_fom_args()
+config.assert_and_infer_cfg()
+cfg.freeze()
 # tensorboard
 writer = SummaryWriter(log_dir=os.path.join(cfg.OUT_DIR, "tb"))
 
@@ -137,8 +141,5 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
 
 
 if __name__ == "__main__":
-    config.load_cfg_fom_args()
-    config.assert_and_infer_cfg()
-    cfg.freeze()
     main()
     writer.close()
