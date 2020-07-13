@@ -12,5 +12,5 @@ SEARCH:
   BATCH_SIZE: 256
   IM_SIZE: 32
 OPTIM:
-  MAX_EPOCH: 200
+  MAX_EPOCH: 50
 OUT_DIR: '/userhome/project/XNAS/experiment/nasbench201/test'
