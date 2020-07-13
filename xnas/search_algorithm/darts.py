@@ -11,7 +11,7 @@ Darts: highly copyed from https://github.com/khanrc/pt.darts
 class DartsCNNController(nn.Module):
     """ SearchCNN controller supporting multi-gpu """
 
-    def __init__(self, net, device_ids=None):
+    def __init__(self, net, criterion, device_ids=None):
         super().__init__()
         if device_ids is None:
             device_ids = list(range(torch.cuda.device_count()))
@@ -19,7 +19,8 @@ class DartsCNNController(nn.Module):
         self.device_ids = device_ids
         self.n_ops = len(self.net.basic_op_list)
         self.alpha = nn.Parameter(
-            1e-3*torch.randn(self.net.num_edges, self.n_ops))
+            1e-3*torch.randn(self.net.all_edges, self.n_ops))
+        self.criterion = criterion
 
         # setup alphas list
         self._alphas = []
@@ -50,7 +51,7 @@ class DartsCNNController(nn.Module):
             # return nn.parallel.gather(outputs, self.device_ids[0])
 
     def genotype(self):
-        self.net.genotype(self.alpha)
+        return self.net.genotype(self.alpha.cpu().detach().numpy())
 
     def weights(self):
         return self.net.parameters()
@@ -65,6 +66,16 @@ class DartsCNNController(nn.Module):
     def named_alphas(self):
         for n, p in self._alphas:
             yield n, p
+
+    def print_alphas(self, logger):
+        logger.info("####### ALPHA #######")
+        for alpha in self.alpha:
+            logger.info(F.softmax(alpha, dim=-1).cpu().detach().numpy())
+        logger.info("#####################")
+
+    def loss(self, X, y):
+        logits = self.forward(X)
+        return self.criterion(logits, y)
 
 
 class Architect():
@@ -173,4 +184,3 @@ class Architect():
 
         hessian = [(p-n) / 2.*eps for p, n in zip(dalpha_pos, dalpha_neg)]
         return hessian
-

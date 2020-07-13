@@ -19,7 +19,7 @@ _C = CfgNode()
 #   from core.config import cfg
 cfg = _C
 
-_C.MODEL = CfgNode()
+_C.SPACE = CfgNode()
 
 # ------------------------------------------------------------------------------------ #
 # Search Space options
@@ -42,11 +42,11 @@ _C.SPACE.LAYERS = 8
 _C.SPACE.NODES = 4
 
 # number of nodes in a cell
-_C.SPACE.BASIC_OP = None
+_C.SPACE.BASIC_OP = []
 
 
 # ------------------------------------------------------------------------------------ #
-# Optimizer options
+# Optimizer options in network
 # ------------------------------------------------------------------------------------ #
 _C.OPTIM = CfgNode()
 
@@ -68,6 +68,9 @@ _C.OPTIM.LR_MULT = 0.1
 # Maximal number of epochs
 _C.OPTIM.MAX_EPOCH = 200
 
+# Minimal learning rate in cosine
+_C.OPTIM.MIN_LR = 0.001
+
 # Momentum
 _C.OPTIM.MOMENTUM = 0.9
 
@@ -85,6 +88,9 @@ _C.OPTIM.WARMUP_FACTOR = 0.1
 
 # Gradually warm up the OPTIM.BASE_LR over this number of epochs
 _C.OPTIM.WARMUP_EPOCHS = 0
+
+# Momentum dampening
+_C.OPTIM.GRAD_CLIP = 5.0
 
 
 # ------------------------------------------------------------------------------------ #
@@ -114,11 +120,11 @@ _C.DATA_LOADER.COLOR_JITTER = False
 # ------------------------------------------------------------------------------------ #
 # Training options
 # ------------------------------------------------------------------------------------ #
-_C.TRAIN = CfgNode()
+_C.SEARCH = CfgNode()
 
 # Dataset and split
 _C.SEARCH.DATASET = "cifar10"
-_C.SEARCH.SPLIT = []
+_C.SEARCH.SPLIT = [0.8, 0.2]
 
 # Total mini-batch size
 _C.SEARCH.BATCH_SIZE = 256
@@ -209,6 +215,12 @@ _C.DOWNLOAD_CACHE = "/tmp/pycls-download-cache"
 _C.DETERMINSTIC = True
 
 # ------------------------------------------------------------------------------------ #
+#  keys in DARTS
+# ------------------------------------------------------------------------------------ #
+_C.DARTS = CfgNode()
+_C.DARTS.ALPHA_LR = 3e-4
+_C.DARTS.ALPHA_WEIGHT_DECAY = 1e-3
+# ------------------------------------------------------------------------------------ #
 # Deprecated keys
 # ------------------------------------------------------------------------------------ #
 
@@ -230,7 +242,10 @@ def load_cfg(out_dir, cfg_dest="config.yaml"):
 
 
 def load_cfg_fom_args(description="Config file options."):
-    """Load config from command line arguments and set any specified options."""
+    """Load config from command line arguments and set any specified options.
+       How to use: python xx.py --cfg path_to_your_config.cfg test1 0 test2 True
+       opts will return a list with ['test1', '0', 'test2', 'True'], yacs will compile to corresponding values
+    """
     parser = argparse.ArgumentParser(description=description)
     help_s = "Config file location"
     parser.add_argument("--cfg", dest="cfg_file",
@@ -249,7 +264,6 @@ def load_cfg_fom_args(description="Config file options."):
 def assert_and_infer_cfg(cache_urls=True):
     """Checks config values invariants."""
     err_str = "Mini-batch size should be a multiple of NUM_GPUS."
-    assert _C.TRAIN.BATCH_SIZE % _C.NUM_GPUS == 0, err_str
-    assert _C.TEST.BATCH_SIZE % _C.NUM_GPUS == 0, err_str
+    assert _C.SEARCH.BATCH_SIZE % _C.NUM_GPUS == 0, err_str
     err_str = "Log destination '{}' not supported"
     assert _C.LOG_DEST in ["stdout", "file"], err_str.format(_C.LOG_DEST)

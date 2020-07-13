@@ -9,7 +9,6 @@
 
 import os
 
-import xnas.core.distributed as dist
 import torch
 from xnas.core.config import cfg
 
@@ -51,8 +50,6 @@ def has_checkpoint():
 def save_checkpoint(model, optimizer, epoch):
     """Saves a checkpoint."""
     # Save checkpoints only from the master process
-    if not dist.is_master_proc():
-        return
     # Ensure that the checkpoint dir exists
     os.makedirs(get_checkpoint_dir(), exist_ok=True)
     # Omit the DDP wrapper in the multi-gpu setting

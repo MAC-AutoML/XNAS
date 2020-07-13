@@ -405,8 +405,7 @@ class DartsCell(nn.Module):
             s_cur = sum(edges[i](s, w)
                         for i, (s, w) in enumerate(zip(states, w_list)))
             states.append(s_cur)
-
-        s_out = torch.cat(states[2:], dim=1)
+        s_out = torch.cat(states[2:], 1)
         return s_out
 
 # DartsCNN
@@ -414,7 +413,7 @@ class DartsCell(nn.Module):
 
 class DartsCNN(nn.Module):
 
-    def __init__(self, C=16, n_classes=10, n_layers=8, n_nodes=4, basic_op_list=None):
+    def __init__(self, C=16, n_classes=10, n_layers=8, n_nodes=4, basic_op_list=[]):
         super().__init__()
         stem_multiplier = 3
         self.C_in = 3  # 3
@@ -423,7 +422,7 @@ class DartsCNN(nn.Module):
         self.n_layers = n_layers  # 8
         self.n_nodes = n_nodes  # 4
         self.basic_op_list = ['max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3',
-                              'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5', 'none'] if basic_op_list is None else basic_op_list
+                              'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5', 'none'] if len(basic_op_list) == 0 else basic_op_list
         C_cur = stem_multiplier * C  # 3 * 16 = 48
         self.stem = nn.Sequential(
             nn.Conv2d(self.C_in, C_cur, 3, 1, 1, bias=False),
@@ -452,6 +451,8 @@ class DartsCNN(nn.Module):
         self.linear = nn.Linear(C_p, n_classes)
         # number of edges per cell
         self.num_edges = sum(list(range(2, self.n_nodes + 2)))
+        # whole edges
+        self.all_edges = 2 * self.num_edges
 
     def forward(self, x, sample):
         s0 = s1 = self.stem(x)
@@ -477,7 +478,6 @@ class DartsCNN(nn.Module):
         gene_reduce = parse_from_numpy(
             theta_reduce, k=2, basic_op_list=self.basic_op_list)
         concat = range(2, 2+self.n_nodes)  # concat all intermediate nodes
-
         return Genotype(normal=gene_normal, normal_concat=concat,
                         reduce=gene_reduce, reduce_concat=concat)
 
@@ -522,13 +522,13 @@ class NAS201SearchCell(nn.Module):
 
 class NASBench201CNN(nn.Module):
     # def __init__(self, C, N, max_nodes, num_classes, search_space, affine=False, track_running_stats=True):
-    def __init__(self, C=16, N=5, max_nodes=4, num_classes=10, basic_op_list=None):
+    def __init__(self, C=16, N=5, max_nodes=4, num_classes=10, basic_op_list=[]):
         super(NASBench201CNN, self).__init__()
         self._C = C
         self._layerN = N
         self.max_nodes = max_nodes
         self.basic_op_list = ['none', 'skip_connect', 'nor_conv_1x1',
-                              'nor_conv_3x3', 'avg_pool_3x3'] if basic_op_list is None else basic_op_list
+                              'nor_conv_3x3', 'avg_pool_3x3'] if len(basic_op_list) == 0 else basic_op_list
         self.stem = nn.Sequential(
             nn.Conv2d(3, C, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(C))
@@ -556,6 +556,7 @@ class NASBench201CNN(nn.Module):
         self._Layer = len(self.cells)
         self.edge2index = edge2index
         self.num_edges = num_edge
+        self.all_edges = self.num_edges
         self.lastact = nn.Sequential(
             nn.BatchNorm2d(C_prev), nn.ReLU(inplace=True))
         self.global_pooling = nn.AdaptiveAvgPool2d(1)

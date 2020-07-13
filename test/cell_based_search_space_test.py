@@ -10,10 +10,10 @@ def basic_darts_cnn_test():
     # dartscnn test
     time_ = Timer()
     print("Testing darts CNN")
-    search_net = DartsCNN()
+    search_net = DartsCNN().cuda()
     _random_architecture_weight = torch.randn(
-        [search_net.num_edges * 2, len(search_net.basic_op_list)])
-    _input = torch.randn([2, 3, 32, 32])
+        [search_net.num_edges * 2, len(search_net.basic_op_list)]).cuda()
+    _input = torch.randn([2, 3, 32, 32]).cuda()
     time_.tic()
     _out_put = search_net(_input, _random_architecture_weight)
     time_.toc()
@@ -21,8 +21,8 @@ def basic_darts_cnn_test():
     print(time_.average_time)
     time_.reset()
     _random_one_hot = torch.Tensor(np.eye(len(search_net.basic_op_list))[
-                                   np.random.choice(len(search_net.basic_op_list), search_net.num_edges * 2)])
-    _input = torch.randn([2, 3, 32, 32])
+                                   np.random.choice(len(search_net.basic_op_list), search_net.num_edges * 2)]).cuda()
+    _input = torch.randn([2, 3, 32, 32]).cuda()
     time_.tic()
     _out_put = search_net(_input, _random_one_hot)
     time_.toc()
@@ -55,5 +55,5 @@ def basic_nas_bench_201_cnn():
 
 
 if __name__ == "__main__":
-    basic_nas_bench_201_cnn()
+    basic_darts_cnn_test()
     pass

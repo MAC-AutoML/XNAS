@@ -45,7 +45,7 @@ def setup_env():
         # Fix the RNG seeds (see RNG comment in core/config.py for discussion)
         np.random.seed(cfg.RNG_SEED)
         torch.manual_seed(cfg.RNG_SEED)
-        torch.cuda.seed(cfg.RNG_SEED)
+        torch.cuda.manual_seed_all(cfg.RNG_SEED)
         random.seed(cfg.RNG_SEED)
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
@@ -135,16 +135,17 @@ def train_epoch(train_loader, model, loss_fun, optimizer, train_meter, cur_epoch
 
 
 @torch.no_grad()
-def test_epoch(test_loader, model, test_meter, cur_epoch):
+def test_epoch(test_loader, model, test_meter, cur_epoch, tensorboard_writer=None):
     """Evaluates the model on the test set."""
     # Enable eval mode
     model.eval()
     test_meter.iter_tic()
+
     for cur_iter, (inputs, labels) in enumerate(test_loader):
         # Transfer the data to the current GPU device
         inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
         # using AMP
-        if cfg.TEST.AMP & hasattr(torch.cuda.amp, 'autocast'):
+        if cfg.SEARCH.AMP & hasattr(torch.cuda.amp, 'autocast'):
             with torch.cuda.amp.autocast():
                 # Compute the predictions
                 preds = model(inputs)
@@ -154,7 +155,7 @@ def test_epoch(test_loader, model, test_meter, cur_epoch):
         # Compute the errors
         top1_err, top5_err = meters.topk_errors(preds, labels, [1, 5])
         # Combine the errors across the GPUs  (no reduction if 1 GPU used)
-        top1_err, top5_err = dist.scaled_all_reduce([top1_err, top5_err])
+        # top1_err, top5_err = dist.scaled_all_reduce([top1_err, top5_err])
         # Copy the errors from GPU to CPU (sync point)
         top1_err, top5_err = top1_err.item(), top5_err.item()
         test_meter.iter_toc()
@@ -163,6 +164,11 @@ def test_epoch(test_loader, model, test_meter, cur_epoch):
             top1_err, top5_err, inputs.size(0) * cfg.NUM_GPUS)
         test_meter.log_iter_stats(cur_epoch, cur_iter)
         test_meter.iter_tic()
+    if tensorboard_writer is not None:
+        tensorboard_writer.add_scalar(
+            'val/top1_error', test_meter.mb_top1_err.get_win_median(), cur_epoch)
+        tensorboard_writer.add_scalar(
+            'val/top5_error', test_meter.mb_top5_err.get_win_median(), cur_epoch)
     # Log epoch stats
     test_meter.log_epoch_stats(cur_epoch)
     test_meter.reset()
