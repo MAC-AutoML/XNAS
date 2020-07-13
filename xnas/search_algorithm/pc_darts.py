@@ -223,7 +223,17 @@ class PcMixedOp(_MixedOp):
         dim_2 = x.shape[1]
         xtemp = x[ : , :  dim_2//self.k, :, :]
         xtemp2 = x[ : ,  dim_2//self.k:, :, :]
-        temp1 = sum(w * op(xtemp) for w, op in zip(weights, self._ops))
+        assert len(self._ops) == len(weights)
+        temp1 = 0
+        for i, value in enumerate(weights):
+            if value == 1:
+                temp1 += self._ops[i](xtemp)
+                #temp1 = sum(w * op(xtemp) for w, op in zip(weights, self._ops))
+            if 0 < value < 1:
+                temp1 += value * self._ops[i](xtemp)
+               # temp1 = sum(w * op(xtemp) for w, op in zip(weights, self._ops))
+
+        #temp1 = sum(w * op(xtemp) for w, op in zip(weights, self._ops))
         #reduction cell needs pooling before concat
         if temp1.shape[2] == x.shape[2]:
           ans = torch.cat([temp1,xtemp2],dim=1)
