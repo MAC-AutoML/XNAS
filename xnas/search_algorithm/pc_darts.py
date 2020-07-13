@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import copy
 from xnas.search_space.cell_based import *
+from xnas.search_space.cell_based import _MixedOp
+
 
 '''
 Darts: highly copyed from https://github.com/khanrc/pt.darts
@@ -187,171 +189,171 @@ class Architect():
         return hessian
 
 
-class PcDartsCNN(DartsCNN):
+def channel_shuffle(x, groups):
+    batchsize, num_channels, height, width = x.data.size()
+
+    channels_per_group = num_channels // groups
+
+    # reshape
+    x = x.view(batchsize, groups,
+               channels_per_group, height, width)
+
+    x = torch.transpose(x, 1, 2).contiguous()
+
+    # flatten
+    x = x.view(batchsize, -1, height, width)
+
+    return x
+
+class PcMixedOp(_MixedOp):
+    def __init__(self, C_in, C_out, stride, basic_op_list=None):
+        super().__init__()
+        self.k = 4
+        self.mp = nn.MaxPool2d(2, 2)
+        self._ops = nn.ModuleList()
+        assert basic_op_list is not None, "the basic op list cannot be none!"
+        basic_primitives = basic_op_list
+        for primitive in basic_primitives:
+            op = OPS_[primitive](C_in //self.k, C_out, stride, affine=False)
+            self._ops.append(op)
+
+
+    def forward(self, x, weights):
+        #channel proportion k=4
+        dim_2 = x.shape[1]
+        xtemp = x[ : , :  dim_2//self.k, :, :]
+        xtemp2 = x[ : ,  dim_2//self.k:, :, :]
+        temp1 = sum(w * op(xtemp) for w, op in zip(weights, self._ops))
+        #reduction cell needs pooling before concat
+        if temp1.shape[2] == x.shape[2]:
+          ans = torch.cat([temp1,xtemp2],dim=1)
+        else:
+          ans = torch.cat([temp1,self.mp(xtemp2)], dim=1)
+        ans = channel_shuffle(ans,self.k)
+        #ans = torch.cat([ans[ : ,  dim_2//4:, :, :],ans[ : , :  dim_2//4, :, :]],dim=1)
+        #except channe shuffle, channel shift also works
+        return ans
+
+# the search cell in darts
+
+
+class PcDartsCell(nn.Module):
+    def __init__(self, n_nodes, C_pp, C_p, C, reduction_p, reduction, basic_op_list):
+        """
+        Args:
+            n_nodes: # of intermediate n_nodes
+            C_pp: C_out[k-2]
+            C_p : C_out[k-1]
+            C   : C_in[k] (current)
+            reduction_p: flag for whether the previous cell is reduction cell or not
+            reduction: flag for whether the current cell is reduction cell or not
+        """
+        super().__init__()
+        self.reduction = reduction
+        self.n_nodes = n_nodes
+        self.basic_op_list = basic_op_list
+
+        # If previous cell is reduction cell, current input size does not match with
+        # output size of cell[k-2]. So the output[k-2] should be reduced by preprocessing.
+        if reduction_p:
+            self.preproc0 = FactorizedReduce(C_pp, C, affine=False)
+        else:
+            self.preproc0 = StdConv(C_pp, C, 1, 1, 0, affine=False)
+        self.preproc1 = StdConv(C_p, C, 1, 1, 0, affine=False)
+
+        # generate dag
+        self.dag = nn.ModuleList()
+        for i in range(self.n_nodes):
+            self.dag.append(nn.ModuleList())
+            for j in range(2+i):  # include 2 input nodes
+                # reduction should be used only for input node
+                stride = 2 if reduction and j < 2 else 1
+                op = _MixedOp(C, C, stride, self.basic_op_list)
+                self.dag[i].append(op)
+
+    def forward(self, s0, s1, sample,sample2):
+        s0 = self.preproc0(s0)
+        s1 = self.preproc1(s1)
+
+        states = [s0, s1]
+        w_dag = darts_weight_unpack(sample, self.n_nodes)
+        w_w_dag = darts_weight_unpack(sample2, self.n_nodes)
+        for edges, w_list in zip(self.dag, w_dag):
+            s_cur = sum(w_w_dag[i](s, w)*edges[i](s, w)
+                        for i, (s, w) in enumerate(zip(states, w_list)))
+            states.append(s_cur)
+        s_out = torch.cat(states[2:], 1)
+        return s_out
+
+# DartsCNN
+
+
+class PcDartsCNN(nn.Module):
+
     def __init__(self, C=16, n_classes=10, n_layers=8, n_nodes=4, basic_op_list=[]):
-        super(Network, self).__init__()
-        self._C = C
-        self._num_classes = num_classes
-        self._layers = layers
-        self._criterion = criterion
-        self._steps = steps
-        self._multiplier = multiplier
-
-        C_curr = stem_multiplier * C
+        super().__init__()
+        stem_multiplier = 3
+        self.C_in = 3  # 3
+        self.C = C  # 16
+        self.n_classes = n_classes  # 10
+        self.n_layers = n_layers  # 8
+        self.n_nodes = n_nodes  # 4
+        self.basic_op_list = ['max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3',
+                              'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5', 'none'] if len(basic_op_list) == 0 else basic_op_list
+        C_cur = stem_multiplier * C  # 3 * 16 = 48
         self.stem = nn.Sequential(
-            nn.Conv2d(3, C_curr, 3, padding=1, bias=False),
-            nn.BatchNorm2d(C_curr)
+            nn.Conv2d(self.C_in, C_cur, 3, 1, 1, bias=False),
+            nn.BatchNorm2d(C_cur)
         )
-
-        C_prev_prev, C_prev, C_curr = C_curr, C_curr, C
+        # for the first cell, stem is used for both s0 and s1
+        # [!] C_pp and C_p is output channel size, but C_cur is input channel size.
+        C_pp, C_p, C_cur = C_cur, C_cur, C
+        # 48   48   16
         self.cells = nn.ModuleList()
-        reduction_prev = False
-        for i in range(layers):
-            if i in [layers // 3, 2 * layers // 3]:
-                C_curr *= 2
+        reduction_p = False
+        for i in range(n_layers):
+            # Reduce featuremap size and double channels in 1/3 and 2/3 layer.
+            if i in [n_layers // 3, 2 * n_layers // 3]:
+                C_cur *= 2
                 reduction = True
             else:
                 reduction = False
-            cell = PcDartsCell(steps, multiplier, C_prev_prev, C_prev, C_curr, reduction, reduction_prev)
-            reduction_prev = reduction
-            self.cells += [cell]
-            C_prev_prev, C_prev = C_prev, multiplier * C_curr
-
-        self.global_pooling = nn.AdaptiveAvgPool2d(1)
-        self.classifier = nn.Linear(C_prev, num_classes)
-
-        self._initialize_alphas()
+            cell = DartsCell(n_nodes, C_pp, C_p, C_cur,
+                             reduction_p, reduction, self.basic_op_list)
+            reduction_p = reduction
+            self.cells.append(cell)
+            C_cur_out = C_cur * n_nodes
+            C_pp, C_p = C_p, C_cur_out
+        self.gap = nn.AdaptiveAvgPool2d(1)
+        self.linear = nn.Linear(C_p, n_classes)
+        # number of edges per cell
+        self.num_edges = sum(list(range(2, self.n_nodes + 2)))
+        # whole edges
+        self.all_edges = 2 * self.num_edges
 
     def forward(self, x, sample):
-        s0 = s1 = self.stem(input)
-        for i, cell in enumerate(self.cells):
-            if cell.reduction:
-                weights = F.softmax(self.alphas_reduce, dim=-1)
-                n = 3
-                start = 2
-                weights2 = F.softmax(self.betas_reduce[0:2], dim=-1)
-                for i in range(self._steps - 1):
-                    end = start + n
-                    tw2 = F.softmax(self.betas_reduce[start:end], dim=-1)
-                    start = end
-                    n += 1
-                    weights2 = torch.cat([weights2, tw2], dim=0)
-            else:
-                weights = F.softmax(self.alphas_normal, dim=-1)
-                n = 3
-                start = 2
-                weights2 = F.softmax(self.betas_normal[0:2], dim=-1)
-                for i in range(self._steps - 1):
-                    end = start + n
-                    tw2 = F.softmax(self.betas_normal[start:end], dim=-1)
-                    start = end
-                    n += 1
-                    weights2 = torch.cat([weights2, tw2], dim=0)
-            s0, s1 = s1, cell(s0, s1, weights, weights2)
-        out = self.global_pooling(s1)
-        logits = self.classifier(out.view(out.size(0), -1))
+        s0 = s1 = self.stem(x)
+
+        for cell in self.cells:
+            weights = sample[self.num_edges:] if cell.reduction else sample[0:self.num_edges]
+            s0, s1 = s1, cell(s0, s1, weights)
+
+        out = self.gap(s1)
+        out = out.view(out.size(0), -1)  # flatten
+        logits = self.linear(out)
         return logits
 
-    def genotype(self):
-        def _parse(weights, weights2):
-            gene = []
-            n = 2
-            start = 0
-            for i in range(self._steps):
-                end = start + n
-                W = weights[start:end].copy()
-                W2 = weights2[start:end].copy()
-                for j in range(n):
-                    W[j, :] = W[j, :] * W2[j]
-                edges = sorted(range(i + 2),
-                               key=lambda x: -max(W[x][k] for k in range(len(W[x])) if k != PRIMITIVES.index('none')))[
-                        :2]
-
-                # edges = sorted(range(i + 2), key=lambda x: -W2[x])[:2]
-                for j in edges:
-                    k_best = None
-                    for k in range(len(W[j])):
-                        if k != PRIMITIVES.index('none'):
-                            if k_best is None or W[j][k] > W[j][k_best]:
-                                k_best = k
-                    gene.append((PRIMITIVES[k_best], j))
-                start = end
-                n += 1
-            return gene
-
-        n = 3
-        start = 2
-        weightsr2 = F.softmax(self.betas_reduce[0:2], dim=-1)
-        weightsn2 = F.softmax(self.betas_normal[0:2], dim=-1)
-        for i in range(self._steps - 1):
-            end = start + n
-            tw2 = F.softmax(self.betas_reduce[start:end], dim=-1)
-            tn2 = F.softmax(self.betas_normal[start:end], dim=-1)
-            start = end
-            n += 1
-            weightsr2 = torch.cat([weightsr2, tw2], dim=0)
-            weightsn2 = torch.cat([weightsn2, tn2], dim=0)
-        gene_normal = _parse(F.softmax(self.alphas_normal, dim=-1).data.cpu().numpy(), weightsn2.data.cpu().numpy())
-        gene_reduce = _parse(F.softmax(self.alphas_reduce, dim=-1).data.cpu().numpy(), weightsr2.data.cpu().numpy())
-
-        concat = range(2 + self._steps - self._multiplier, self._steps + 2)
-        genotype = Genotype(
-            normal=gene_normal, normal_concat=concat,
-            reduce=gene_reduce, reduce_concat=concat
-        )
-        return genotype
-
-    def arch_parameters(self):
-        return self._arch_parameters
-
-    def _initialize_alphas(self):
-        k = sum(1 for i in range(self._steps) for n in range(2 + i))
-        num_ops = len(PRIMITIVES)
-
-        self.alphas_normal = Variable(1e-3 * torch.randn(k, num_ops).cuda(), requires_grad=True)
-        self.alphas_reduce = Variable(1e-3 * torch.randn(k, num_ops).cuda(), requires_grad=True)
-        self.betas_normal = Variable(1e-3 * torch.randn(k).cuda(), requires_grad=True)
-        self.betas_reduce = Variable(1e-3 * torch.randn(k).cuda(), requires_grad=True)
-        self._arch_parameters = [
-            self.alphas_normal,
-            self.alphas_reduce,
-            self.betas_normal,
-            self.betas_reduce,
-        ]
-
-    def arch_parameters(self):
-        return self._arch_parameters
-
-class PcDartsCell(DartsCell):
-    def __init__(self, steps, multiplier, C_prev_prev, C_prev, C, reduction, reduction_prev):
-        super(Cell, self).__init__()
-        self.reduction = reduction
-
-        if reduction_prev:
-            self.preprocess0 = FactorizedReduce(C_prev_prev, C, affine=False)
-        else:
-            self.preprocess0 = ReLUConvBN(C_prev_prev, C, 1, 1, 0, affine=False)
-        self.preprocess1 = ReLUConvBN(C_prev, C, 1, 1, 0, affine=False)
-        self._steps = steps
-        self._multiplier = multiplier
-
-        self._ops = nn.ModuleList()
-        self._bns = nn.ModuleList()
-        for i in range(self._steps):
-            for j in range(2 + i):
-                stride = 2 if reduction and j < 2 else 1
-                op = MixedOp(C, stride)
-                self._ops.append(op)
-
-    def forward(self, s0, s1, weights, weights2):
-        s0 = self.preprocess0(s0)
-        s1 = self.preprocess1(s1)
-
-        states = [s0, s1]
-        offset = 0
-        for i in range(self._steps):
-            s = sum(weights2[offset + j] * self._ops[offset + j](h, weights[offset + j]) for j, h in enumerate(states))
-            offset += len(states)
-            states.append(s)
-
-        return torch.cat(states[-self._multiplier:], dim=1)
+    def genotype(self, theta):
+        Genotype = namedtuple(
+            'Genotype', 'normal normal_concat reduce reduce_concat')
+        theta_norm = darts_weight_unpack(
+            theta[0:self.num_edges], self.n_nodes)
+        theta_reduce = darts_weight_unpack(
+            theta[self.num_edges:], self.n_nodes)
+        gene_normal = parse_from_numpy(
+            theta_norm, k=2, basic_op_list=self.basic_op_list)
+        gene_reduce = parse_from_numpy(
+            theta_reduce, k=2, basic_op_list=self.basic_op_list)
+        concat = range(2, 2+self.n_nodes)  # concat all intermediate nodes
+        return Genotype(normal=gene_normal, normal_concat=concat,
+                        reduce=gene_reduce, reduce_concat=concat)

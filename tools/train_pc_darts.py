@@ -26,7 +26,7 @@ logger = logging.get_logger(__name__)
 def main():
     setup_env()
     # loadiong search space
-    search_space = build_space()
+    search_space = PcDartsCNN()
     # init controller and architect
     loss_fun = nn.CrossEntropyLoss().cuda()
     darts_controller = PCDartsCNNController(search_space, loss_fun)
