@@ -13,4 +13,4 @@ SEARCH:
   IM_SIZE: 32
 OPTIM:
   MAX_EPOCH: 200
-OUT_DIR: '/userhome/project/XNAS/experiment/nasbench201'
+OUT_DIR: '/userhome/project/XNAS/experiment/nasbench201/test'
