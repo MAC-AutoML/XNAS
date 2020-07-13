@@ -9,7 +9,7 @@ from xnas.core.builders import build_space
 from xnas.core.config import cfg
 from xnas.core.trainer import setup_env, test_epoch
 from xnas.datasets.loader import _construct_loader
-from xnas.search_algorithm.darts import *
+from xnas.search_algorithm.pc_darts import *
 from xnas.search_space.cell_based import DartsCNN, NASBench201CNN
 from torch.utils.tensorboard import SummaryWriter
 
@@ -29,7 +29,7 @@ def main():
     search_space = build_space()
     # init controller and architect
     loss_fun = nn.CrossEntropyLoss().cuda()
-    darts_controller = DartsCNNController(search_space, loss_fun)
+    darts_controller = PCDartsCNNController(search_space, loss_fun)
     darts_controller.cuda()
     architect = Architect(
         darts_controller, cfg.OPTIM.MOMENTUM, cfg.OPTIM.WEIGHT_DECAY)
