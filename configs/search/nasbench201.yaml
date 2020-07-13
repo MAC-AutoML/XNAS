@@ -1,5 +1,5 @@
 SPACE:
-  NAME: 'darts'
+  NAME: 'nasbench201'
   NUM_CLASSES: 10
   CHANNEL: 16
   LAYERS: 5
