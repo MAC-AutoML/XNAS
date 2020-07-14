@@ -165,7 +165,7 @@ class Architect():
 
         # compute gradient
         v_weights = tuple(self.v_net.weights())
-        #alpha
+        ####alpha
         v_alphas = tuple(self.v_net.alphas())
         v_grads = torch.autograd.grad(loss, v_alphas + v_weights)
         dalpha = v_grads[:len(v_alphas)]
@@ -177,7 +177,7 @@ class Architect():
         with torch.no_grad():
             for alpha, da, h in zip(self.net.alphas(), dalpha, hessian):
                 alpha.grad = da - xi*h
-        #beta
+        #####beta
         v_betas = tuple(self.v_net.betas())
         v_bgrads = torch.autograd.grad(loss, v_betas + v_weights)
         dbeta = v_bgrads[:len(v_betas)]
