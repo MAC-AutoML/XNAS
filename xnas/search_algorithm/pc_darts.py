@@ -25,7 +25,7 @@ class PCDartsCNNController(nn.Module):
         self.alpha = nn.Parameter(
             1e-3*torch.randn(self.net.all_edges, self.n_ops))
         self.beta = nn.Parameter(
-            1e-3*torch.randn(self.net.all_edges, self.n_ops))
+            1e-3*torch.randn(self.net.all_edges))
 
         self.criterion = criterion
 
@@ -78,7 +78,7 @@ class PCDartsCNNController(nn.Module):
             yield p
 
     def betas(self):
-        for n, p in self._beta:
+        for n, p in self._betas:
             yield p
 
     def named_alphas(self):
@@ -167,28 +167,30 @@ class Architect():
         v_weights = tuple(self.v_net.weights())
         ####alpha
         v_alphas = tuple(self.v_net.alphas())
-        v_grads = torch.autograd.grad(loss, v_alphas + v_weights)
+        v_grads = torch.autograd.grad(loss, v_alphas + v_weights,retain_graph=True)
         dalpha = v_grads[:len(v_alphas)]
         dw = v_grads[len(v_alphas):]
 
-        hessian = self.compute_hessian(dw, trn_X, trn_y)
+        hessiana = self.compute_hessian(dw, trn_X, trn_y)
 
         # update final gradient = dalpha - xi*hessian
-        with torch.no_grad():
-            for alpha, da, h in zip(self.net.alphas(), dalpha, hessian):
-                alpha.grad = da - xi*h
+        #with torch.no_grad():
+
         #####beta
         v_betas = tuple(self.v_net.betas())
         v_bgrads = torch.autograd.grad(loss, v_betas + v_weights)
         dbeta = v_bgrads[:len(v_betas)]
         dbw = v_bgrads[len(v_betas):]
 
-        hessian = self.compute_hessian(dbw, trn_X, trn_y,1)
+        hessianb = self.compute_hessian(dbw, trn_X, trn_y,1)
 
         # update final gradient = dbeta - xi*hessian
         with torch.no_grad():
-            for beta, db, h in zip(self.net.betas(), dbeta, hessian):
+            for beta, db, h in zip(self.net.betas(), dbeta, hessianb):
                 beta.grad = db - xi * h
+            for alpha, da, h in zip(self.net.alphas(), dalpha, hessiana):
+                alpha.grad = da - xi * h
+
 
     def compute_hessian(self, dw, trn_X, trn_y,bool_beta = 0):
         """
@@ -250,9 +252,10 @@ def channel_shuffle(x, groups):
 
     return x
 
-class PcMixedOp(_MixedOp):
+class PcMixedOp(nn.Module):
     def __init__(self, C_in, C_out, stride, basic_op_list=None):
         super().__init__()
+        '''
         self.k = 4
         self.mp = nn.MaxPool2d(2, 2)
         self._ops = nn.ModuleList()
@@ -262,25 +265,36 @@ class PcMixedOp(_MixedOp):
             op = OPS_[primitive](C_in //self.k, C_out, stride, affine=False)
             if 'pool' in primitive:
                 op = nn.Sequential(op, nn.BatchNorm2d(C_in // self.k, affine=False))
+            self._ops.append(op)'''
+        self.k = 4
+        self.mp = nn.MaxPool2d(2, 2)
+        self._ops = nn.ModuleList()
+        assert basic_op_list is not None, "the basic op list cannot be none!"
+        basic_primitives = basic_op_list
+        for primitive in basic_primitives:
+            op = OPS_[primitive](C_in//self.k, C_out//self.k, stride, affine=False)
             self._ops.append(op)
 
-
     def forward(self, x, weights):
+
         #channel proportion k=4
         dim_2 = x.shape[1]
         xtemp = x[ : , :  dim_2//self.k, :, :]
         xtemp2 = x[ : ,  dim_2//self.k:, :, :]
         assert len(self._ops) == len(weights)
+        #print("#######op(xtemp)")
+        #print((self._ops[0](xtemp).size()))
+        #print("#######weights")
+        #print(weights)
+        #temp1 = sum(w * op(xtemp) for w, op in zip(weights, self._ops))
+
         temp1 = 0
         for i, value in enumerate(weights):
             if value == 1:
                 temp1 += self._ops[i](xtemp)
-                #temp1 = sum(w * op(xtemp) for w, op in zip(weights, self._ops))
             if 0 < value < 1:
                 temp1 += value * self._ops[i](xtemp)
-               # temp1 = sum(w * op(xtemp) for w, op in zip(weights, self._ops))
 
-        #temp1 = sum(w * op(xtemp) for w, op in zip(weights, self._ops))
         #reduction cell needs pooling before concat
         if temp1.shape[2] == x.shape[2]:
           ans = torch.cat([temp1,xtemp2],dim=1)
@@ -290,6 +304,20 @@ class PcMixedOp(_MixedOp):
         #ans = torch.cat([ans[ : ,  dim_2//4:, :, :],ans[ : , :  dim_2//4, :, :]],dim=1)
         #except channe shuffle, channel shift also works
         return ans
+        '''
+        """
+        Args:
+            x: input
+            weights: weight for each operation
+        """
+        assert len(self._ops) == len(weights)
+        _x = 0
+        for i, value in enumerate(weights):
+            if value == 1:
+                _x += self._ops[i](x)
+            if 0 < value < 1:
+                _x += value * self._ops[i](x)
+        return _x        '''
 
 # the search cell in darts
 
@@ -325,22 +353,56 @@ class PcDartsCell(nn.Module):
             for j in range(2+i):  # include 2 input nodes
                 # reduction should be used only for input node
                 stride = 2 if reduction and j < 2 else 1
-                op = _MixedOp(C, C, stride, self.basic_op_list)
+                op = PcMixedOp(C, C, stride, self.basic_op_list)
                 self.dag[i].append(op)
+        '''
+        self.dag = nn.ModuleList()
+        self._bns = nn.ModuleList()
+        for i in range(self.n_nodes):
+            for j in range(2 + i):
+                stride = 2 if reduction and j < 2 else 1
+                op = PcMixedOp(C, C, stride, self.basic_op_list)
+                self.dag.append(op)'''
 
     def forward(self, s0, s1, sample,sample2):
         s0 = self.preproc0(s0)
         s1 = self.preproc1(s1)
-
+        #print("#####sample####")
+        #print(type(sample), sample)
+        #("#####sample2####")
+        #print(type(sample2), sample2)
         states = [s0, s1]
         w_dag = darts_weight_unpack(sample, self.n_nodes)
         w_w_dag = darts_weight_unpack(sample2, self.n_nodes)
-        for edges, w_list in zip(self.dag, w_dag):
-            s_cur = sum(w_w_dag[i](s, w)*edges[i](s, w)
-                        for i, (s, w) in enumerate(zip(states, w_list)))
+        #print("#####w_dag####")
+        #print(type(w_dag),w_dag)
+        #print("#####w_w_dag####")
+        #print(type(w_w_dag),w_w_dag)
+        for edges, w_list,w_w_list in zip(self.dag, w_dag,w_w_dag):
+            '''print("#####state####")
+            print((len(states)))
+            print("#####w_list####")
+            print(len(w_list),w_list)
+            print("#####w_w_list####")
+            print(len(w_w_list),w_w_list)'''
+
+            s_cur = sum(ww * edges[i](s, w)
+                        for i, (s, w, ww) in enumerate(zip(states, w_list, w_w_list)))
             states.append(s_cur)
         s_out = torch.cat(states[2:], 1)
         return s_out
+        '''
+        s0 = self.preproc0(s0)
+        s1 = self.preproc0(s1)
+
+        states = [s0, s1]
+        offset = 0
+        for i in range(self.n_nodes):
+            s = sum(sample2[offset + j] * self.dag[offset + j](h, sample[offset + j]) for j, h in enumerate(states))
+            offset += len(states)
+            states.append(s)
+
+        return torch.cat(states[-self._multiplier:], dim=1)'''
 
 # PcDartsCNN
 
@@ -376,8 +438,7 @@ class PcDartsCNN(nn.Module):
                 reduction = True
             else:
                 reduction = False
-            cell = DartsCell(n_nodes, C_pp, C_p, C_cur,
-                             reduction_p, reduction, self.basic_op_list)
+            cell = PcDartsCell(n_nodes, C_pp, C_p, C_cur, reduction_p, reduction, self.basic_op_list)
             reduction_p = reduction
             self.cells.append(cell)
             C_cur_out = C_cur * n_nodes
@@ -397,7 +458,7 @@ class PcDartsCNN(nn.Module):
         for i,cell in enumerate(self.cells):
             if cell.reduction:
                 alphas_reduce = sample[self.num_edges:]
-                betas_reduce = sample[self.num_edges:]
+                betas_reduce = sample2[self.num_edges:]
                 weights = F.softmax(alphas_reduce, dim=-1)
                 n = 3
                 start = 2
@@ -417,11 +478,15 @@ class PcDartsCNN(nn.Module):
                 weights2 = F.softmax(betas_normal[0:2], dim=-1)
                 for i in range(self.n_nodes - 1):
                     end = start + n
-                    tw2 = F.softmax(self.betas_normal[start:end], dim=-1)
+                    tw2 = F.softmax(betas_normal[start:end], dim=-1)
                     start = end
                     n += 1
                     weights2 = torch.cat([weights2, tw2], dim=0)
-            s0, s1 = s1, cell(s0, s1, weights,weights2)
+            #print("#########################################weights")
+            #print(weights)
+            #print("#########################################weights2")
+            #print(weights2)
+            s0, s1 = s1, cell(s0, s1, weights , weights2)
 
         out = self.gap(s1)
         out = out.view(out.size(0), -1)  # flatten

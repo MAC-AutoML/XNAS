@@ -31,9 +31,6 @@ def main():
     # init controller and architect
     loss_fun = nn.CrossEntropyLoss().cuda()
     darts_controller = PCDartsCNNController(search_space, loss_fun)
-    ye = darts_controller.named_alphas()
-    print(next(ye).data.shape())
-
     darts_controller.cuda()
     architect = Architect(
         darts_controller, cfg.OPTIM.MOMENTUM, cfg.OPTIM.WEIGHT_DECAY)
