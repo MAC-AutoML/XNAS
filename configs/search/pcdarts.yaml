@@ -1,5 +1,5 @@
 SPACE:
-  NAME: 'darts'
+  NAME: 'pcdarts'
   NUM_CLASSES: 10
   CHANNEL: 16
   LAYERS: 8
@@ -13,4 +13,4 @@ SEARCH:
   IM_SIZE: 32
 OPTIM:
   MAX_EPOCH: 50
-OUT_DIR: '/userhome/XNAS/experiment/darts'
+OUT_DIR: '/userhome/XNAS/experiment/pcdarts'
