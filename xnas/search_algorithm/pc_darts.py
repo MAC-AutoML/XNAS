@@ -95,8 +95,25 @@ class PCDartsCNNController(nn.Module):
         for alpha in self.alpha:
             logger.info(F.softmax(alpha, dim=-1).cpu().detach().numpy())
         logger.info("####### BETA #######")
-        for beta in self.beta:
-            logger.info(F.softmax(beta, dim=-1).cpu().detach().numpy())
+        b_norm = self.beta[0:self.num_edges]
+        b_reduce = self.beta[self.num_edges:]
+        n = 3
+        start = 2
+        weightsn2 = F.softmax(b_norm[0:2], dim=-1)
+        weightsr2 = F.softmax(b_reduce[0:2], dim=-1)
+
+        for i in range(self.n_nodes - 1):
+            end = start + n
+            tn2 = F.softmax(b_norm[start:end], dim=-1)
+            tw2 = F.softmax(b_reduce[start:end], dim=-1)
+            start = end
+            n += 1
+            weightsn2 = torch.cat([weightsn2, tn2], dim=0)
+            weightsr2 = torch.cat([weightsr2, tw2], dim=0)
+        for beta in weightsn2:
+            logger.info(beta.cpu().detach().numpy())
+        for beta in weightsr2:
+            logger.info(beta.cpu().detach().numpy())
         logger.info("#####################")
 
     def loss(self, X, y):
