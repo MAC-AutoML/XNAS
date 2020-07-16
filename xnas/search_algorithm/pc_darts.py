@@ -66,7 +66,7 @@ class PCDartsCNNController(nn.Module):
             # return nn.parallel.gather(outputs, self.device_ids[0])
 
     def genotype(self):
-        return self.net.genotype(self.alpha.cpu().detach().numpy(),self.beta.cpu().detach().numpy())
+        return self.net.genotype(self.alpha,self.beta)
 
     def weights(self):
         return self.net.parameters()
@@ -358,30 +358,13 @@ class PcDartsCell(nn.Module):
         #print("#####w_w_dag####")
         #print(type(w_w_dag),w_w_dag)
         for edges, w_list,w_w_list in zip(self.dag, w_dag,w_w_dag):
-            '''print("#####state####")
-            print((len(states)))
-            print("#####w_list####")
-            print(len(w_list),w_list)
-            print("#####w_w_list####")
-            print(len(w_w_list),w_w_list)'''
 
             s_cur = sum(ww * edges[i](s, w)
                         for i, (s, w, ww) in enumerate(zip(states, w_list, w_w_list)))
             states.append(s_cur)
         s_out = torch.cat(states[2:], 1)
         return s_out
-        '''
-        s0 = self.preproc0(s0)
-        s1 = self.preproc0(s1)
 
-        states = [s0, s1]
-        offset = 0
-        for i in range(self.n_nodes):
-            s = sum(sample2[offset + j] * self.dag[offset + j](h, sample[offset + j]) for j, h in enumerate(states))
-            offset += len(states)
-            states.append(s)
-
-        return torch.cat(states[-self._multiplier:], dim=1)'''
 
 # PcDartsCNN
 
