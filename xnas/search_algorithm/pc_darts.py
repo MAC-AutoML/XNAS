@@ -34,13 +34,13 @@ class PCDartsCNNController(nn.Module):
         for n, p in self.named_parameters():
             if 'alpha' in n:
                 self._alphas.append((n, p))
-        print(self._alphas)
+        #print(self._alphas)
         # setup beta list
         self._betas = []
         for n, p in self.named_parameters():
             if 'beta' in n:
                 self._betas.append((n, p))
-        print(self._betas)
+        #(self._betas)
 
     def forward(self, x):
         #weights_1 = F.softmax(self.alpha, dim=-1)
