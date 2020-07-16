@@ -135,6 +135,7 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         writer.add_scalar('train/loss', loss, cur_step)
         writer.add_scalar('train/top1_error', top1_err, cur_step)
         writer.add_scalar('train/top5_error', top5_err, cur_step)
+        #print("###cur_iter:"+str(cur_iter)+",[loss,top1_error,top5_error]:"+str(loss)+","+str(top1_err)+","+str(top5_err))
         cur_step += 1
     # Log epoch stats
     train_meter.log_epoch_stats(cur_epoch)

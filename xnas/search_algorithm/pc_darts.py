@@ -34,11 +34,13 @@ class PCDartsCNNController(nn.Module):
         for n, p in self.named_parameters():
             if 'alpha' in n:
                 self._alphas.append((n, p))
+        print(self._alphas)
         # setup beta list
         self._betas = []
         for n, p in self.named_parameters():
             if 'beta' in n:
                 self._betas.append((n, p))
+        print(self._betas)
 
     def forward(self, x):
         #weights_1 = F.softmax(self.alpha, dim=-1)
@@ -64,8 +66,7 @@ class PCDartsCNNController(nn.Module):
             # return nn.parallel.gather(outputs, self.device_ids[0])
 
     def genotype(self):
-        return self.net.genotype(self.alpha.cpu().detach().numpy(),self.beta.cpu().detach().numpy(),
-                                 self.beta.cpu().detach().numpy(),self.beta.cpu().detach().numpy())
+        return self.net.genotype(self.alpha.cpu().detach().numpy(),self.beta.cpu().detach().numpy())
 
     def weights(self):
         return self.net.parameters()
@@ -186,10 +187,11 @@ class Architect():
 
         # update final gradient = dbeta - xi*hessian
         with torch.no_grad():
-            for beta, db, h in zip(self.net.betas(), dbeta, hessianb):
-                beta.grad = db - xi * h
             for alpha, da, h in zip(self.net.alphas(), dalpha, hessiana):
                 alpha.grad = da - xi * h
+            for beta, db, h in zip(self.net.betas(), dbeta, hessianb):
+                beta.grad = db - xi * h
+
 
 
     def compute_hessian(self, dw, trn_X, trn_y,bool_beta = 0):
@@ -255,17 +257,7 @@ def channel_shuffle(x, groups):
 class PcMixedOp(nn.Module):
     def __init__(self, C_in, C_out, stride, basic_op_list=None):
         super().__init__()
-        '''
-        self.k = 4
-        self.mp = nn.MaxPool2d(2, 2)
-        self._ops = nn.ModuleList()
-        assert basic_op_list is not None, "the basic op list cannot be none!"
-        basic_primitives = basic_op_list
-        for primitive in basic_primitives:
-            op = OPS_[primitive](C_in //self.k, C_out, stride, affine=False)
-            if 'pool' in primitive:
-                op = nn.Sequential(op, nn.BatchNorm2d(C_in // self.k, affine=False))
-            self._ops.append(op)'''
+
         self.k = 4
         self.mp = nn.MaxPool2d(2, 2)
         self._ops = nn.ModuleList()
@@ -304,20 +296,7 @@ class PcMixedOp(nn.Module):
         #ans = torch.cat([ans[ : ,  dim_2//4:, :, :],ans[ : , :  dim_2//4, :, :]],dim=1)
         #except channe shuffle, channel shift also works
         return ans
-        '''
-        """
-        Args:
-            x: input
-            weights: weight for each operation
-        """
-        assert len(self._ops) == len(weights)
-        _x = 0
-        for i, value in enumerate(weights):
-            if value == 1:
-                _x += self._ops[i](x)
-            if 0 < value < 1:
-                _x += value * self._ops[i](x)
-        return _x        '''
+
 
 # the search cell in darts
 
@@ -494,80 +473,48 @@ class PcDartsCNN(nn.Module):
         return logits
 
     def genotype(self, theta,theta2):
-        '''Genotype = namedtuple(
+
+        Genotype = namedtuple(
             'Genotype', 'normal normal_concat reduce reduce_concat')
-        theta_norm = darts_weight_unpack(
-            theta[0:self.num_edges], self.n_nodes)
-        theta_reduce = darts_weight_unpack(
-            theta[self.num_edges:], self.n_nodes)
+        a_norm = theta[0:self.num_edges]
+        a_reduce = theta[self.num_edges:]
+        b_norm = theta2[0:self.num_edges]
+        b_reduce = theta2[self.num_edges:]
+        weightn = F.softmax(a_norm, dim=-1)
+        weightr = F.softmax(a_reduce, dim=-1)
+        n = 3
+        start = 2
+        weightsn2 = F.softmax(b_norm[0:2], dim=-1)
+        weightsr2 = F.softmax(b_reduce[0:2], dim=-1)
+
+        for i in range(self.n_nodes - 1):
+            end = start + n
+            tn2 = F.softmax(b_norm[start:end], dim=-1)
+            tw2 = F.softmax(b_reduce[start:end], dim=-1)
+            start = end
+            n += 1
+            weightsn2 = torch.cat([weightsn2, tn2], dim=0)
+            weightsr2 = torch.cat([weightsr2, tw2], dim=0)
+
+        theta_norm = darts_weight_unpack(weightn, self.n_nodes)
+        theta_reduce = darts_weight_unpack(weightr, self.n_nodes)
+        theta2_norm = darts_weight_unpack(weightsn2, self.n_nodes)
+        theta2_reduce = darts_weight_unpack(weightsr2, self.n_nodes)
+
+        for t, etheta in enumerate(theta_norm):
+            for tt, eetheta in enumerate(etheta):
+                theta_norm[t][tt] *= theta2_norm[t][tt]
+        for t, etheta in enumerate(theta_reduce):
+            for tt, eetheta in enumerate(etheta):
+                theta_reduce[t][tt] *= theta2_reduce[t][tt]
+
         gene_normal = parse_from_numpy(
             theta_norm, k=2, basic_op_list=self.basic_op_list)
         gene_reduce = parse_from_numpy(
             theta_reduce, k=2, basic_op_list=self.basic_op_list)
-        concat = range(2, 2+self.n_nodes)  # concat all intermediate nodes
+        concat = range(2, 2 + self.n_nodes)  # concat all intermediate nodes
         return Genotype(normal=gene_normal, normal_concat=concat,
-                        reduce=gene_reduce, reduce_concat=concat)'''
-        PRIMITIVES = [
-        'none',
-        'max_pool_3x3',
-        'skip_connect',
-        'sep_conv_3x3',
-        'sep_conv_5x5',
-        'sep_conv_7x7',
-        'dil_conv_3x3',
-        'dil_conv_5x5',
-        'conv_7x1_1x7',
-        'nor_conv_3x3',
-        'nor_conv_1x1'
-        ]
-        def _parse(weights, weights2):
-            gene = []
-            n = 2
-            start = 0
-            for i in range(self.n_nodes):
-                end = start + n
-                W = weights[start:end].copy()
-                W2 = weights2[start:end].copy()
-                for j in range(n):
-                    W[j, :] = W[j, :] * W2[j]
-                edges = sorted(range(i + 2),
-                        key=lambda x: -max(W[x][k] for k in range(len(W[x])) if k != PRIMITIVES.index('none')))[:2]
+                        reduce=gene_reduce, reduce_concat=concat)
 
-                # edges = sorted(range(i + 2), key=lambda x: -W2[x])[:2]
-                for j in edges:
-                    k_best = None
-                    for k in range(len(W[j])):
-                        if k != PRIMITIVES.index('none'):
-                            if k_best is None or W[j][k] > W[j][k_best]:
-                                k_best = k
-                    gene.append((PRIMITIVES[k_best], j))
-                start = end
-                n += 1
-            return gene
 
-        Genotype = namedtuple('Genotype', 'normal normal_concat reduce reduce_concat')
-        alphas_reduce = theta[self.num_edges:]
-        betas_reduce = theta2[self.num_edges:]
-        alphas_normal = theta[0:self.num_edges]
-        betas_normal = theta2[0:self.num_edges]
-        n = 3
-        start = 2
-        weightsr2 = F.softmax(betas_reduce[0:2], dim=-1)
-        weightsn2 = F.softmax(betas_normal[0:2], dim=-1)
-        for i in range(self.n_nodes - 1):
-            end = start + n
-            tw2 = F.softmax(betas_reduce[start:end], dim=-1)
-            tn2 = F.softmax(betas_normal[start:end], dim=-1)
-            start = end
-            n += 1
-            weightsr2 = torch.cat([weightsr2, tw2], dim=0)
-            weightsn2 = torch.cat([weightsn2, tn2], dim=0)
-        gene_normal = _parse(F.softmax(alphas_normal, dim=-1).data.cpu().numpy(), weightsn2.data.cpu().numpy())
-        gene_reduce = _parse(F.softmax(alphas_reduce, dim=-1).data.cpu().numpy(), weightsr2.data.cpu().numpy())
 
-        concat = range(2 + self.n_nodes - self._multiplier, self.n_nodes + 2)
-        genotype = Genotype(
-            normal=gene_normal, normal_concat=concat,
-            reduce=gene_reduce, reduce_concat=concat
-        )
-        return genotype
