@@ -95,14 +95,16 @@ class PCDartsCNNController(nn.Module):
         for alpha in self.alpha:
             logger.info(F.softmax(alpha, dim=-1).cpu().detach().numpy())
         logger.info("####### BETA #######")
-        b_norm = self.beta[0:self.num_edges]
-        b_reduce = self.beta[self.num_edges:]
+        n_nodes = 4
+        num_edges = 14
+        b_norm = self.beta[0:num_edges]
+        b_reduce = self.beta[num_edges:]
         n = 3
         start = 2
         weightsn2 = F.softmax(b_norm[0:2], dim=-1)
         weightsr2 = F.softmax(b_reduce[0:2], dim=-1)
 
-        for i in range(self.n_nodes - 1):
+        for i in range(n_nodes - 1):
             end = start + n
             tn2 = F.softmax(b_norm[start:end], dim=-1)
             tw2 = F.softmax(b_reduce[start:end], dim=-1)
@@ -185,22 +187,21 @@ class Architect():
         v_weights = tuple(self.v_net.weights())
         ####alpha
         v_alphas = tuple(self.v_net.alphas())
-        v_grads = torch.autograd.grad(loss, v_alphas + v_weights,retain_graph=True)
+        v_betas = tuple(self.v_net.betas())
+        v_grads = torch.autograd.grad(loss, v_alphas + v_betas + v_weights,retain_graph=True)
         dalpha = v_grads[:len(v_alphas)]
-        dw = v_grads[len(v_alphas):]
+        dbeta = v_grads[len(v_alphas):len(v_alphas)+len(v_betas)]
+        dw = v_grads[len(v_alphas)+len(v_betas):]
 
         hessiana = self.compute_hessian(dw, trn_X, trn_y)
-
+        hessianb = self.compute_hessian(dw, trn_X, trn_y, 1)
         # update final gradient = dalpha - xi*hessian
         #with torch.no_grad():
 
         #####beta
-        v_betas = tuple(self.v_net.betas())
-        v_bgrads = torch.autograd.grad(loss, v_betas + v_weights)
-        dbeta = v_bgrads[:len(v_betas)]
-        dbw = v_bgrads[len(v_betas):]
 
-        hessianb = self.compute_hessian(dbw, trn_X, trn_y,1)
+
+
 
         # update final gradient = dbeta - xi*hessian
         with torch.no_grad():
