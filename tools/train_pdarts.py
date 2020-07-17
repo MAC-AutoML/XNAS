@@ -45,7 +45,7 @@ def main():
         basic_op.append(PRIMITIVES)
     for sp in range(len(num_to_keep)):
         #update the info of the supernet config
-        cfg.freeze()
+        cfg.defrost()
         cfg.SEARCH.add_layers=add_layers[sp]
         cfg.SEARCH.add_width=add_width[sp]
         cfg.SEARCH.dropout_rate=float(drop_rate[sp])
