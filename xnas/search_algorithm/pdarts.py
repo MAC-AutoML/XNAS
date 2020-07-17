@@ -103,9 +103,18 @@ class PdartsCNNController(nn.Module):
     def named_weights(self):
         return self.net.named_parameters()
 
+    def subnet_weights(self):
+        res=[]
+        for k,v in self.named_weights():
+            if not 'alpha' in k:
+                res.append(v)
+        return res
+
     def alphas(self):
         for n, p in self._alphas:
             yield p
+    def alphas_weight(self):
+        return self.alpha
 
     def named_alphas(self):
         for n, p in self._alphas:

@@ -57,7 +57,7 @@ def main():
         architect = Architect(
             controller, cfg.OPTIM.MOMENTUM, cfg.OPTIM.WEIGHT_DECAY)
         # weights optimizer
-        w_optim = torch.optim.SGD(controller.weights(), cfg.OPTIM.BASE_LR, momentum=cfg.OPTIM.MOMENTUM,
+        w_optim = torch.optim.SGD(controller.subnet_weights(), cfg.OPTIM.BASE_LR, momentum=cfg.OPTIM.MOMENTUM,
                                   weight_decay=cfg.OPTIM.WEIGHT_DECAY)
         # alphas optimizer
         alpha_optim = torch.optim.Adam(controller.alphas(), cfg.DARTS.ALPHA_LR, betas=(0.5, 0.999),
@@ -154,7 +154,7 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
             logits=model(trn_X)
             loss_a=loss_fun(logits, trn_y)
             loss_a.backward()
-            nn.utils.clip_grad_norm_(model.alpha(), cfg.OPTIM.GRAD_CLIP)
+            nn.utils.clip_grad_norm_(model.alphas_weight(), cfg.OPTIM.GRAD_CLIP)
             alpha_optimizer.step()
 
 
@@ -180,7 +180,7 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         w_optimizer.zero_grad()
         loss.backward()
         # gradient clipping
-        nn.utils.clip_grad_norm_(model.weights(), cfg.OPTIM.GRAD_CLIP)
+        nn.utils.clip_grad_norm_(model.subnet_weights(), cfg.OPTIM.GRAD_CLIP)
         # Update the parameters
         w_optimizer.step()
         # Compute the errors
