@@ -299,7 +299,7 @@ class _MixedOp(nn.Module):
 
 class _MixOp4Pdarts(_MixedOp):
     '''for pdarts to add dropout for identity'''
-    def __init__(self, C_in, C_out, stride, basic_op_list=None, p):
+    def __init__(self, C_in, C_out, stride, p, basic_op_list=None):
         super(_MixOp4Pdarts, self).__init__(self, C_in, C_out, stride, basic_op_list)
         self.p=p
         for op in self._ops:

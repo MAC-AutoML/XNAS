@@ -27,7 +27,7 @@ SEARCH:
   dropout_rate: 0.1
 OPTIM:
   MAX_EPOCH: 25
-  MIN_LR: 0
+  MIN_LR: 0.0
   BASE_LR: 0.025
   WEIGHT_DECAY: 3e-4
 DARTS:

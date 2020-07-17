@@ -158,7 +158,7 @@ _C.SEARCH.add_layers=0
 _C.SEARCH.add_width=0
 
 #droupout_rate of skip operation
-_C.SEARCH.dropout_rate=0
+_C.SEARCH.dropout_rate=0.0
 
 # ------------------------------------------------------------------------------------ #
 # Precise timing options
