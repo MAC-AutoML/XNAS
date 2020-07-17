@@ -278,6 +278,8 @@ class _MixedOp(nn.Module):
         self._ops = nn.ModuleList()
         assert basic_op_list is not None, "the basic op list cannot be none!"
         basic_primitives = basic_op_list
+        print(basic_op_list)
+        print(type(basic_op_list))
         for primitive in basic_primitives:
             op = OPS_[primitive](C_in, C_out, stride, affine=False)
             self._ops.append(op)
