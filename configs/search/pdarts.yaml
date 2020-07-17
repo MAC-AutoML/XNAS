@@ -26,10 +26,10 @@ SEARCH:
   add_width: 0
   dropout_rate: 0.1
 OPTIM:
-  MAX_EPOCH: 2
+  MAX_EPOCH: 25
   MIN_LR: 0.0
   BASE_LR: 0.025
   WEIGHT_DECAY: 3e-4
 DARTS:
   ALPHA_LR: 6e-4
-OUT_DIR: '/userhome/project/XNAS/experiment/pdarts/test'
+OUT_DIR: '/userhome/project/XNAS/experiment/pdarts/random'
