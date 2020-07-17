@@ -31,19 +31,19 @@ class DynamicSeparableConv2d(nn.Module):
             the weight of different kernels and different channels have different weight tensors
     """
 
-    def __init__(self, in_channel_list, kernel_size_list, act_list, weight_sharing_mode=0, stride=1, dilation=1):
+    def __init__(self, in_channel_list, kernel_size_list, weight_sharing_mode=0, stride=1, dilation=1):
         super(DynamicSeparableConv2d, self).__init__()
         assert weight_sharing_mode > 3, "The weight sharing mode should be less than 3"
         in_channel_list = in_channel_list.sort()
         kernel_size_list = kernel_size_list.sort()
         self.in_channel_list = in_channel_list
         self.kernel_size_list = kernel_size_list
-        self.act_list = act_list
         self.max_in_channels = max(in_channel_list)
         self.max_kernel_size = max(kernel_size_list)
         self.stride = stride
         self.dilation = dilation
         self.weight_sharing_mode = weight_sharing_mode
+        self.active_kernel = self.max_kernel_size
 
         if self.weight_sharing_mode == 0 or self.weight_sharing_mode == 1:
             # all in one
@@ -123,7 +123,7 @@ class DynamicSeparableConv2d(nn.Module):
         return filters
 
     def forward(self, x, kernel=None):
-        _kernel = self.max_kernel_size if kernel is None else kernel
+        _kernel = self.active_kernel if kernel is None else kernel
         _in_channel = x.size(1)
         if self.weight_sharing_mode == 0 or self.weight_sharing_mode == 1:
             filters = self.get_active_filter(_in_channel, _kernel).contiguous()
@@ -131,7 +131,8 @@ class DynamicSeparableConv2d(nn.Module):
             filters = self.conv[str(
                 kernel)].weight[:_in_channel, :_in_channel, :, :]
         else:
-            filters = self.conv["{}_{}".format(_kernel, _in_channel)].weight
+            filters = self.conv["{}_{}".format(
+                int(_kernel), int(_in_channel))].weight
         padding = get_same_padding(_kernel)
         y = F.conv2d(
             x, filters, None, self.stride, padding, self.dilation, _in_channel
@@ -140,19 +141,28 @@ class DynamicSeparableConv2d(nn.Module):
 
 
 class DynamicPointConv2d(nn.Module):
-    # from https://github.com/mit-han-lab/once-for-all
-    def __init__(self, max_in_channels, max_out_channels, kernel_size=1, stride=1, dilation=1):
+    def __init__(self, in_channel_list, out_channel_list, kernel_size=1, stride=1, dilation=1, weight_sharing=True):
         super(DynamicPointConv2d, self).__init__()
 
-        self.max_in_channels = max_in_channels
-        self.max_out_channels = max_out_channels
+        self.in_channel_list = in_channel_list
+        self.out_channel_list = out_channel_list
+        self.max_in_channels = max(in_channel_list)
+        self.max_out_channels = max(out_channel_list)
         self.kernel_size = kernel_size
         self.stride = stride
         self.dilation = dilation
-
-        self.conv = nn.Conv2d(
-            self.max_in_channels, self.max_out_channels, self.kernel_size, stride=self.stride, bias=False,
-        )
+        self.weight_sharing = weight_sharing
+        if self.weight_sharing:
+            self.conv = nn.Conv2d(
+                self.max_in_channels, self.max_out_channels, self.kernel_size, stride=self.stride, bias=False,
+            )
+        else:
+            self.conv = nn.ModuleDict()
+            for _in_channel in self.in_channel_list:
+                for _out_channel in self.out_channel_list:
+                    self.conv["{}_{}".format(_in_channel, _out_channel)] = nn.Conv2d(
+                        _in_channel, _out_channel, self.kernel_size, stride=self.stride, bias=False,
+                    )
 
         self.active_out_channel = self.max_out_channels
 
@@ -160,8 +170,12 @@ class DynamicPointConv2d(nn.Module):
         if out_channel is None:
             out_channel = self.active_out_channel
         in_channel = x.size(1)
-        filters = self.conv.weight[:out_channel,
-                                   :in_channel, :, :].contiguous()
+        if self.weight_sharing:
+            filters = self.conv.weight[:out_channel,
+                                       :in_channel, :, :].contiguous()
+        else:
+            filters = self.conv["{}_{}".format(
+                int(in_channel), out_channel)].weight
 
         padding = get_same_padding(self.kernel_size)
         y = F.conv2d(x, filters, None, self.stride, padding, self.dilation, 1)
@@ -169,17 +183,24 @@ class DynamicPointConv2d(nn.Module):
 
 
 class DynamicLinear(nn.Module):
-    # from https://github.com/mit-han-lab/once-for-all
-    def __init__(self, max_in_features, max_out_features, bias=True):
+    def __init__(self, in_feature_list, out_feature_list, bias=True, weight_sharing=True):
         super(DynamicLinear, self).__init__()
-
-        self.max_in_features = max_in_features
-        self.max_out_features = max_out_features
+        self.in_feature_list = in_feature_list
+        self.out_feature_list = out_feature_list
+        self.max_in_features = max(self.in_feature_list)
+        self.max_out_features = max(self.out_feature_list)
         self.bias = bias
+        self.weight_sharing = weight_sharing
 
-        self.linear = nn.Linear(self.max_in_features,
-                                self.max_out_features, self.bias)
-
+        if self.weight_sharing:
+            self.linear = nn.Linear(self.max_in_features,
+                                    self.max_out_features, self.bias)
+        else:
+            self.linear = nn.ModuleDict()
+            for _in_channel in self.in_feature_list:
+                for _out_channel in self.out_feature_list:
+                    self.linear["{}_{}".format(_in_channel, _out_channel)] = nn.Linear(self._in_channel,
+                                                                                       self._out_channel, self.bias)
         self.active_out_features = self.max_out_features
 
     def forward(self, x, out_features=None):
@@ -187,8 +208,13 @@ class DynamicLinear(nn.Module):
             out_features = self.active_out_features
 
         in_features = x.size(1)
-        weight = self.linear.weight[:out_features, :in_features].contiguous()
-        bias = self.linear.bias[:out_features] if self.bias else None
+        if self.weight_sharing:
+            weight = self.linear.weight[:out_features, :in_features].contiguous()
+            bias = self.linear.bias[:out_features] if self.bias else None
+        else:
+            _name = "{}_{}".format(in_features, out_features)
+            weight = self.linear[_name].weight
+            bias = self.linear[_name].bias
         y = F.linear(x, weight, bias)
         return y
 
