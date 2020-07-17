@@ -138,7 +138,7 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
     #     torch.cuda.amp, 'autocast') else None
     valid_loader_iter = iter(valid_loader)
     for cur_iter, (trn_X, trn_y) in enumerate(train_loader):
-        print('cur_iter', cur_iter)
+        # print('cur_iter', cur_iter)
         try:
             (val_X, val_y) = next(valid_loader_iter)
         except StopIteration:
