@@ -620,7 +620,7 @@ class PdartsCNN(nn.Module):
         logits = self.linear(out)
         return logits
 
-    def parse_from_numpy(alpha, k, basic_op_list=None):
+    def parse_from_numpy(self, alpha, k, basic_op_list=None):
         """
         parse continuous alpha to discrete gene.
         alpha is ParameterList:
