@@ -666,9 +666,9 @@ class PdartsCNN(nn.Module):
         theta_reduce = darts_weight_unpack(
             theta[self.num_edges:], self.n_nodes)
         gene_normal = self.parse_from_numpy(
-            theta_norm, k=2, basic_op_list=self.basic_op_list[:self.len_op/2])
+            theta_norm, k=2, basic_op_list=self.basic_op_list[:self.len_op//2])
         gene_reduce = self.parse_from_numpy(
-            theta_reduce, k=2, basic_op_list=self.basic_op_list[self.len_op/2:])
+            theta_reduce, k=2, basic_op_list=self.basic_op_list[self.len_op//2:])
         concat = range(2, 2+self.n_nodes)  # concat all intermediate nodes
         return Genotype(normal=gene_normal, normal_concat=concat,
                         reduce=gene_reduce, reduce_concat=concat)
