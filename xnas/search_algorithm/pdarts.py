@@ -51,16 +51,17 @@ class PdartsCNNController(nn.Module):
             #                                     devices=self.device_ids)
             # return nn.parallel.gather(outputs, self.device_ids[0])
 
-    def genotype(self):
-        for i in range(self.net.all_edges):
-            for j, op in enumerate(self.net.basic_op_list[i]):
-                if op == 'none':
-                    self.alpha[i][j]=-1  #让none操作对应的权值将为最低
+    def genotype(self, final=False):
+        if final:
+            for i in range(self.net.all_edges):
+                for j, op in enumerate(self.net.basic_op_list[i]):
+                    if op == 'none':
+                        self.alpha[i][j]=-1  #让none操作对应的权值将为最低
 
         return self.net.genotype(self.alpha.cpu().detach().numpy())
 
     def get_skip_number(self):
-        normal=self.genotype().normal
+        normal=self.genotype(final=True).normal
         res=0
         for edg in normal:
             if edg[0]=='skip_connect':

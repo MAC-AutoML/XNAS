@@ -100,7 +100,7 @@ def main():
             gc.collect()
         if sp == len(num_to_keep) - 1:
             logger.info("###############final Optimal genotype: {}############")
-            logger.info(controller.genotype())
+            logger.info(controller.genotype(final=True))
             logger.info("########################################################")
             controller.print_alphas(logger)
 
