@@ -593,10 +593,10 @@ class PdartsCNN(nn.Module):
                 reduction = False
             if reduction:
                 cell = PdartsCell(n_nodes, C_pp, C_p, C_cur,
-                                 reduction_p, reduction, self.basic_op_list[:self.len_op/2], p)
+                                 reduction_p, reduction, self.basic_op_list[:self.len_op//2], p)
             else:
                 cell = PdartsCell(n_nodes, C_pp, C_p, C_cur,
-                                  reduction_p, reduction, self.basic_op_list[self.len_op/2:], p)
+                                  reduction_p, reduction, self.basic_op_list[self.len_op//2:], p)
             reduction_p = reduction
             self.cells.append(cell)
             C_cur_out = C_cur * n_nodes
