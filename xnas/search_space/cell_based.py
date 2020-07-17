@@ -278,8 +278,6 @@ class _MixedOp(nn.Module):
         self._ops = nn.ModuleList()
         assert basic_op_list is not None, "the basic op list cannot be none!"
         basic_primitives = basic_op_list
-        print(basic_op_list)
-        print(type(basic_op_list))
         for primitive in basic_primitives:
             op = OPS_[primitive](C_in, C_out, stride, affine=False)
             self._ops.append(op)
@@ -674,7 +672,7 @@ class PdartsCNN(nn.Module):
         concat = range(2, 2+self.n_nodes)  # concat all intermediate nodes
         return Genotype(normal=gene_normal, normal_concat=concat,
                         reduce=gene_reduce, reduce_concat=concat)
-    def update_p(self):
+    def update_p(self, p):
         for cell in self.cells:
             # cell.p=self.p
             cell.update_p(cell.p)
