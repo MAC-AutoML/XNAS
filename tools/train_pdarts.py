@@ -71,6 +71,7 @@ def main():
         logger.info("Start epoch: {}".format(start_epoch + 1))
         scale_factor=0.2
         for cur_epoch in range(start_epoch, cfg.OPTIM.MAX_EPOCH):
+            print('cur_epoch', cur_epoch)
             lr = lr_scheduler.get_last_lr()[0]
             if cur_epoch<eps_no_archs[sp]:
                 controller.update_p(float(drop_rate[sp]) * (cfg.OPTIM.MAX_EPOCH - cur_epoch - 1) / cfg.OPTIM.MAX_EPOCH)
@@ -137,6 +138,7 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
     #     torch.cuda.amp, 'autocast') else None
     valid_loader_iter = iter(valid_loader)
     for cur_iter, (trn_X, trn_y) in enumerate(train_loader):
+        print('cur_iter', cur_iter)
         try:
             (val_X, val_y) = next(valid_loader_iter)
         except StopIteration:
