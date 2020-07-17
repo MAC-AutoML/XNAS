@@ -464,7 +464,7 @@ class PdartsCell(nn.Module):
                 # reduction should be used only for input node
                 stride = 2 if reduction and j < 2 else 1
                 edg_id=pre+j
-                op = _MixOp4Pdarts(C, C, stride, self.basic_op_list[edg_id], self.p)
+                op = _MixOp4Pdarts(C, C, stride, self.p, self.basic_op_list[edg_id])
                 self.dag[i].append(op)
         pre+=2+i
 
