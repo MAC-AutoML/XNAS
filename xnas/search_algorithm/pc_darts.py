@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import copy
 from xnas.search_space.cell_based import *
-from xnas.search_space.cell_based import _MixedOp
+#from xnas.search_space.cell_based import _MixedOp
 from torch.autograd import Variable
 
 
