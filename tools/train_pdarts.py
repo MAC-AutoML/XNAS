@@ -39,10 +39,9 @@ def main():
     add_layers=[0,6,12]
     add_width=[0,0,0]
     PRIMITIVES = cfg.SPACE.PRIMITIVES
-    edgs_num=(cfg.SPACE.NODES+3)*cfg.SPACE.NODES/2
+    edgs_num=(cfg.SPACE.NODES+3)*cfg.SPACE.NODES//2
     basic_op=[]
-    print(edgs_num)
-    for i in range(int(edgs_num)*2):
+    for i in range(edgs_num*2):
         basic_op.append(PRIMITIVES)
     for sp in range(len(num_to_keep)):
         #update the info of the supernet config

@@ -15,6 +15,7 @@ from yacs.config import CfgNode as CfgNode
 
 # Global config object
 _C = CfgNode()
+_C.IMMUTABLE=True
 # Example usage:
 #   from core.config import cfg
 cfg = _C
