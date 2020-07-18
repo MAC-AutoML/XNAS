@@ -88,11 +88,11 @@ class PdartsCNNController(nn.Module):
                             break
 
         alpha=self.alpha.cpu().detach().numpy()
-        print('skip_edg', skip_edg)
+        # print('skip_edg', skip_edg)
         skip_edg_value=[alpha[pos][skip_id[i]] for i, pos in enumerate(skip_edg)]
         min=np.argmin(skip_edg_value)
-        print('skip_edg[min] skip_id[min]', skip_edg[min], skip_id[min])
-        print('alpha_min')
+        # print('skip_edg[min] skip_id[min]', skip_edg[min], skip_id[min])
+        # print('alpha_min')
         for i in range(self.n_ops):
             print(self.alpha[skip_edg[min]][i])
         self.alpha[skip_edg[min]][skip_id[min]]=0.0
