@@ -3,11 +3,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
+from collections import OrderedDict
 
 import xnas.core.logging as logging
 from xnas.search_space.utils import (SEModule, build_activation,
                                      get_same_padding, make_divisible,
                                      sub_filter_start_end)
+
 
 logger = logging.get_logger(__name__)
 
