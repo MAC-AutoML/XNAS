@@ -6,6 +6,7 @@ from torch.nn.parameter import Parameter
 from collections import OrderedDict
 
 import xnas.core.logging as logging
+from xnas.search_space.utils import Hsigmoid
 from xnas.search_space.utils import (SEModule, build_activation,
                                      get_same_padding, make_divisible,
                                      sub_filter_start_end)
@@ -133,6 +134,8 @@ class DynamicSeparableConv2d(nn.Module):
             filters = self.conv[str(
                 kernel)].weight[:_in_channel, :_in_channel, :, :]
         else:
+            assert _kernel in self.kernel_size_list, "Input kernel should in kernel size list"
+            assert _in_channel in self.in_channel_list, "in channel should in in_channel_list"
             filters = self.conv["{}_{}".format(
                 int(_kernel), int(_in_channel))].weight
         padding = get_same_padding(_kernel)
@@ -176,6 +179,8 @@ class DynamicPointConv2d(nn.Module):
             filters = self.conv.weight[:out_channel,
                                        :in_channel, :, :].contiguous()
         else:
+            assert in_channel in self.in_channel_list, "Input kernel should in in_channel_list"
+            assert out_channel in self.out_channel_list, "out_channel should in out_channel_list"
             filters = self.conv["{}_{}".format(
                 int(in_channel), out_channel)].weight
 
@@ -215,6 +220,8 @@ class DynamicLinear(nn.Module):
                                         :in_features].contiguous()
             bias = self.linear.bias[:out_features] if self.bias else None
         else:
+            assert in_features in self.in_feature_list, "in_features should in in_feature_list"
+            assert out_features in self.out_feature_list, "out_features should in out_feature_list"
             _name = "{}_{}".format(in_features, out_features)
             weight = self.linear[_name].weight
             bias = self.linear[_name].bias
@@ -222,34 +229,71 @@ class DynamicLinear(nn.Module):
         return y
 
 
-class DynamicSE(SEModule):
+class DynamicSE(nn.Module):
 
-    def __init__(self, max_channel, reduction_list):
-        super(DynamicSE, self).__init__(max_channel, max(reduction_list))
+    def __init__(self, channel_list, reduction_list, weight_sharing=True):
+        super(DynamicSE, self).__init__()
+        self.channel_list = channel_list
         self.reduction_list = reduction_list
+        self.max_channel = max(self.channel_list)
+        self.min_reduction = min(reduction_list)
+        self.weight_sharing = weight_sharing
+        if weight_sharing:
+            num_mid = make_divisible(
+                int(self.max_channel // self.min_reduction), divisor=8)
 
-    def forward(self, x, reduction=0.25):
-        self.reduction = reduction
+            self.fc = nn.Sequential(OrderedDict([
+                ('reduce', nn.Conv2d(self.channel, num_mid, 1, 1, 0, bias=True)),
+                ('relu', nn.ReLU(inplace=True)),
+                ('expand', nn.Conv2d(num_mid, self.channel, 1, 1, 0, bias=True)),
+                ('h_sigmoid', Hsigmoid(inplace=True)),
+            ]))
+        else:
+            self.fc = nn.ModuleDict
+            for _channel in channel_list:
+                for _reduction in reduction_list:
+                    if _reduction == 0:
+                        continue
+                    num_mid = make_divisible(
+                        int(_channel // _reduction), divisor=8)
+                    name = "{}_{}".format(_channel, _reduction)
+                    self.fc[name] = nn.Sequential(OrderedDict([
+                        ('reduce', nn.Conv2d(_channel,
+                                             num_mid, 1, 1, 0, bias=True)),
+                        ('relu', nn.ReLU(inplace=True)),
+                        ('expand', nn.Conv2d(num_mid, _channel, 1, 1, 0, bias=True)),
+                        ('h_sigmoid', Hsigmoid(inplace=True)),
+                    ]))
+
+    def forward(self, x, reduction=4):
+        if reduction == 0:
+            return x
         in_channel = x.size(1)
-        num_mid = make_divisible(int(in_channel * self.reduction), divisor=8)
+        num_mid = make_divisible(int(in_channel // reduction), divisor=8)
 
-        y = x.mean(3, keepdim=True).mean(2, keepdim=True)
-        # reduce
-        reduce_conv = self.fc.reduce
-        reduce_filter = reduce_conv.weight[:num_mid,
-                                           :in_channel, :, :].contiguous()
-        reduce_bias = reduce_conv.bias[:num_mid] if reduce_conv.bias is not None else None
-        y = F.conv2d(y, reduce_filter, reduce_bias, 1, 0, 1, 1)
-        # relu
-        y = self.fc.relu(y)
-        # expand
-        expand_conv = self.fc.expand
-        expand_filter = expand_conv.weight[:in_channel,
-                                           :num_mid, :, :].contiguous()
-        expand_bias = expand_conv.bias[:in_channel] if expand_conv.bias is not None else None
-        y = F.conv2d(y, expand_filter, expand_bias, 1, 0, 1, 1)
-        # hard sigmoid
-        y = self.fc.h_sigmoid(y)
+        if self.weight_sharing:
+            y = x.mean(3, keepdim=True).mean(2, keepdim=True)
+            # reduce
+            reduce_conv = self.fc.reduce
+            reduce_filter = reduce_conv.weight[:num_mid,
+                                               :in_channel, :, :].contiguous()
+            reduce_bias = reduce_conv.bias[:num_mid] if reduce_conv.bias is not None else None
+            y = F.conv2d(y, reduce_filter, reduce_bias, 1, 0, 1, 1)
+            # relu
+            y = self.fc.relu(y)
+            # expand
+            expand_conv = self.fc.expand
+            expand_filter = expand_conv.weight[:in_channel,
+                                               :num_mid, :, :].contiguous()
+            expand_bias = expand_conv.bias[:in_channel] if expand_conv.bias is not None else None
+            y = F.conv2d(y, expand_filter, expand_bias, 1, 0, 1, 1)
+            # hard sigmoid
+            y = self.fc.h_sigmoid(y)
+        else:
+            assert in_channel in self.in_channel_list, "in_channel should in in_channel_list"
+            assert reduction in self.reduction_list, "reduction should in reduction_list"
+            name = "{}_{}".format(in_channel, reduction)
+            y = self.fc[name](x)
 
         return x * y
 
@@ -258,11 +302,17 @@ class DynamicBatchNorm2d(nn.Module):
     # from https://github.com/mit-han-lab/once-for-all
     SET_RUNNING_STATISTICS = False
 
-    def __init__(self, max_feature_dim):
+    def __init__(self, feature_list, weight_sharing=True):
         super(DynamicBatchNorm2d, self).__init__()
-
-        self.max_feature_dim = max_feature_dim
-        self.bn = nn.BatchNorm2d(self.max_feature_dim)
+        self.feature_list = feature_list
+        self.weight_sharing = weight_sharing
+        self.max_feature_dim = max(feature_list)
+        if self.weight_sharing:
+            self.bn = nn.BatchNorm2d(self.max_feature_dim)
+        else:
+            self.bn = nn.ModuleDict()
+            for num_feature in self.feature_list:
+                self.bn[str(num_feature)] = nn.BatchNorm2d(num_feature)
 
     @staticmethod
     def bn_forward(x, bn: nn.BatchNorm2d, feature_dim):
@@ -289,38 +339,9 @@ class DynamicBatchNorm2d(nn.Module):
 
     def forward(self, x):
         feature_dim = x.size(1)
-        y = self.bn_forward(x, self.bn, feature_dim)
-        return y
-
-
-# dynamic layers
-
-class DynamicMBConvLayer(nn.Module):
-
-    def __init__(self, in_channel_list, out_channel_list,
-                 kernel_size_list=None, expand_ratio_list=None, act_func_list=None,
-                 se_list=None, stride=1, weight_sharing_mode=None):
-        super(DynamicMBConvLayer, self).__init__()
-        self.in_channel_list = in_channel_list
-        self.out_channel_list = out_channel_list
-
-        self.kernel_size_list = [
-            3, 5, 7] if kernel_size_list is None else kernel_size_list
-        self.expand_ratio_list = [
-            3, 6] if expand_ratio_list is None else expand_ratio_list
-        self.act_func_list = [
-            'relu6', 'h_swish'] if act_func_list is None else act_func_list
-        self.se_list = [0, 0.25] if se_list is None else se_list
-
-        # build modules
-        max_middle_channel = round(
-            max(self.in_channel_list) * max(self.expand_ratio_list))
-        if max(self.expand_ratio_list) == 1:
-            self.inverted_bottleneck = None
+        if self.weight_sharing:
+            y = self.bn_forward(x, self.bn, feature_dim)
         else:
-            self.inverted_bottleneck = nn.Sequential(OrderedDict([
-                ('conv', DynamicPointConv2d(
-                    max(self.in_channel_list), max_middle_channel)),
-                ('bn', DynamicBatchNorm2d(max_middle_channel)),
-                ('act', build_activation(self.act_func, inplace=True)),
-            ]))
+            assert feature_dim in self.feature_list
+            y = self.bn[str(feature_dim)](x)
+        return y
