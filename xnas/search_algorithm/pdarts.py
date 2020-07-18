@@ -76,16 +76,16 @@ class PdartsCNNController(nn.Module):
         pre=0
         skip_id=[]
         skip_edg=[]
+        pre=[0,2,5,9]
         for i, edg in enumerate(normal):
-            if edg[0]=='skip_connect':
-                edg_num=pre+edg[1]
-                skip_edg.append(edg_num)
-                for j, op in enumerate(self.net.basic_op_list[edg_num]):
-                    if op == 'skip_connect':
-                        skip_id.append(j)
-                        break
-            if i%2:
-                pre=pre+(i+1)/2+1  #每两个
+            for k in range(2):
+                if edg[k][0]=='skip_connect':
+                    edg_num=pre[i]+edg[1]
+                    skip_edg.append(edg_num)
+                    for j, op in enumerate(self.net.basic_op_list[edg_num]):
+                        if op == 'skip_connect':
+                            skip_id.append(j)
+                            break
 
         alpha=self.alpha.cpu().detach().numpy()
         skip_edg_value=[alpha[pos][skip_id[i]] for i, pos in enumerate(skip_edg)]
