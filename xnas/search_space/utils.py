@@ -85,15 +85,14 @@ def get_same_padding(kernel_size):
 
 
 class SEModule(nn.Module):
-    REDUCTION = 4
 
-    def __init__(self, channel):
+    def __init__(self, channel, reduction=0.25):
         super(SEModule, self).__init__()
 
         self.channel = channel
-        self.reduction = SEModule.REDUCTION
+        self.reduction = reduction
 
-        num_mid = make_divisible(self.channel // self.reduction, divisor=8)
+        num_mid = make_divisible(int(self.channel * self.reduction), divisor=8)
 
         self.fc = nn.Sequential(OrderedDict([
             ('reduce', nn.Conv2d(self.channel, num_mid, 1, 1, 0, bias=True)),

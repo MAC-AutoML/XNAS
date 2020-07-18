@@ -209,7 +209,8 @@ class DynamicLinear(nn.Module):
 
         in_features = x.size(1)
         if self.weight_sharing:
-            weight = self.linear.weight[:out_features, :in_features].contiguous()
+            weight = self.linear.weight[:out_features,
+                                        :in_features].contiguous()
             bias = self.linear.bias[:out_features] if self.bias else None
         else:
             _name = "{}_{}".format(in_features, out_features)
@@ -221,13 +222,14 @@ class DynamicLinear(nn.Module):
 
 class DynamicSE(SEModule):
 
-    def __init__(self, max_channel):
-        super(DynamicSE, self).__init__(max_channel)
+    def __init__(self, max_channel, reduction_list):
+        super(DynamicSE, self).__init__(max_channel, max(reduction_list))
+        self.reduction_list = reduction_list
 
-    def forward(self, x, reduction=4):
+    def forward(self, x, reduction=0.25):
         self.reduction = reduction
         in_channel = x.size(1)
-        num_mid = make_divisible(in_channel // self.reduction, divisor=8)
+        num_mid = make_divisible(int(in_channel * self.reduction), divisor=8)
 
         y = x.mean(3, keepdim=True).mean(2, keepdim=True)
         # reduce
@@ -248,3 +250,75 @@ class DynamicSE(SEModule):
         y = self.fc.h_sigmoid(y)
 
         return x * y
+
+
+class DynamicBatchNorm2d(nn.Module):
+    # from https://github.com/mit-han-lab/once-for-all
+    SET_RUNNING_STATISTICS = False
+
+    def __init__(self, max_feature_dim):
+        super(DynamicBatchNorm2d, self).__init__()
+
+        self.max_feature_dim = max_feature_dim
+        self.bn = nn.BatchNorm2d(self.max_feature_dim)
+
+    @staticmethod
+    def bn_forward(x, bn: nn.BatchNorm2d, feature_dim):
+        if bn.num_features == feature_dim or DynamicBatchNorm2d.SET_RUNNING_STATISTICS:
+            return bn(x)
+        else:
+            exponential_average_factor = 0.0
+
+            if bn.training and bn.track_running_stats:
+                # TODO: if statement only here to tell the jit to skip emitting this when it is None
+                if bn.num_batches_tracked is not None:
+                    bn.num_batches_tracked += 1
+                    if bn.momentum is None:  # use cumulative moving average
+                        exponential_average_factor = 1.0 / \
+                            float(bn.num_batches_tracked)
+                    else:  # use exponential moving average
+                        exponential_average_factor = bn.momentum
+            return F.batch_norm(
+                x, bn.running_mean[:feature_dim], bn.running_var[:
+                                                                 feature_dim], bn.weight[:feature_dim],
+                bn.bias[:feature_dim], bn.training or not bn.track_running_stats,
+                exponential_average_factor, bn.eps,
+            )
+
+    def forward(self, x):
+        feature_dim = x.size(1)
+        y = self.bn_forward(x, self.bn, feature_dim)
+        return y
+
+
+# dynamic layers
+
+class DynamicMBConvLayer(nn.Module):
+
+    def __init__(self, in_channel_list, out_channel_list,
+                 kernel_size_list=None, expand_ratio_list=None, act_func_list=None,
+                 se_list=None, stride=1, weight_sharing_mode=None):
+        super(DynamicMBConvLayer, self).__init__()
+        self.in_channel_list = in_channel_list
+        self.out_channel_list = out_channel_list
+
+        self.kernel_size_list = [
+            3, 5, 7] if kernel_size_list is None else kernel_size_list
+        self.expand_ratio_list = [
+            3, 6] if expand_ratio_list is None else expand_ratio_list
+        self.act_func_list = [
+            'relu6', 'h_swish'] if act_func_list is None else act_func_list
+        self.se_list = [0, 0.25] if se_list is None else se_list
+
+        # build modules
+        max_middle_channel = round(
+            max(self.in_channel_list) * max(self.expand_ratio_list))
+        if max(self.expand_ratio_list) == 1:
+            self.inverted_bottleneck = None
+        else:
+            self.inverted_bottleneck = nn.Sequential(OrderedDict([
+                ('conv', DynamicPointConv2d(
+                    max(self.in_channel_list), max_middle_channel)),
+                ('bn', DynamicBatchNorm2d(max_middle_channel)),
+                ('act', build_activation(self.act_func, inplace=True)),
+            ]))
