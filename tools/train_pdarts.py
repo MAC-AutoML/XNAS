@@ -103,6 +103,7 @@ def main():
         for sks in range(0, 9):
             max_sk=8-sks
             num_sk=controller.get_skip_number()
+            print('num_sk', num_sk)
             if not num_sk > max_sk:
                 continue
             while num_sk > max_sk:
