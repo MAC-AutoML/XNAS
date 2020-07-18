@@ -93,6 +93,7 @@ class PdartsCNNController(nn.Module):
         basic_op_list=np.array(self.net.basic_op_list)
         print(basic_op_list)
         print(type(basic_op_list))
+        print(type(basic_op_list[0][0]))
         new_basic_op=[]
         for i in range(self.net.all_edges):
             _, index=torch.topk(self.alpha[i], k)
