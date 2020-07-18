@@ -91,13 +91,13 @@ class PdartsCNNController(nn.Module):
 
     def get_topk_op(self, k):
         basic_op_list=np.array(self.net.basic_op_list)
-        print(basic_op_list)
-        print(type(basic_op_list))
-        print(type(basic_op_list[0][0]))
+        # print(basic_op_list)
+        # print(type(basic_op_list))
+        # print(type(basic_op_list[0][0]))
         new_basic_op=[]
         for i in range(self.net.all_edges):
             _, index=torch.topk(self.alpha[i], k)
-            primitive=basic_op_list[i][index.cpu()]
+            primitive=basic_op_list[i][index.cpu()].tolist()
             new_basic_op.append(primitive)
         return new_basic_op
 
