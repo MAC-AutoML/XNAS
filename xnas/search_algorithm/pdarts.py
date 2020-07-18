@@ -90,7 +90,7 @@ class PdartsCNNController(nn.Module):
         self.alpha[skip_edg[min]][skip_id[min]]=0.0
 
     def get_topk_op(self, k):
-        basic_op_list=np.array(self.net.basic_op_list)
+        basic_op_list=np.array(self.net.basic_op_list.cpu())
         new_basic_op=[]
         for i in range(self.net.all_edges):
             _, index=torch.topk(self.alpha[i], k)

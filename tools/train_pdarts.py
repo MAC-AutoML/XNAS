@@ -72,6 +72,7 @@ def main():
         scale_factor=0.2
         for cur_epoch in range(start_epoch, cfg.OPTIM.MAX_EPOCH):
             print('cur_epoch', cur_epoch)
+            basic_op=controller.get_topk_op(num_to_keep[sp])
             lr = lr_scheduler.get_last_lr()[0]
             if cur_epoch<eps_no_archs[sp]:
                 controller.update_p(float(drop_rate[sp]) * (cfg.OPTIM.MAX_EPOCH - cur_epoch - 1) / cfg.OPTIM.MAX_EPOCH)
