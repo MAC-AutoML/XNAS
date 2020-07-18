@@ -80,7 +80,7 @@ class PdartsCNNController(nn.Module):
         for i, edg in enumerate(normal):
             for k in range(2):
                 if edg[k][0]=='skip_connect':
-                    edg_num=pre[i]+edg[1]
+                    edg_num=pre[i]+edg[k][1]
                     skip_edg.append(edg_num)
                     for j, op in enumerate(self.net.basic_op_list[edg_num]):
                         if op == 'skip_connect':
