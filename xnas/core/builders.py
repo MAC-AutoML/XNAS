@@ -11,7 +11,7 @@ import torch
 from xnas.core.config import cfg
 from xnas.search_space.cell_based import _DartsCNN
 from xnas.search_space.cell_based import _NASbench201
-from xnas.search_space.cell_based import _PdartsCNN
+from xnas.search_space.method.pdarts import _PdartsCNN
 
 
 # Supported models
