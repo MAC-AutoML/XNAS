@@ -98,13 +98,26 @@ def main():
                 torch.cuda.synchronize()
                 torch.cuda.empty_cache()  # https://forums.fast.ai/t/clearing-gpu-memory-pytorch/14637
             gc.collect()
+
+        logger.info('Restricting skipconnect...')
+        for sks in range(0, 9):
+            max_sk=8-sks
+            num_sk=controller.get_skip_number()
+            if not num_sk > max_sk:
+                continue
+            while num_sk > max_sk:
+                controller.delete_skip()
+
+            logger.info('Number of skip-connect: %d', max_sk)
+            logger.info(controller.genotype())
+
         if sp == len(num_to_keep) - 1:
             logger.info("###############final Optimal genotype: {}############")
             logger.info(controller.genotype(final=True))
             logger.info("########################################################")
             controller.print_alphas(logger)
 
-            logging.info('Restricting skipconnect...')
+            logger.info('Restricting skipconnect...')
             for sks in range(0, 9):
                 max_sk=8-sks
                 num_sk=controller.get_skip_number()
@@ -113,7 +126,7 @@ def main():
                 while num_sk > max_sk:
                     controller.delete_skip()
 
-                logging.info('Number of skip-connect: %d', max_sk)
+                logger.info('Number of skip-connect: %d', max_sk)
                 logger.info(controller.genotype())
         else:
             basic_op=controller.get_topk_op(num_to_keep[sp])
