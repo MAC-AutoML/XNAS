@@ -7,12 +7,12 @@ from xnas.search_space.utils import build_activation, SEModule, make_divisible, 
 from xnas.core.config import cfg
 
 
-class StemIN(nn.Module):
-    """EfficientNet stem for ImageNet: 3x3, BN, Swish."""
+class ConvLayer(nn.Module):
+    """Standard convolution layers with CBR"""
 
-    def __init__(self, w_in, w_out, conv_act):
-        super(StemIN, self).__init__()
-        self.conv = nn.Conv2d(w_in, w_out, 3, stride=2, padding=1, bias=False)
+    def __init__(self, w_in, w_out, kernel_size, stride, padding, conv_act):
+        super(ConvLayer, self).__init__()
+        self.conv = nn.Conv2d(w_in, w_out, kernel_size, stride=stride, padding=padding, bias=False)
         self.bn = nn.BatchNorm2d(w_out, eps=cfg.BN.EPS, momentum=cfg.BN.MOM)
         self.conv_act = build_activation(conv_act)
 
@@ -89,8 +89,6 @@ class MBConv(nn.Module):
             middle_channel, out_channel, 1, stride=1, padding=0, bias=False)
         self.point_linear_bn = nn.BatchNorm2d(
             out_channel, eps=cfg.BN.EPS, momentum=cfg.BN.MOM)
-        # Skip connection if in and out shapes are the same (MN-V2 style)
-        self.has_skip = stride == 1 and in_channel == out_channel
 
     def forward(self, x):
         f_x = x
@@ -101,6 +99,20 @@ class MBConv(nn.Module):
         if hasattr(self, 'depth_se'):
             f_x = self.depth_se(f_x)
         f_x = self.point_linear_bn(self.point_linear_conv(f_x))
-        if self.has_skip:
-            f_x = x + f_x
         return f_x
+
+
+class ResidualBlock(nn.Module):
+    def __init__(self, conv=None, shortcut=None):
+        super(ResidualBlock, self).__init__()
+
+        self.conv = conv
+        self.shortcut = shortcut
+
+    def forward(self, x):
+        if self.conv is None:
+            return x
+        elif self.shortcut is None:
+            return self.conv(x)
+        else:
+            return self.conv(x) + self.shortcut(x)

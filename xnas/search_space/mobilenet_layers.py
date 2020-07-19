@@ -1,4 +1,6 @@
 from xnas.search_space.mobilenet_ops import *
+from xnas.search_space.standard_mobilenet import (ConvLayer, MBConv,
+                                                  ResidualBlock)
 from xnas.search_space.utils import adjust_bn_according_to_idx, copy_bn
 
 
@@ -86,7 +88,7 @@ class DynamicMBConvLayer(nn.Module):
                     self.depth_bn = nn.ModuleDict()
                     self.point_linear_conv = nn.ModuleDict()
                     self.point_linear_bn = nn.ModuleDict()
-                self.inverted_bottleneck_conv[str(kernel)] = DynamicPointConv2d(
+                self.inverted_bottleneck_conv[str(kernel)] = DynamicChannelConv2d(
                     self.in_channel_list, middle_channel_list, weight_sharing=_weight_sharing)
                 self.inverted_bottleneck_bn[str(kernel)] = DynamicBatchNorm2d(
                     middle_channel_list, weight_sharing=_weight_sharing)
@@ -94,13 +96,14 @@ class DynamicMBConvLayer(nn.Module):
                     middle_channel_list, self.se_list, weight_sharing=_weight_sharing)
                 self.depth_bn[str(kernel)] = DynamicBatchNorm2d(
                     middle_channel_list, weight_sharing=_weight_sharing)
-                self.point_linear_conv[str(kernel)] = DynamicPointConv2d(
+                self.point_linear_conv[str(kernel)] = DynamicChannelConv2d(
                     middle_channel_list, self.out_channel_list, weight_sharing=_weight_sharing)
                 self.point_linear_bn[str(kernel)] = DynamicBatchNorm2d(
                     self.out_channel_list, weight_sharing=_weight_sharing)
         if max(self.expand_ratio_list) == 1:
             self.inverted_bottleneck_conv = None
             self.inverted_bottleneck_bn = None
+        self.init_active_operator()
 
     def sample_check(sample):
         assert sample is dict, "Sample shoud be a python dict!"
@@ -110,13 +113,16 @@ class DynamicMBConvLayer(nn.Module):
         assert 'kernel' in sample.keys(), "kernel should in sample"
         assert 'se' in sample.keys(), "se should in sample"
 
-    def forward(self, x, sample):
-        self.sample_check(sample)
-        in_channel = x.size(1)
-        mid_channel = in_channel * sample['expand']
-        out_channel = sample['out_channel']
-        _act = self.act[sample['act']]
+    def init_active_operator(self):
+        self.active_inverted_bottleneck_conv = None
+        self.active_inverted_bottleneck_bn = None
+        self.active_depth_se = None
+        self.active_depth_bn = None
+        self.active_point_linear_conv = None
+        self.active_point_linear_bn = None
 
+    def get_active_operator_from_sample(self, in_channel, sample):
+        weight_sharing = (self.weight_sharing_mode == 0 | self.weight_sharing_mode == 2)
         if self.weight_sharing_mode == 0 or self.weight_sharing_mode == 1:
             _inverted_bottleneck_conv = self.inverted_bottleneck_conv
             _inverted_bottleneck_bn = self.inverted_bottleneck_bn
@@ -135,133 +141,162 @@ class DynamicMBConvLayer(nn.Module):
             _point_linear_bn = self.point_linear_bn[str(sample['kernel'])]
         else:
             raise NotImplementedError
+        if weight_sharing:
+            self.active_inverted_bottleneck_conv = _inverted_bottleneck_conv
+            self.active_inverted_bottleneck_bn = _inverted_bottleneck_bn
+            self.active_depth_se = _depth_se
+            self.active_depth_bn = _depth_bn
+            self.active_point_linear_conv = _point_linear_conv
+            self.active_point_linear_bn = _point_linear_bn
+        else:
+            mid_channel = in_channel * sample['expand']
+            out_channel = sample['out_channel']
+            self.active_inverted_bottleneck_conv = _inverted_bottleneck_conv["{}_{}".format(
+                _in_channel, mid_channel)]
+            self.active_inverted_bottleneck_bn = _inverted_bottleneck_bn[str(
+                mid_channel)]
+            self.active_depth_se = _depth_se["{}_{}".format(
+                mid_channel, sample['se'])]
+            self.active_depth_bn = _depth_bn[str(mid_channel)]
+            self.active_point_linear_conv = _point_linear_conv["{}_{}".format(
+                mid_channel, out_channel)]
+            self.active_point_linear_bn = _point_linear_bn[str(out_channel)]
+
+    def forward(self, x, sample):
+        self.sample_check(sample)
+        in_channel = x.size(1)
+        mid_channel = in_channel * sample['expand']
+        out_channel = sample['out_channel']
+        _act = self.act[sample['act']]
+        self.get_active_operator_from_sample(in_channel, sample)
 
         # invert
         if self.inverted_bottleneck_conv is not None:
-            x = _inverted_bottleneck_conv(x, mid_channel)
-            x = _inverted_bottleneck_bn(x)
+            x = self.active_inverted_bottleneck_conv(x, mid_channel)
+            x = self.active_inverted_bottleneck_bn(x)
             x = _act(x)
         # depth wise conv
         x = self.depth_conv(x, sample['kernel'])
-        x = _depth_bn(x)
+        x = self.active_depth_bn(x)
         x = _act(x)
-        x = _depth_se(x, sample['se'])
+        x = self.active_depth_se(x, sample['se'])
         # output
-        x = _point_linear_conv(x, out_channel)
-        x = _point_linear_bn(x)
+        x = self.active_point_linear_conv(x, out_channel)
+        x = self.active_point_linear_bn(x)
         return x
 
-    def get_active_subnet(self, in_channel, sample, preserve_weight=True):
+    def get_active_sublayer(self, in_channel, sample, preserve_weight=True):
         self.sample_check(sample)
         middle_channel = make_divisible(
             round(in_channel * sample['expand']), 8)
 
         # build the new layer
-        sub_layer = MBInvertedConvLayer(
-            in_channel, sample['out_channel'], sample['kernel'], self.stride, sample['expand'],
-            act_func=sample['act'], mid_channels=middle_channel, use_se=self.use_se,
-        )
+        sub_layer = MBConv(in_channel, sample['expand'], sample['kernel'],
+                           self.stride, sample['act'], sample['se'], sample['out_channel'])
         sub_layer = sub_layer.to(get_net_device(self))
 
         if not preserve_weight:
             return sub_layer
 
         # copy weight from current layer
-        if sub_layer.inverted_bottleneck is not None:
-            sub_layer.inverted_bottleneck.conv.weight.data.copy_(
-                self.inverted_bottleneck.conv.conv.weight.data[:middle_channel,
+        self.get_active_operator_from_sample(in_channel, sample)
+        if sub_layer.expand:
+            sub_layer.inverted_bottleneck_conv.weight.data.copy_(
+                self.inverted_bottleneck_conv.conv.weight.data[:middle_channel,
                                                                :in_channel, :, :]
             )
-            copy_bn(sub_layer.inverted_bottleneck.bn,
-                    self.inverted_bottleneck.bn.bn)
+            copy_bn(sub_layer.inverted_bottleneck_bn,
+                    self.inverted_bottleneck_bn.bn)
 
-        sub_layer.depth_conv.conv.weight.data.copy_(
-            self.depth_conv.conv.get_active_filter(
-                middle_channel, self.active_kernel_size).data
-        )
-        copy_bn(sub_layer.depth_conv.bn, self.depth_conv.bn.bn)
+        sub_layer.depth_conv.weight.data.copy_(
+            self.depth_conv.get_active_filter(middle_channel, sample['kernel']).data)
+        copy_bn(sub_layer.depth_bn, self.active_depth_bn.bn)
 
-        if self.use_se:
+        if sample['se'] > 0:
             se_mid = make_divisible(
-                middle_channel // SEModule.REDUCTION, divisor=8)
-            sub_layer.depth_conv.se.fc.reduce.weight.data.copy_(
-                self.depth_conv.se.fc.reduce.weight.data[:se_mid,
-                                                         :middle_channel, :, :]
+                middle_channel // sample['se'], divisor=8)
+            sub_layer.depth_se.fc.reduce.weight.data.copy_(
+                self.active_depth_se.fc.reduce.weight.data[:se_mid,
+                                                           :middle_channel, :, :]
             )
-            sub_layer.depth_conv.se.fc.reduce.bias.data.copy_(
-                self.depth_conv.se.fc.reduce.bias.data[:se_mid])
+            sub_layer.depth_se.fc.reduce.bias.data.copy_(
+                self.active_depth_se.fc.reduce.bias.data[:se_mid])
 
-            sub_layer.depth_conv.se.fc.expand.weight.data.copy_(
-                self.depth_conv.se.fc.expand.weight.data[:middle_channel,
-                                                         :se_mid, :, :]
+            sub_layer.depth_se.fc.expand.weight.data.copy_(
+                self.active_depth_se.fc.expand.weight.data[:middle_channel,
+                                                           :se_mid, :, :]
             )
-            sub_layer.depth_conv.se.fc.expand.bias.data.copy_(
-                self.depth_conv.se.fc.expand.bias.data[:middle_channel])
+            sub_layer.depth_se.fc.expand.bias.data.copy_(
+                self.active_depth_se.fc.expand.bias.data[:middle_channel])
 
-        sub_layer.point_linear.conv.weight.data.copy_(
-            self.point_linear.conv.conv.weight.data[:
-                                                    self.active_out_channel, :middle_channel, :, :]
+        sub_layer.point_linear_conv.weight.data.copy_(
+            self.active_point_linear_conv.conv.weight.data[:
+                                                           self.active_out_channel, :middle_channel, :, :]
         )
-        copy_bn(sub_layer.point_linear.bn, self.point_linear.bn.bn)
+        copy_bn(sub_layer.point_linear_bn, self.point_linear_bn.bn)
 
         return sub_layer
 
     def re_organize_middle_weights(self, expand_ratio_stage=0):
-        importance = torch.sum(
-            torch.abs(self.point_linear.conv.conv.weight.data), dim=(0, 2, 3))
-        if expand_ratio_stage > 0:
-            sorted_expand_list = copy.deepcopy(self.expand_ratio_list)
-            sorted_expand_list.sort(reverse=True)
-            target_width = sorted_expand_list[expand_ratio_stage]
-            target_width = round(max(self.in_channel_list) * target_width)
-            importance[target_width:] = torch.arange(
-                0, target_width - importance.size(0), -1)
+        # only re organize middle weights when the mode is 0
+        if self.weight_sharing_mode == 0 and self.weight_sharing_mode_conv == 0:
+            importance = torch.sum(
+                torch.abs(self.point_linear_conv.conv.weight.data), dim=(0, 2, 3))
+            if expand_ratio_stage > 0:
+                sorted_expand_list = copy.deepcopy(self.expand_ratio_list)
+                sorted_expand_list.sort(reverse=True)
+                target_width = sorted_expand_list[expand_ratio_stage]
+                target_width = round(max(self.in_channel_list) * target_width)
+                importance[target_width:] = torch.arange(
+                    0, target_width - importance.size(0), -1)
 
-        sorted_importance, sorted_idx = torch.sort(
-            importance, dim=0, descending=True)
-        self.point_linear.conv.conv.weight.data = torch.index_select(
-            self.point_linear.conv.conv.weight.data, 1, sorted_idx
-        )
-
-        adjust_bn_according_to_idx(self.depth_conv.bn.bn, sorted_idx)
-        self.depth_conv.conv.conv.weight.data = torch.index_select(
-            self.depth_conv.conv.conv.weight.data, 0, sorted_idx
-        )
-
-        if self.use_se:
-            # se expand: output dim 0 reorganize
-            se_expand = self.depth_conv.se.fc.expand
-            se_expand.weight.data = torch.index_select(
-                se_expand.weight.data, 0, sorted_idx)
-            se_expand.bias.data = torch.index_select(
-                se_expand.bias.data, 0, sorted_idx)
-            # se reduce: input dim 1 reorganize
-            se_reduce = self.depth_conv.se.fc.reduce
-            se_reduce.weight.data = torch.index_select(
-                se_reduce.weight.data, 1, sorted_idx)
-            # middle weight reorganize
-            se_importance = torch.sum(
-                torch.abs(se_expand.weight.data), dim=(0, 2, 3))
-            se_importance, se_idx = torch.sort(
-                se_importance, dim=0, descending=True)
-
-            se_expand.weight.data = torch.index_select(
-                se_expand.weight.data, 1, se_idx)
-            se_reduce.weight.data = torch.index_select(
-                se_reduce.weight.data, 0, se_idx)
-            se_reduce.bias.data = torch.index_select(
-                se_reduce.bias.data, 0, se_idx)
-
-        # TODO if inverted_bottleneck is None, the previous layer should be reorganized accordingly
-        if self.inverted_bottleneck is not None:
-            adjust_bn_according_to_idx(
-                self.inverted_bottleneck.bn.bn, sorted_idx)
-            self.inverted_bottleneck.conv.conv.weight.data = torch.index_select(
-                self.inverted_bottleneck.conv.conv.weight.data, 0, sorted_idx
+            sorted_importance, sorted_idx = torch.sort(
+                importance, dim=0, descending=True)
+            self.point_linear_conv.conv.weight.data = torch.index_select(
+                self.point_linear_conv.conv.weight.data, 1, sorted_idx
             )
-            return None
+
+            adjust_bn_according_to_idx(self.depth_bn.bn, sorted_idx)
+            self.depth_conv.conv.weight.data = torch.index_select(
+                self.depth_conv.conv.weight.data, 0, sorted_idx
+            )
+
+            if self.use_se:
+                # se expand: output dim 0 reorganize
+                se_expand = self.depth_se.fc.expand
+                se_expand.weight.data = torch.index_select(
+                    se_expand.weight.data, 0, sorted_idx)
+                se_expand.bias.data = torch.index_select(
+                    se_expand.bias.data, 0, sorted_idx)
+                # se reduce: input dim 1 reorganize
+                se_reduce = self.depth_se.fc.reduce
+                se_reduce.weight.data = torch.index_select(
+                    se_reduce.weight.data, 1, sorted_idx)
+                # middle weight reorganize
+                se_importance = torch.sum(
+                    torch.abs(se_expand.weight.data), dim=(0, 2, 3))
+                se_importance, se_idx = torch.sort(
+                    se_importance, dim=0, descending=True)
+
+                se_expand.weight.data = torch.index_select(
+                    se_expand.weight.data, 1, se_idx)
+                se_reduce.weight.data = torch.index_select(
+                    se_reduce.weight.data, 0, se_idx)
+                se_reduce.bias.data = torch.index_select(
+                    se_reduce.bias.data, 0, se_idx)
+
+            # TODO if inverted_bottleneck is None, the previous layer should be reorganized accordingly
+            if self.inverted_bottleneck is not None:
+                adjust_bn_according_to_idx(
+                    self.inverted_bottleneck_bn.bn, sorted_idx)
+                self.inverted_bottleneck_conv.conv.weight.data = torch.index_select(
+                    self.inverted_bottleneck_conv.conv.weight.data, 0, sorted_idx
+                )
+                return None
+            else:
+                return sorted_idx
         else:
-            return sorted_idx
+            raise NotImplementedError
 
 
 class DynamicChannelConvLayer(MyModule):
@@ -289,11 +324,44 @@ class DynamicChannelConvLayer(MyModule):
         self.act = nn.ModuleDict()
         for act_name in self.act_func_list:
             self.act[act_name] = build_activation(act_name)
+        self.init_active_operator
+
+    def init_active_operator(self):
+        self.active_conv = None
+        self.active_bn = None
+        self.active_act = None
+
+    def get_active_operator_from_sample(in_channel, sample):
+        if self.weight_sharing:
+            self.active_conv = self.conv
+            self.active_bn = self.bn
+        else:
+            self.active_conv = self.conv[sample['out_channel']]
+            self.active_bn = self.bn[sample['out_channel']]
+        self.active_act = self.act[sample['act']]
 
     def forward(self, x, sample):
-
-        x = self.conv(x, sample['out_channel'])
+        in_channel = int(x.size(1))
+        self.get_active_operator_from_sample(in_channel, sample)
+        x = self.active_conv(x)
         if self.use_bn:
-            x = self.bn(x)
-        x = self.act[sample['act']](x)
+            x = self.active_bn(x)
+        x = self.active_act(x)
         return x
+
+    def get_active_sublayer(self, in_channel, preserve_weight=True):
+        self.get_active_operator_from_sample(in_channel, sample)
+        padding = get_same_padding(self.kernel_size)
+        sub_layer = ConvLayer(
+            in_channel, sample['out_channel'], self.kernel_size, self.stride, padding, sample['act'])
+        sub_layer = sub_layer.to(get_net_device(self))
+
+        if not preserve_weight:
+            return sub_layer
+
+        sub_layer.conv.weight.data.copy_(
+            self.active_conv.weight.data[:sample['out_channel'], :in_channel, :, :])
+        if self.use_bn:
+            copy_bn(sub_layer.bn, self.active_bn.bn)
+
+        return sub_layer
