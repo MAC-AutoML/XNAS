@@ -145,9 +145,12 @@ class DynamicSeparableConv2d(nn.Module):
         return y
 
 
-class DynamicPointConv2d(nn.Module):
+class DynamicChannelConv2d(nn.Module):
     def __init__(self, in_channel_list, out_channel_list, kernel_size=1, stride=1, dilation=1, weight_sharing=True):
-        super(DynamicPointConv2d, self).__init__()
+        """
+        Only support fix kernel size and dynamic input and output channels
+        """
+        super(DynamicChannelConv2d, self).__init__()
 
         self.in_channel_list = in_channel_list
         self.out_channel_list = out_channel_list
@@ -180,7 +183,7 @@ class DynamicPointConv2d(nn.Module):
                                        :in_channel, :, :].contiguous()
         else:
             assert in_channel in self.in_channel_list, "Input kernel should in in_channel_list"
-            assert out_channel in self.out_channel_list, "out_channel should in out_channel_list"
+            assert out_channel in self.out_channel_list, "out channel should in out_channel_list"
             filters = self.conv["{}_{}".format(
                 int(in_channel), out_channel)].weight
 
@@ -236,7 +239,7 @@ class DynamicSE(nn.Module):
         self.channel_list = channel_list
         self.reduction_list = reduction_list
         self.max_channel = max(self.channel_list)
-        self.min_reduction = min(reduction_list)
+        self.min_reduction = min([i for i in self.reduction_list if i > 0])
         self.weight_sharing = weight_sharing
         if weight_sharing:
             num_mid = make_divisible(
