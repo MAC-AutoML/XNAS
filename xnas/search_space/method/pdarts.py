@@ -12,15 +12,19 @@ class _MixOp4Pdarts(_MixedOp):
     def __init__(self, C_in, C_out, stride, p, basic_op_list=None):
         super(_MixOp4Pdarts, self).__init__(C_in, C_out, stride, basic_op_list)
         self.p=p
+        new_ops=[]
         for op in self._ops:
             if isinstance(op, Identity):
                 op=nn.Sequential(op, nn.Dropout(self.p))
+            new_ops.append(op)
+        self._ops=new_ops
     def update_p(self, p):
         for op in self._ops:
             if isinstance(op, nn.Sequential):
                 if isinstance(op[0], Identity):
                     self.p=p
                     op[1].p = self.p
+                    print(op, op[1].p)
 
 
 
