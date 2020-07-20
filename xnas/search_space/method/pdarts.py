@@ -22,7 +22,7 @@ class _MixOp4Pdarts(_MixedOp):
                 if isinstance(op[0], Identity):
                     self.p=p
                     op[1].p = self.p
-                    print(op, op[1].p)
+                    # print(op, op[1].p)
 
 
 
