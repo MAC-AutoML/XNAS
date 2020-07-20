@@ -34,7 +34,7 @@ def main():
 
     num_to_keep=[5,3,1]
     num_to_drop=[3,2,2]
-    eps_no_archs=[0,0,0]
+    eps_no_archs=[4,4,4]
     drop_rate=[0.1,0.4,0.7]
     add_layers=[0,6,12]
     add_width=[0,0,0]
