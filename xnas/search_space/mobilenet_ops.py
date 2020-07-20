@@ -126,6 +126,7 @@ class DynamicSeparableConv2d(nn.Module):
         return filters
 
     def forward(self, x, kernel=None):
+        assert kernel is None, "users shoud give kernel size"
         _kernel = self.active_kernel if kernel is None else kernel
         _in_channel = x.size(1)
         if self.weight_sharing_mode == 0 or self.weight_sharing_mode == 1:
@@ -175,6 +176,7 @@ class DynamicChannelConv2d(nn.Module):
         self.active_out_channel = self.max_out_channels
 
     def forward(self, x, out_channel=None):
+        assert out_channel is None, "users shoud give out channel"
         if out_channel is None:
             out_channel = self.active_out_channel
         in_channel = x.size(1)
@@ -214,6 +216,7 @@ class DynamicLinear(nn.Module):
         self.active_out_features = self.max_out_features
 
     def forward(self, x, out_features=None):
+        assert out_features is None, "users shoud give out_features"
         if out_features is None:
             out_features = self.active_out_features
 
@@ -268,7 +271,8 @@ class DynamicSE(nn.Module):
                         ('h_sigmoid', Hsigmoid(inplace=True)),
                     ]))
 
-    def forward(self, x, reduction=4):
+    def forward(self, x, reduction=None):
+        assert reduction is None, "users shoud give reduction"
         if reduction == 0:
             return x
         in_channel = x.size(1)

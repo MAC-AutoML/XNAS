@@ -1,6 +1,6 @@
 from xnas.search_space.mobilenet_ops import *
 from xnas.search_space.standard_mobilenet import (ConvLayer, MBConv,
-                                                  ResidualBlock)
+                                                  ResidualBlock, LinearLayer)
 from xnas.search_space.utils import adjust_bn_according_to_idx, copy_bn
 
 
@@ -299,7 +299,7 @@ class DynamicMBConvLayer(nn.Module):
             raise NotImplementedError
 
 
-class DynamicChannelConvLayer(MyModule):
+class DynamicChannelConvLayer(nn.Module):
     """
     Dynamic channel and activation function with fixed kernel size
     """
@@ -343,13 +343,13 @@ class DynamicChannelConvLayer(MyModule):
     def forward(self, x, sample):
         in_channel = int(x.size(1))
         self.get_active_operator_from_sample(in_channel, sample)
-        x = self.active_conv(x)
+        x = self.active_conv(x, sample['out_channel'])
         if self.use_bn:
             x = self.active_bn(x)
         x = self.active_act(x)
         return x
 
-    def get_active_sublayer(self, in_channel, preserve_weight=True):
+    def get_active_sublayer(self, in_channel, sample, preserve_weight=True):
         self.get_active_operator_from_sample(in_channel, sample)
         padding = get_same_padding(self.kernel_size)
         sub_layer = ConvLayer(
@@ -364,4 +364,63 @@ class DynamicChannelConvLayer(MyModule):
         if self.use_bn:
             copy_bn(sub_layer.bn, self.active_bn.bn)
 
+        return sub_layer
+
+
+class DynamicLinearLayer(nn.Module):
+
+    def __init__(self, in_features_list, out_features_list, act_func_list=None, weight_sharing=True, bias=True, dropout_rate=0):
+        super(DynamicLinearLayer, self).__init__()
+
+        self.in_features_list = in_features_list
+        self.out_features_list = out_features_list
+        self.bias = bias
+        self.dropout_rate = dropout_rate
+        self.weight_sharing = weight_sharing
+        self.act_func_list = [
+            'relu6'] if act_func_list is None else act_func_list
+
+        if self.dropout_rate > 0:
+            self.dropout = nn.Dropout(self.dropout_rate, inplace=True)
+        else:
+            self.dropout = None
+        self.act = nn.ModuleDict()
+        for act_name in self.act_func_list:
+            self.act[act_name] = build_activation(act_name)
+
+        self.linear = DynamicLinear(
+            self.in_feature_list, self.out_feature_list, bias=self.bias, weight_sharing=self.weight_sharing)
+        self.active_linear = None
+        self.active_act = None
+
+    def get_active_operator_from_sample(in_channel, sample):
+        if self.weight_sharing:
+            self.active_linear = self.linear
+        else:
+            self.active_linear = self.linear[sample['out_features']]
+        self.active_act = self.act[sample['act']
+                                   ] if sample['act'] is not None else None
+
+    def forward(self, x, sample):
+        in_channel = x.size(1)
+        self.get_active_operator_from_sample(in_channel, sample)
+        if self.dropout is not None:
+            x = self.dropout(x)
+        x = self.active_linear(x, out_features=sample['out_features'])
+        x = self.active_act(x) if sample['act'] is not None else x
+
+    def get_active_sublayer(in_channel, sample, preserve_weight=True):
+        self.get_active_operator_from_sample(in_channel, sample)
+        sub_layer = LinearLayer(
+            in_channel, sample['out_features'], act_func=sample['act'], dropout_rate=self.dropout_rate, bias=self.bias)
+        sub_layer = sub_layer.to(get_net_device(self))
+
+        if not preserve_weight:
+            return sub_layer
+
+        sub_layer.weight.data.copy_(
+            self.active_linear.weight.data[:self.out_features, :in_features])
+        if self.bias:
+            sub_layer.bias.data.copy_(
+                self.active_linear.linear.bias.data[:self.out_features])
         return sub_layer

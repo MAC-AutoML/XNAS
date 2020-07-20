@@ -12,13 +12,33 @@ class ConvLayer(nn.Module):
 
     def __init__(self, w_in, w_out, kernel_size, stride, padding, conv_act):
         super(ConvLayer, self).__init__()
-        self.conv = nn.Conv2d(w_in, w_out, kernel_size, stride=stride, padding=padding, bias=False)
+        self.conv = nn.Conv2d(w_in, w_out, kernel_size,
+                              stride=stride, padding=padding, bias=False)
         self.bn = nn.BatchNorm2d(w_out, eps=cfg.BN.EPS, momentum=cfg.BN.MOM)
         self.conv_act = build_activation(conv_act)
 
     def forward(self, x):
         for layer in self.children():
             x = layer(x)
+        return x
+
+
+class LinearLayer(nn.Module):
+    """Standard linear layers"""
+
+    def __init__(self, in_features, out_features, act_func=None, dropout_rate=0, bias=True):
+        self.linear = nn.Linear(in_features, out_features, bias=bias)
+        self.act = build_activation(act_func) if act_func is not None else None
+        if self.dropout_rate > 0:
+            self.dropout = nn.Dropout(self.dropout_rate, inplace=True)
+        else:
+            self.dropout = None
+
+    def forward(self, x):
+        if self.dropout is not None:
+            x = self.dropout(x)
+        x = self.linear(x)
+        x = self.act(x) if self.act is not None else x
         return x
 
 
