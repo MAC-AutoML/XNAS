@@ -87,7 +87,7 @@ def main():
             lr_scheduler.step()
             # Evaluate the model
             next_epoch = cur_epoch + 1
-            if next_epoch % cfg.SEARCH.EVAL_PERIOD == 0 or next_epoch == cfg.OPTIM.MAX_EPOCH:
+            if next_epoch >= cfg.OPTIM.MAX_EPOCH-5:
                 logger.info("Start testing")
                 test_epoch(val_, controller, val_meter, cur_epoch, tensorboard_writer=writer)
                 logger.info("###############Optimal genotype at epoch: {}############".format(cur_epoch))
@@ -98,6 +98,7 @@ def main():
                 torch.cuda.synchronize()
                 torch.cuda.empty_cache()  # https://forums.fast.ai/t/clearing-gpu-memory-pytorch/14637
             gc.collect()
+            print("now top k primitive", num_to_keep[sp], controller.get_topk_op(num_to_keep[sp]))
 
 
         if sp == len(num_to_keep) - 1:
