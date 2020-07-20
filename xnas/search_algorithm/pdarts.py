@@ -64,7 +64,7 @@ class PdartsCNNController(nn.Module):
         normal=self.genotype(final=True).normal
         res=0
         for edg in normal:
-            print(edg)
+            # print(edg)
             if edg[0][0]=='skip_connect':
                 res+=1
             if edg[1][0]=='skip_connect':

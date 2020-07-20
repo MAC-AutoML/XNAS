@@ -116,7 +116,7 @@ def main():
                     controller.delete_skip()
 
                 logger.info('Number of skip-connect: %d', max_sk)
-                logger.info(controller.genotype())
+                logger.info(controller.genotype(final=True))
         else:
             basic_op=controller.get_topk_op(num_to_keep[sp])
 
@@ -153,8 +153,8 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         if train_arch:
             alpha_optimizer.zero_grad()
             # architect.unrolled_backward(trn_X, trn_y, val_X, val_y, lr, w_optimizer)
-            logits=model(trn_X)
-            loss_a=loss_fun(logits, trn_y)
+            logits=model(val_X)
+            loss_a=loss_fun(logits, val_y)
             loss_a.backward()
             nn.utils.clip_grad_norm_(model.alphas_weight(), cfg.OPTIM.GRAD_CLIP)
             alpha_optimizer.step()
