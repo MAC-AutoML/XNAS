@@ -201,7 +201,7 @@ class PdartsCNN(nn.Module):
     def update_p(self, p):
         for cell in self.cells:
             # cell.p=self.p
-            cell.update_p(cell.p)
+            cell.update_p(p)
 
 
 def _PdartsCNN():
