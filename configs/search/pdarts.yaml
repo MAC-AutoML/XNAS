@@ -32,4 +32,4 @@ OPTIM:
   WEIGHT_DECAY: 3e-4
 DARTS:
   ALPHA_LR: 6e-4
-OUT_DIR: '/userhome/project/XNAS/experiment/pdarts/20207201055'
+OUT_DIR: '/userhome/project/XNAS/experiment/pdarts/20207201405'
