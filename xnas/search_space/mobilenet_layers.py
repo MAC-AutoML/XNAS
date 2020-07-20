@@ -8,7 +8,8 @@ class DynamicMBConvLayer(nn.Module):
 
     def __init__(self, in_channel_list, out_channel_list,
                  kernel_size_list=None, expand_ratio_list=None, act_func_list=None,
-                 se_list=None, stride=1, weight_sharing_mode=0, weight_sharing_mode_conv=0):
+                 se_list=None, stride=1, weight_sharing_mode=0, weight_sharing_mode_conv=0,
+                 short_cut=True):
         """
     DynamicMBConvLayer is a separable convolution operations with inverted_bottleneck, dynamic act, depth kernel size and input channels
     in_channel_list: type list example -> [24, 32, 68, xxx]
@@ -49,8 +50,9 @@ class DynamicMBConvLayer(nn.Module):
         self.act_func_list = [
             'relu6', 'h_swish'] if act_func_list is None else act_func_list
         self.act_func_list.sort()
-        self.se_list = [0, 0.25] if se_list is None else se_list
+        self.se_list = [0, 4] if se_list is None else se_list
         self.se_list.sort()
+        self.short_cut = short_cut
 
         self.weight_sharing_mode = weight_sharing_mode
         self.weight_sharing_mode_conv = weight_sharing_mode_conv
@@ -167,10 +169,13 @@ class DynamicMBConvLayer(nn.Module):
         in_channel = x.size(1)
         mid_channel = in_channel * sample['expand']
         out_channel = sample['out_channel']
+        if self.short_cut:
+            assert in_channel == out_channel, "This block has shortcut, the input and output channel should have same channels"
         _act = self.act[sample['act']]
         self.get_active_operator_from_sample(in_channel, sample)
 
         # invert
+        input_ = x
         if self.inverted_bottleneck_conv is not None:
             x = self.active_inverted_bottleneck_conv(x, mid_channel)
             x = self.active_inverted_bottleneck_bn(x)
@@ -183,6 +188,8 @@ class DynamicMBConvLayer(nn.Module):
         # output
         x = self.active_point_linear_conv(x, out_channel)
         x = self.active_point_linear_bn(x)
+        if self.short_cut:
+            x = x + input_
         return x
 
     def get_active_sublayer(self, in_channel, sample, preserve_weight=True):

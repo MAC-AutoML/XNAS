@@ -109,6 +109,8 @@ class MBConv(nn.Module):
             middle_channel, out_channel, 1, stride=1, padding=0, bias=False)
         self.point_linear_bn = nn.BatchNorm2d(
             out_channel, eps=cfg.BN.EPS, momentum=cfg.BN.MOM)
+        # Skip connection if in and out shapes are the same (MN-V2 style)
+        self.has_skip = stride == 1 and in_channel == out_channel
 
     def forward(self, x):
         f_x = x
@@ -119,6 +121,8 @@ class MBConv(nn.Module):
         if hasattr(self, 'depth_se'):
             f_x = self.depth_se(f_x)
         f_x = self.point_linear_bn(self.point_linear_conv(f_x))
+        if self.has_skip:
+            f_x = x + f_x
         return f_x
 
 
