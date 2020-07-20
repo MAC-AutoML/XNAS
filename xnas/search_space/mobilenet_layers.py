@@ -2,6 +2,14 @@ from xnas.search_space.mobilenet_ops import *
 from xnas.search_space.standard_mobilenet import (ConvLayer, MBConv,
                                                   ResidualBlock, LinearLayer)
 from xnas.search_space.utils import adjust_bn_according_to_idx, copy_bn
+import itertools
+
+
+def apply_to_sample(sammple_keys, _tuple):
+    sample = {}
+    for i, _key in enumerate(sammple_keys):
+        sample[_key] = _tuple[i]
+    return sample
 
 
 class DynamicMBConvLayer(nn.Module):
@@ -106,6 +114,9 @@ class DynamicMBConvLayer(nn.Module):
             self.inverted_bottleneck_conv = None
             self.inverted_bottleneck_bn = None
         self.init_active_operator()
+        self._sample_keys = ['expand', 'kernel', 'out_channel', 'se', 'act']
+        self._sample_operations = list(itertools.product(
+            self.expand_ratio_list, self.kernel_size_list, self.out_channel_list, self.se_list, self.act_func_list))
 
     def sample_check(sample):
         assert sample is dict, "Sample shoud be a python dict!"
@@ -123,7 +134,8 @@ class DynamicMBConvLayer(nn.Module):
         self.active_point_linear_conv = None
         self.active_point_linear_bn = None
 
-    def get_active_operator_from_sample(self, in_channel, sample):
+    def get_active_operator_from_sample(self, in_channel, sample_index):
+        sample = apply_to_sample(self._sample_keys, self._sample_operations[sample_index])
         weight_sharing = (self.weight_sharing_mode == 0 | self.weight_sharing_mode == 2)
         if self.weight_sharing_mode == 0 or self.weight_sharing_mode == 1:
             _inverted_bottleneck_conv = self.inverted_bottleneck_conv
@@ -165,7 +177,7 @@ class DynamicMBConvLayer(nn.Module):
             self.active_point_linear_bn = _point_linear_bn[str(out_channel)]
 
     def forward(self, x, sample):
-        self.sample_check(sample)
+        # sample is index of operations
         in_channel = x.size(1)
         mid_channel = in_channel * sample['expand']
         out_channel = sample['out_channel']
@@ -332,13 +344,16 @@ class DynamicChannelConvLayer(nn.Module):
         for act_name in self.act_func_list:
             self.act[act_name] = build_activation(act_name)
         self.init_active_operator
+        self._sample_keys = ['out_channel', 'act']
+        self._sample_operations = list(itertools.product(self.out_channel_list, self.act_func_list))
 
     def init_active_operator(self):
         self.active_conv = None
         self.active_bn = None
         self.active_act = None
 
-    def get_active_operator_from_sample(in_channel, sample):
+    def get_active_operator_from_sample(in_channel, sample_index):
+        sample = apply_to_sample(self._sample_keys, self._sample_operations[sample_index])
         if self.weight_sharing:
             self.active_conv = self.conv
             self.active_bn = self.bn
@@ -399,8 +414,11 @@ class DynamicLinearLayer(nn.Module):
             self.in_feature_list, self.out_feature_list, bias=self.bias, weight_sharing=self.weight_sharing)
         self.active_linear = None
         self.active_act = None
+        self._sample_keys = ['out_features', 'act']
+        self._sample_operations = list(itertools.product(self.out_features_list, self.act_func_list))
 
-    def get_active_operator_from_sample(in_channel, sample):
+    def get_active_operator_from_sample(in_channel, sample_index):
+        sample = apply_to_sample(self._sample_keys, self._sample_operations[sample_index])
         if self.weight_sharing:
             self.active_linear = self.linear
         else:
