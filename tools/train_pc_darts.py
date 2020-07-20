@@ -43,6 +43,7 @@ def main():
     # alphas optimizer
     alpha_optim = torch.optim.Adam(darts_controller.alphas(), cfg.DARTS.ALPHA_LR, betas=(0.5, 0.999),
                                    weight_decay=cfg.DARTS.ALPHA_WEIGHT_DECAY)
+
     lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         w_optim, cfg.OPTIM.MAX_EPOCH, eta_min=cfg.OPTIM.MIN_LR)
     train_meter = meters.TrainMeter(len(train_))

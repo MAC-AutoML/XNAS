@@ -77,10 +77,12 @@ class PCDartsCNNController(nn.Module):
     def alphas(self):
         for n, p in self._alphas:
             yield p
-
-    def betas(self):
         for n, p in self._betas:
             yield p
+
+    #def betas(self):
+    #    for n, p in self._betas:
+    #        yield p
 
     def named_alphas(self):
         for n, p in self._alphas:
@@ -168,8 +170,8 @@ class Architect():
             # synchronize alphas
             for a, va in zip(self.net.alphas(), self.v_net.alphas()):
                 va.copy_(a)
-            for b, vb in zip(self.net.betas(), self.v_net.betas()):
-                vb.copy_(b)
+            #for b, vb in zip(self.net.betas(), self.v_net.betas()):
+            #    vb.copy_(b)
 
     def unrolled_backward(self, trn_X, trn_y, val_X, val_y, xi, w_optim):
         """ Compute unrolled loss and backward its gradients
@@ -187,28 +189,26 @@ class Architect():
         v_weights = tuple(self.v_net.weights())
         ####alpha
         v_alphas = tuple(self.v_net.alphas())
-        v_betas = tuple(self.v_net.betas())
-        v_grads = torch.autograd.grad(loss, v_alphas + v_betas + v_weights,retain_graph=True)
+        #v_betas = tuple(self.v_net.betas())
+        v_grads = torch.autograd.grad(loss, v_alphas + v_weights,retain_graph=True)
         dalpha = v_grads[:len(v_alphas)]
-        dbeta = v_grads[len(v_alphas):len(v_alphas)+len(v_betas)]
-        dw = v_grads[len(v_alphas)+len(v_betas):]
+        #dbeta = v_grads[len(v_alphas):len(v_alphas)+len(v_betas)]
+        dw = v_grads[len(v_alphas):]
 
         hessiana = self.compute_hessian(dw, trn_X, trn_y)
-        hessianb = self.compute_hessian(dw, trn_X, trn_y, 1)
+        #hessianb = self.compute_hessian(dw, trn_X, trn_y, 1)
         # update final gradient = dalpha - xi*hessian
         #with torch.no_grad():
 
         #####beta
 
 
-
-
         # update final gradient = dbeta - xi*hessian
         with torch.no_grad():
             for alpha, da, h in zip(self.net.alphas(), dalpha, hessiana):
                 alpha.grad = da - xi * h
-            for beta, db, h in zip(self.net.betas(), dbeta, hessianb):
-                beta.grad = db - xi * h
+            #for beta, db, h in zip(self.net.betas(), dbeta, hessianb):
+            #    beta.grad = db - xi * h
 
 
 
@@ -281,14 +281,18 @@ class PcMixedOp(nn.Module):
         self._ops = nn.ModuleList()
         assert basic_op_list is not None, "the basic op list cannot be none!"
         basic_primitives = basic_op_list
+
         for primitive in basic_primitives:
             op = OPS_[primitive](C_in//self.k, C_out//self.k, stride, affine=False)
             self._ops.append(op)
 
     def forward(self, x, weights):
-
         #channel proportion k=4
         dim_2 = x.shape[1]
+        print("#####################print(dim_2)")
+        print(dim_2)
+        print(self.k)
+        print(C_in//self.k)
         xtemp = x[ : , :  dim_2//self.k, :, :]
         xtemp2 = x[ : ,  dim_2//self.k:, :, :]
         assert len(self._ops) == len(weights)
@@ -320,7 +324,7 @@ class PcMixedOp(nn.Module):
 
 
 class PcDartsCell(nn.Module):
-    def __init__(self, n_nodes, C_pp, C_p, C, reduction_p, reduction, basic_op_list):
+    def __init__(self, n_nodes, C_pp, C_p, C, reduction_p, reduction, basic_op_list,multiplier):
         """
         Args:
             n_nodes: # of intermediate n_nodes
@@ -333,6 +337,7 @@ class PcDartsCell(nn.Module):
         super().__init__()
         self.reduction = reduction
         self.n_nodes = n_nodes
+        self._multiplier = multiplier
         self.basic_op_list = basic_op_list
 
         # If previous cell is reduction cell, current input size does not match with
@@ -352,35 +357,22 @@ class PcDartsCell(nn.Module):
                 stride = 2 if reduction and j < 2 else 1
                 op = PcMixedOp(C, C, stride, self.basic_op_list)
                 self.dag[i].append(op)
-        '''
-        self.dag = nn.ModuleList()
-        self._bns = nn.ModuleList()
-        for i in range(self.n_nodes):
-            for j in range(2 + i):
-                stride = 2 if reduction and j < 2 else 1
-                op = PcMixedOp(C, C, stride, self.basic_op_list)
-                self.dag.append(op)'''
+
 
     def forward(self, s0, s1, sample,sample2):
         s0 = self.preproc0(s0)
         s1 = self.preproc1(s1)
-        #print("#####sample####")
-        #print(type(sample), sample)
-        #("#####sample2####")
-        #print(type(sample2), sample2)
+
         states = [s0, s1]
         w_dag = darts_weight_unpack(sample, self.n_nodes)
         w_w_dag = darts_weight_unpack(sample2, self.n_nodes)
-        #print("#####w_dag####")
-        #print(type(w_dag),w_dag)
-        #print("#####w_w_dag####")
-        #print(type(w_w_dag),w_w_dag)
+
         for edges, w_list,w_w_list in zip(self.dag, w_dag,w_w_dag):
 
             s_cur = sum(ww * edges[i](s, w)
                         for i, (s, w, ww) in enumerate(zip(states, w_list, w_w_list)))
             states.append(s_cur)
-        s_out = torch.cat(states[2:], 1)
+        s_out = torch.cat(states[-self._multiplier:], 1)
         return s_out
 
 
@@ -389,10 +381,10 @@ class PcDartsCell(nn.Module):
 
 class PcDartsCNN(nn.Module):
 
-    def __init__(self, C=16, n_classes=10, n_layers=8, n_nodes=4, basic_op_list=[]):
+    def __init__(self, C=16, n_classes=10, n_layers=8, n_nodes=4, basic_op_list=[],multiplier = 4):
         super().__init__()
         stem_multiplier = 3
-        self._multiplier = 4
+        self._multiplier = multiplier
         self.C_in = 3  # 3
         self.C = C  # 16
         self.n_classes = n_classes  # 10
@@ -418,7 +410,7 @@ class PcDartsCNN(nn.Module):
                 reduction = True
             else:
                 reduction = False
-            cell = PcDartsCell(n_nodes, C_pp, C_p, C_cur, reduction_p, reduction, self.basic_op_list)
+            cell = PcDartsCell(n_nodes, C_pp, C_p, C_cur, reduction_p, reduction, self.basic_op_list,multiplier)
             reduction_p = reduction
             self.cells.append(cell)
             C_cur_out = C_cur * n_nodes
@@ -513,7 +505,7 @@ class PcDartsCNN(nn.Module):
             theta_norm, k=2, basic_op_list=self.basic_op_list)
         gene_reduce = parse_from_numpy(
             theta_reduce, k=2, basic_op_list=self.basic_op_list)
-        concat = range(2, 2 + self.n_nodes)  # concat all intermediate nodes
+        concat = range(2 + self.n_nodes - self._multiplier, 2 + self.n_nodes)  # concat all intermediate nodes
         return Genotype(normal=gene_normal, normal_concat=concat,
                         reduce=gene_reduce, reduce_concat=concat)
 
