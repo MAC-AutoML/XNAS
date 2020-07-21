@@ -37,7 +37,7 @@ def main():
     loss_fun = nn.CrossEntropyLoss().cuda()
 
     # weights optimizer
-    w_optim = torch.optim.SGD(search_space.weight_parameters(), cfg.OPTIM.BASE_LR, momentum=cfg.OPTIM.MOMENTUM,
+    w_optim = torch.optim.SGD(search_space.weights(), cfg.OPTIM.BASE_LR, momentum=cfg.OPTIM.MOMENTUM,
                               weight_decay=cfg.OPTIM.WEIGHT_DECAY)
     # load dataset
     [train_, val_] = _construct_loader(
