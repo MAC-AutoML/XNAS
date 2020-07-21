@@ -87,7 +87,8 @@ def main():
             logger.info("########################################################")
             logger.info("####### ALPHA #######")
             for alpha in distribution_optimizer.p_model.theta:
-                logger.info(F.softmax(alpha, dim=-1).cpu().detach().numpy())
+                alpha_tensor = torch.tensor(alpha)
+                logger.info(F.softmax(alpha_tensor, dim=-1).cpu().detach().numpy())
             logger.info("#####################")
         if torch.cuda.is_available():
             torch.cuda.synchronize()
