@@ -86,7 +86,7 @@ def main():
             logger.info(search_space.genotype(distribution_optimizer.p_model.theta))
             logger.info("########################################################")
             logger.info("####### ALPHA #######")
-            for alpha in distribution_optimizer.p_model.alpha:
+            for alpha in distribution_optimizer.p_model.theta:
                 logger.info(F.softmax(alpha, dim=-1).cpu().detach().numpy())
             logger.info("#####################")
         if torch.cuda.is_available():
