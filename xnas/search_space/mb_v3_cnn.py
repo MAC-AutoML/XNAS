@@ -1,6 +1,6 @@
 from xnas.search_space.mb_ops import *
 from xnas.search_space.proxyless_cnn import ProxylessNASNets
-from utils import flops_counter
+from xnas.search_space.utils import profile
 import json
 import xnas.core.logging as logging
 
@@ -143,12 +143,12 @@ class MobileNetV3(MyNetwork):
             input_size = [1, 3, 224, 224]
         original_device = self.parameters().__next__().device
         x = torch.zeros(input_size).to(original_device)
-        first_conv_flpos, _ = flops_counter.profile(self.first_conv, input_size)
+        first_conv_flpos, _ = profile(self.first_conv, input_size)
         x = self.first_conv(x)
         block_flops = []
         for block in self.blocks:
             if not isinstance(block.mobile_inverted_conv, MixedEdge):
-                _flops, _ = flops_counter.profile(block, x.size())
+                _flops, _ = profile(block, x.size())
                 block_flops.append([_flops])
                 x = block(x)
             else:
@@ -157,18 +157,18 @@ class MobileNetV3(MyNetwork):
                     if isinstance(block.mobile_inverted_conv.candidate_ops[i], ZeroLayer):
                         _flops_list.append(0)
                     else:
-                        _flops, _ = flops_counter.profile(block.mobile_inverted_conv.candidate_ops[i], x.size())
+                        _flops, _ = profile(block.mobile_inverted_conv.candidate_ops[i], x.size())
                         _flops_list.append(_flops)
                 block_flops.append(_flops_list)
                 x = block(x)
-        final_expand_layer_flops, _ = flops_counter.profile(self.final_expand_layer, x.size())
+        final_expand_layer_flops, _ = profile(self.final_expand_layer, x.size())
         x = self.final_expand_layer(x)
 
         x = self.global_avg_pooling(x)
-        feature_mix_layer_flops, _ = flops_counter.profile(self.feature_mix_layer, x.size())
+        feature_mix_layer_flops, _ = profile(self.feature_mix_layer, x.size())
         x = self.feature_mix_layer(x)
         x = x.view(x.size(0), -1)  # flatten
-        classifier_flops, _ = flops_counter.profile(self.classifier, x.size())
+        classifier_flops, _ = profile(self.classifier, x.size())
         self.train()
         return {'first_conv_flpos': first_conv_flpos,
                 'block_flops': block_flops,
