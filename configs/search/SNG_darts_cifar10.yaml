@@ -9,7 +9,7 @@ SEARCH:
 OPTIM:
   STEPS: [48, 96]
 SNG:
-  NAME: 'MIGO'
+  NAME: 'SNG'
   THETA_LR: 0.1
   PRUNING: True
   PROB_SAMPLING: False

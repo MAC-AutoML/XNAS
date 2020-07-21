@@ -68,12 +68,8 @@ class SNG:
 
     def update(self):
         if len(self.sample) == self.lam:
-            sample_array = []
             objective = np.array(self.objective)
-            if len(np.array(self.sample).shape) == 2:
-                for sample in self.sample:
-                    sample_array.append(index_to_one_hot(sample, self.p_model.Cmax))
-            sample_array = np.array(sample_array)
+            sample_array = np.array(self.sample)
             self.update_function(sample_array, objective)
             self.sample = []
             self.objective = []
@@ -272,12 +268,8 @@ class Dynamic_SNG:
 
     def update(self):
         if len(self.sample_index[0]) == 0:
-            sample_array = []
             objective = np.array(self.objective)
-            if len(np.array(self.sample).shape) == 2:
-                for sample in self.sample:
-                    sample_array.append(index_to_one_hot(sample, self.p_model.Cmax))
-            sample_array = np.array(sample_array)
+            sample_array = np.array(self.sample)
             self.update_function(sample_array, objective)
             self.sample = []
             self.objective = []
