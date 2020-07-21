@@ -15,7 +15,7 @@ import xnas.core.logging as logging
 import xnas.core.meters as meters
 from xnas.core.builders import build_space, lr_scheduler_builder, sng_builder
 from xnas.core.config import cfg
-from xnas.core.trainer import setup_env, test_epoch
+from xnas.core.trainer import setup_env
 from xnas.datasets.loader import _construct_loader
 import torch.nn.functional as F
 
@@ -73,7 +73,7 @@ def main():
         train(train_, val_, search_space, w_optim, lr, epoch, sample, loss_fun, train_meter)
 
         # validation
-        top1 = test_epoch(val_, search_space, val_meter, epoch, writer)
+        top1 = test_epoch(val_, search_space, val_meter, epoch, sample, writer)
         lr_scheduler.step()
         distribution_optimizer.record_information(sample, top1)
         distribution_optimizer.update()
@@ -111,7 +111,7 @@ def train(train_loader, valid_loader, model, w_optim, lr, epoch, sample, net_cri
         if scaler is not None:
             with torch.cuda.amp.autocast():
                 # Perform the forward pass in AMP
-                preds = model(trn_X)
+                preds = model(trn_X, sample)
                 # Compute the loss in AMP
                 loss = net_crit(preds, trn_y)
                 # Perform the backward pass in AMP
@@ -121,7 +121,7 @@ def train(train_loader, valid_loader, model, w_optim, lr, epoch, sample, net_cri
                 # Updates the scale for next iteration.
                 scaler.update()
         else:
-            preds = model(trn_X)
+            preds = model(trn_X, sample)
             # Compute the loss
             loss = net_crit(preds, trn_y)
             # Perform the backward pass
@@ -151,6 +151,48 @@ def train(train_loader, valid_loader, model, w_optim, lr, epoch, sample, net_cri
     # Log epoch stats
     train_meter.log_epoch_stats(epoch)
     train_meter.reset()
+
+
+@torch.no_grad()
+def test_epoch(test_loader, model, test_meter, cur_epoch, sample, tensorboard_writer=None,):
+    """Evaluates the model on the test set."""
+    # Enable eval mode
+    model.eval()
+    test_meter.iter_tic()
+
+    for cur_iter, (inputs, labels) in enumerate(test_loader):
+        # Transfer the data to the current GPU device
+        inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
+        # using AMP
+        if cfg.SEARCH.AMP & hasattr(torch.cuda.amp, 'autocast'):
+            with torch.cuda.amp.autocast():
+                # Compute the predictions
+                preds = model(inputs, sample)
+        else:
+            # Compute the predictions
+            preds = model(inputs, sample)
+        # Compute the errors
+        top1_err, top5_err = meters.topk_errors(preds, labels, [1, 5])
+        # Combine the errors across the GPUs  (no reduction if 1 GPU used)
+        # top1_err, top5_err = dist.scaled_all_reduce([top1_err, top5_err])
+        # Copy the errors from GPU to CPU (sync point)
+        top1_err, top5_err = top1_err.item(), top5_err.item()
+        test_meter.iter_toc()
+        # Update and log stats
+        test_meter.update_stats(
+            top1_err, top5_err, inputs.size(0) * cfg.NUM_GPUS)
+        test_meter.log_iter_stats(cur_epoch, cur_iter)
+        test_meter.iter_tic()
+    top1_err = test_meter.mb_top1_err.get_win_median()
+    if tensorboard_writer is not None:
+        tensorboard_writer.add_scalar(
+            'val/top1_error', test_meter.mb_top1_err.get_win_median(), cur_epoch)
+        tensorboard_writer.add_scalar(
+            'val/top5_error', test_meter.mb_top5_err.get_win_median(), cur_epoch)
+    # Log epoch stats
+    test_meter.log_epoch_stats(cur_epoch)
+    test_meter.reset()
+    return top1_err
 
 
 if __name__ == "__main__":
