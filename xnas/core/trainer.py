@@ -164,6 +164,7 @@ def test_epoch(test_loader, model, test_meter, cur_epoch, tensorboard_writer=Non
             top1_err, top5_err, inputs.size(0) * cfg.NUM_GPUS)
         test_meter.log_iter_stats(cur_epoch, cur_iter)
         test_meter.iter_tic()
+    top1_err = test_meter.mb_top1_err.get_win_median()
     if tensorboard_writer is not None:
         tensorboard_writer.add_scalar(
             'val/top1_error', test_meter.mb_top1_err.get_win_median(), cur_epoch)
@@ -172,6 +173,7 @@ def test_epoch(test_loader, model, test_meter, cur_epoch, tensorboard_writer=Non
     # Log epoch stats
     test_meter.log_epoch_stats(cur_epoch)
     test_meter.reset()
+    return top1_err
 
 
 def train_model():

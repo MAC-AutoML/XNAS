@@ -1,6 +1,10 @@
 from xnas.search_space.mb_ops import *
 from xnas.search_space.proxyless_cnn import ProxylessNASNets
 from utils import flops_counter
+import json
+import xnas.core.logging as logging
+
+logger = logging.get_logger(__name__)
 
 
 class MobileNetV3(MyNetwork):
@@ -195,3 +199,20 @@ def get_super_net(n_classes=1000, base_stage_width=None, width_mult=1.2, conv_ca
                            depth=depth)
     else:
         raise NotImplementedError
+
+
+def build_super_net():
+    from xnas.core.config import cfg
+    super_net = get_super_net(cfg.SPACE.NUM_CLASSES, cfg.SPACE.NAME, cfg.MB.WIDTH_MULTI, cfg.MB.BASIC_OP, cfg.MB.DEPTH)
+    super_net.all_edges = len(super_net.blocks) - 1
+    super_net.num_edges = len(super_net.blocks) - 1
+    super_net.num_ops = len(super_net.conv_candidates) + 1
+    super_net_config_path = os.path.join(cfg.OUT_DIR, 'supernet.json')
+    super_net_config = super_net.config
+    logger.info("Saving search supernet to {}".format(super_net_config_path))
+    json.dump(super_net_config, open(super_net_config_path, 'a+'))
+    flops_path = os.path.join(config.network_info_path, 'flops.json')
+    flops_ = super_net.flops_counter_per_layer(input_size=[1, 3, 224, 224])
+    logger.info("Saving flops to {}".format(flops_path))
+    json.dump(flops_, open(flops_path, 'a+'))
+    return super_net
