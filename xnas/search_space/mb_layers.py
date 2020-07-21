@@ -4,9 +4,10 @@
 
 from xnas.search_space.mb_base_module import MyModule, MyNetwork
 from collections import OrderedDict
+import torch
 import torch.nn as nn
-from utils.utils import *
 import torch.nn.functional as F
+from xnas.search_space.utils import make_divisible, get_same_padding
 
 
 class ShuffleLayer(nn.Module):
