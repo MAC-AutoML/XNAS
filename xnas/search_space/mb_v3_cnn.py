@@ -21,6 +21,7 @@ class MobileNetV3(MyNetwork):
             '5x5_MBConv3', '5x5_MBConv6',
             '7x7_MBConv3', '7x7_MBConv6',
         ] if conv_candidates is None else conv_candidates
+        conv_candidates = self.conv_candidates
 
         if self.base_stage_width == 'ofa':
             base_stage_width = [16, 24, 40, 80, 112, 160, 960, 1280]
