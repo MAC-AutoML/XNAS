@@ -15,4 +15,6 @@ SNG:
   UTILITY_FACTOR: 0.4
   MOMENTUM: True
   GAMMA: 0.9
+DATA_LOADER:
+  BACKEND: 'custom'
 OUT_DIR: '/userhome/project/XNAS/experiment/MIGO_test'
