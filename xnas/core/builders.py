@@ -62,7 +62,7 @@ def register_loss_fun(name, ctor):
     _loss_funs[name] = ctor
 
 
-def sng_builder(name, category):
+def sng_builder(category):
     if cfg.SNG.NAME == 'MDENAS':
         return CategoricalMDENAS(category, cfg.SNG.THETA_LR)
     elif cfg.SNG.NAME == 'DDPNAS':
