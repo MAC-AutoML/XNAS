@@ -558,7 +558,7 @@ class NASBench201CNN(nn.Module):
         self.edge2index = edge2index
         self.num_edges = num_edge
         self.all_edges = self.num_edges
-        self.num_ops = len(basic_op_list)
+        self.num_ops = len(self.basic_op_list)
         self.lastact = nn.Sequential(
             nn.BatchNorm2d(C_prev), nn.ReLU(inplace=True))
         self.global_pooling = nn.AdaptiveAvgPool2d(1)
