@@ -69,7 +69,6 @@ def main():
                 break
         lr = w_optim.param_groups[0]['lr']
         sample = distribution_optimizer.sampling()
-        import pdb; pdb.set_trace()
 
         # training
         train(train_, val_, search_space, w_optim, lr, epoch, sample, loss_fun, train_meter)
