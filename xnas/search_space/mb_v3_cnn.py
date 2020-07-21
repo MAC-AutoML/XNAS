@@ -212,6 +212,7 @@ def build_super_net():
     super_net.num_ops = len(super_net.conv_candidates) + 1
     super_net_config_path = os.path.join(cfg.OUT_DIR, 'supernet.json')
     super_net_config = super_net.config
+    super_net.cuda()
     logger.info("Saving search supernet to {}".format(super_net_config_path))
     json.dump(super_net_config, open(super_net_config_path, 'a+'))
     flops_path = os.path.join(cfg.OUT_DIR, 'flops.json')
