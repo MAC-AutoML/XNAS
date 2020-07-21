@@ -83,7 +83,7 @@ def main():
         if next_epoch % cfg.SEARCH.EVAL_PERIOD == 0 or next_epoch == cfg.OPTIM.MAX_EPOCH:
             logger.info("Start testing")
             logger.info("###############Optimal genotype at epoch: {}############".format(epoch))
-            logger.info(distribution_optimizer.genotype())
+            logger.info(search_space.genotype(distribution_optimizer.p_model.theta))
             logger.info("########################################################")
             logger.info("####### ALPHA #######")
             for alpha in distribution_optimizer.alpha:
