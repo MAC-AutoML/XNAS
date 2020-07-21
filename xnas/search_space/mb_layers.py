@@ -516,7 +516,7 @@ class ZeroLayer(MyModule):
         self.stride = stride
 
     def forward(self, x):
-        raise ValueError
+        return 0
 
     @property
     def module_str(self):
