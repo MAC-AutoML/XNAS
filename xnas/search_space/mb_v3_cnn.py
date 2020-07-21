@@ -203,7 +203,8 @@ def get_super_net(n_classes=1000, base_stage_width=None, width_mult=1.2, conv_ca
 
 def build_super_net():
     from xnas.core.config import cfg
-    super_net = get_super_net(cfg.SPACE.NUM_CLASSES, cfg.SPACE.NAME, cfg.MB.WIDTH_MULTI, cfg.MB.BASIC_OP, cfg.MB.DEPTH)
+    basic_op = None if len(cfg.MB.BASIC_OP) == 0 else cfg.MB.BASIC_OP
+    super_net = get_super_net(cfg.SPACE.NUM_CLASSES, cfg.SPACE.NAME, cfg.MB.WIDTH_MULTI, basic_op, cfg.MB.DEPTH)
     super_net.all_edges = len(super_net.blocks) - 1
     super_net.num_edges = len(super_net.blocks) - 1
     super_net.num_ops = len(super_net.conv_candidates) + 1

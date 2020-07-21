@@ -59,7 +59,7 @@ _C.MB.DEPTH = 4
 _C.MB.WIDTH_MULTI = 1.0
 
 # number of nodes in a cell
-_C.MB.BASIC_OP = None
+_C.MB.BASIC_OP = []
 
 # ------------------------------------------------------------------------------------ #
 # Stotiscas natural gradient algorithm options
