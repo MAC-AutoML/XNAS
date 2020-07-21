@@ -214,7 +214,7 @@ def build_super_net():
     super_net_config = super_net.config
     logger.info("Saving search supernet to {}".format(super_net_config_path))
     json.dump(super_net_config, open(super_net_config_path, 'a+'))
-    flops_path = os.path.join(config.network_info_path, 'flops.json')
+    flops_path = os.path.join(cfg.OUT_DIR, 'flops.json')
     flops_ = super_net.flops_counter_per_layer(input_size=[1, 3, 224, 224])
     logger.info("Saving flops to {}".format(flops_path))
     json.dump(flops_, open(flops_path, 'a+'))
