@@ -101,6 +101,7 @@ def main():
             print("now top k primitive", num_to_keep[sp], controller.get_topk_op(num_to_keep[sp]))
 
 
+
         if sp == len(num_to_keep) - 1:
             logger.info("###############final Optimal genotype: {}############")
             logger.info(controller.genotype(final=True))
@@ -120,6 +121,22 @@ def main():
                 logger.info(controller.genotype(final=True))
         else:
             basic_op=controller.get_topk_op(num_to_keep[sp])
+        logger.info("###############final Optimal genotype: {}############")
+        logger.info(controller.genotype(final=True))
+        logger.info("########################################################")
+        controller.print_alphas(logger)
+
+        logger.info('Restricting skipconnect...')
+        for sks in range(0, 9):
+            max_sk=8-sks
+            num_sk=controller.get_skip_number()
+            if not num_sk > max_sk:
+                continue
+            while num_sk > max_sk:
+                controller.delete_skip()
+
+            logger.info('Number of skip-connect: %d', max_sk)
+            logger.info(controller.genotype(final=True))
 
 
 
@@ -142,16 +159,16 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
     valid_loader_iter = iter(valid_loader)
     for cur_iter, (trn_X, trn_y) in enumerate(train_loader):
         # print('cur_iter', cur_iter)
-        try:
-            (val_X, val_y) = next(valid_loader_iter)
-        except StopIteration:
-            valid_loader_iter = iter(valid_loader)
-            (val_X, val_y) = next(valid_loader_iter)
         # Transfer the data to the current GPU device
         trn_X, trn_y = trn_X.cuda(), trn_y.cuda(non_blocking=True)
-        val_X, val_y = val_X.cuda(), val_y.cuda(non_blocking=True)
         # phase 2. architect step (alpha)
         if train_arch:
+            try:
+                (val_X, val_y) = next(valid_loader_iter)
+            except StopIteration:
+                valid_loader_iter = iter(valid_loader)
+                (val_X, val_y) = next(valid_loader_iter)
+            val_X, val_y = val_X.cuda(), val_y.cuda(non_blocking=True)
             alpha_optimizer.zero_grad()
             # architect.unrolled_backward(trn_X, trn_y, val_X, val_y, lr, w_optimizer)
             logits=model(val_X)

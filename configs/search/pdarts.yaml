@@ -25,6 +25,7 @@ SEARCH:
   add_layers: 0
   add_width: 0
   dropout_rate: 0.1
+  CHECKPOINT_PERIOD: 10
 OPTIM:
   MAX_EPOCH: 25
   MIN_LR: 0.0

@@ -166,6 +166,7 @@ class PdartsCNN(nn.Module):
         """
 
         gene = []
+        pre=[0,2,5,9]
 
         # 1) Convert the mixed op to discrete edge (single op) by choosing top-1 weight edge
         # 2) Choose top-k edges per node by edge score (top-1 weight in edge)
@@ -177,7 +178,7 @@ class PdartsCNN(nn.Module):
             node_gene = []
             for edge_idx in topk_edge_indices:
                 prim_idx = primitive_indices[edge_idx]
-                prim = basic_op_list[i][prim_idx]
+                prim = basic_op_list[pre[i]+edge_idx][prim_idx]
                 node_gene.append((prim, edge_idx.item()))
 
             gene.append(node_gene)
