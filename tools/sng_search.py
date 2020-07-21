@@ -130,7 +130,7 @@ def train(train_loader, valid_loader, model, w_optim, lr, epoch, sample, net_cri
             w_optim.zero_grad()
             loss.backward()
             # gradient clipping
-            nn.utils.clip_grad_norm_(model.weights(), cfg.OPTIM.GRAD_CLIP)
+            nn.utils.clip_grad_norm_(model.parameters(), cfg.OPTIM.GRAD_CLIP)
             # Update the parameters
             w_optim.step()
 
