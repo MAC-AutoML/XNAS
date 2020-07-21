@@ -68,7 +68,7 @@ def main():
             if distribution_optimizer.training_finish:
                 break
         lr = w_optim.param_groups[0]['lr']
-        sample = distribution_optimizer.sampling_index()
+        sample = distribution_optimizer.sampling()
 
         # training
         train(train_, val_, search_space, w_optim, lr, epoch, sample, loss_fun, train_meter)

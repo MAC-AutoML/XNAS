@@ -108,7 +108,8 @@ class ProxylessNASNets(MyNetwork):
         for i in range(len(self.blocks[1:])):
             this_block_conv = self.blocks[i+1].mobile_inverted_conv
             if isinstance(this_block_conv, MixedEdge):
-                this_block_conv.active_index = [sample[i]]
+                # one hot like vector
+                this_block_conv.active_vector = sample[i]
             else:
                 raise NotImplementedError
         for block in self.blocks:

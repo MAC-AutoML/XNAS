@@ -1,5 +1,6 @@
 import numpy as np
 from xnas.search_algorithm.utils import Categorical
+from xnas.core.utils import index_to_one_hot
 import copy
 from scipy.special import softmax
 import random
@@ -41,7 +42,7 @@ class CategoricalDDPNAS:
         return self.steps * sum(list(range(self.p_model.Cmax)))
 
     def sampling(self):
-        return self.sampling_index()
+        return index_to_one_hot(self.sampling_index(), self.p_model.d)
 
     def sampling_index(self):
         sample = []

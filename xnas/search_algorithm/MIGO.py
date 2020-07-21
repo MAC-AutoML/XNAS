@@ -64,7 +64,7 @@ class MIGO:
         self.objective.append(objective*self.max_mize)
 
     def sampling(self):
-        return self.sampling_index()
+        return index_to_one_hot(self.sampling_index(), self.p_model.d)
 
     def sampling_index(self):
         # fairness sampling

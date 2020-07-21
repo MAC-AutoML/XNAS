@@ -107,6 +107,7 @@ class MixedEdge(MyModule):
 
         self.active_index = [0]
         self.inactive_index = None
+        self.active_vector = []
 
     @property
     def n_choices(self):
@@ -156,9 +157,14 @@ class MixedEdge(MyModule):
         #     oi = self.candidate_ops[i](x)
         #     output = output + oi
         # only support 1 selection
-        assert len(self.active_index) == 1
-        x = self.candidate_ops[self.active_index[0]](x)
-        return x
+        assert len(self.candidate_ops) == len(weights)
+        _x = 0
+        for i, value in enumerate(self.active_vector):
+            if value == 1:
+                _x += self._ops[i](x)
+            if 0 < value < 1:
+                _x += value * self._ops[i](x)
+        return _x
 
     @property
     def module_str(self):
