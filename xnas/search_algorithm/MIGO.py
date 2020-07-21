@@ -74,9 +74,9 @@ class MIGO:
             if self.sample_with_prob:
                 prob = copy.deepcopy(self.p_model.theta[i, self.sample_index[i]])
                 prob = prob / prob.sum()
-                sample.append(np.random.choice(self.sample_index[i], p=prob))
+                sample.append(int(np.random.choice(self.sample_index[i], p=prob)))
             else:
-                sample.append(np.random.choice(self.sample_index[i]))
+                sample.append(int(np.random.choice(self.sample_index[i])))
             if len(self.sample_index[i]) > 0:
                 self.sample_index[i].remove(sample[i])
         return np.array(sample)
