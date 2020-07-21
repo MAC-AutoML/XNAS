@@ -33,6 +33,7 @@ def main():
     setup_env()
     # loadiong search space
     search_space = build_space()
+    search_space.cuda()
     # init controller and architect
     loss_fun = nn.CrossEntropyLoss().cuda()
 
