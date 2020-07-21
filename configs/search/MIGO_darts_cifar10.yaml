@@ -1,5 +1,5 @@
 SPACE:
-  NAME: 'darts'
+  NAME: 'ofa'
   NUM_CLASSES: 10
 SEARCH:
   DATASET: 'cifar10'
