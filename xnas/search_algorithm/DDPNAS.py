@@ -42,7 +42,7 @@ class CategoricalDDPNAS:
         return self.steps * sum(list(range(self.p_model.Cmax)))
 
     def sampling(self):
-        return index_to_one_hot(self.sampling_index(), self.p_model.C)
+        return index_to_one_hot(self.sampling_index(), self.p_model.Cmax)
 
     def sampling_index(self):
         sample = []
