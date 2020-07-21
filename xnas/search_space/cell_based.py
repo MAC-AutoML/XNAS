@@ -451,7 +451,7 @@ class DartsCNN(nn.Module):
         self.linear = nn.Linear(C_p, n_classes)
         # number of edges per cell
         self.num_edges = sum(list(range(2, self.n_nodes + 2)))
-        self.num_ops = len(basic_op_list)
+        self.num_ops = len(self.basic_op_list)
         # whole edges
         self.all_edges = 2 * self.num_edges
 
