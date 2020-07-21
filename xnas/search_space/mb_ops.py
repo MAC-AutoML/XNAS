@@ -157,7 +157,7 @@ class MixedEdge(MyModule):
         #     oi = self.candidate_ops[i](x)
         #     output = output + oi
         # only support 1 selection
-        assert len(self.candidate_ops) == len(weights)
+        assert len(self.candidate_ops) == len(self.active_vector)
         _x = 0
         for i, value in enumerate(self.active_vector):
             if value == 1:
