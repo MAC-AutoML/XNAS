@@ -3,6 +3,7 @@ from xnas.search_space.proxyless_cnn import ProxylessNASNets
 from xnas.search_space.utils import profile
 import json
 import xnas.core.logging as logging
+import numpy as np
 
 logger = logging.get_logger(__name__)
 
