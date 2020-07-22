@@ -286,13 +286,13 @@ class _MixedOp(nn.Module):
             weights: weight for each operation
         """
         assert len(self._ops) == len(weights)
-        _x = 0
+        _x = []
         for i, value in enumerate(weights):
             if value == 1:
-                _x += self._ops[i](x)
+                _x.append(self._ops[i](x))
             if 0 < value < 1:
-                _x += value * self._ops[i](x)
-        return _x
+                _x.append(value * self._ops[i](x))
+        return sum(_x)
 
 
 class BasicBlock(nn.Module):
