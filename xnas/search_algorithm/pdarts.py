@@ -2,13 +2,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import copy
+import numpy as np
 
 '''
 Darts: highly copyed from https://github.com/khanrc/pt.darts
 '''
 
 
-class DartsCNNController(nn.Module):
+class PdartsCNNController(nn.Module):
     """ SearchCNN controller supporting multi-gpu """
 
     def __init__(self, net, criterion, device_ids=None):
@@ -17,7 +18,7 @@ class DartsCNNController(nn.Module):
             device_ids = list(range(torch.cuda.device_count()))
         self.net = net
         self.device_ids = device_ids
-        self.n_ops = self.net.num_ops
+        self.n_ops = len(self.net.basic_op_list[0])
         self.alpha = nn.Parameter(
             1e-3*torch.randn(self.net.all_edges, self.n_ops))
         self.criterion = criterion
@@ -50,8 +51,65 @@ class DartsCNNController(nn.Module):
             #                                     devices=self.device_ids)
             # return nn.parallel.gather(outputs, self.device_ids[0])
 
-    def genotype(self):
+    def genotype(self, final=False):
+        if final:
+            for i in range(self.net.all_edges):
+                for j, op in enumerate(self.net.basic_op_list[i]):
+                    if op == 'none':
+                        self.alpha[i][j]=-1  #让none操作对应的权值将为最低
+
         return self.net.genotype(self.alpha.cpu().detach().numpy())
+
+    def get_skip_number(self):
+        normal=self.genotype(final=True).normal
+        res=0
+        for edg in normal:
+            # print(edg)
+            if edg[0][0]=='skip_connect':
+                res+=1
+            if edg[1][0]=='skip_connect':
+                res+=1
+        return res
+
+    def delete_skip(self):
+        normal=self.genotype().normal
+        pre=0
+        skip_id=[]
+        skip_edg=[]
+        pre=[0,2,5,9]
+        for i, edg in enumerate(normal):
+            for k in range(2):
+                if edg[k][0]=='skip_connect':
+                    edg_num=pre[i]+edg[k][1]
+                    skip_edg.append(edg_num)
+                    for j, op in enumerate(self.net.basic_op_list[edg_num]):
+                        if op == 'skip_connect':
+                            skip_id.append(j)
+                            break
+
+        alpha=self.alpha.cpu().detach().numpy()
+        print('basic_op_list', self.net.basic_op_list)
+        print('skip_edg', skip_edg)
+        print('skip_id', skip_id)
+        skip_edg_value=[alpha[pos][skip_id[i]] for i, pos in enumerate(skip_edg)]
+        min=np.argmin(skip_edg_value)
+        # print('skip_edg[min] skip_id[min]', skip_edg[min], skip_id[min])
+        # print('alpha_min')
+        for i in range(self.n_ops):
+            print(self.alpha[skip_edg[min]][i])
+        self.alpha[skip_edg[min]][skip_id[min]]=0.0
+
+    def get_topk_op(self, k):
+        basic_op_list=np.array(self.net.basic_op_list)
+        # print(basic_op_list)
+        # print(type(basic_op_list))
+        # print(type(basic_op_list[0][0]))
+        new_basic_op=[]
+        for i in range(self.net.all_edges):
+            _, index=torch.topk(self.alpha[i], k)
+            primitive=basic_op_list[i][index.cpu()].tolist()
+            new_basic_op.append(primitive)
+        return new_basic_op
 
     def weights(self):
         return self.net.parameters()
@@ -59,9 +117,18 @@ class DartsCNNController(nn.Module):
     def named_weights(self):
         return self.net.named_parameters()
 
+    def subnet_weights(self):
+        res=[]
+        for k,v in self.named_weights():
+            if not 'alpha' in k:
+                res.append(v)
+        return res
+
     def alphas(self):
         for n, p in self._alphas:
             yield p
+    def alphas_weight(self):
+        return self.alpha
 
     def named_alphas(self):
         for n, p in self._alphas:
@@ -76,6 +143,12 @@ class DartsCNNController(nn.Module):
     def loss(self, X, y):
         logits = self.forward(X)
         return self.criterion(logits, y)
+    def update_p(self, p):
+        self.net.p=p
+        self.net.update_p(p)
+    def remove_kop(self, k):
+
+        pass
 
 
 class Architect():
