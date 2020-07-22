@@ -116,6 +116,7 @@ def main():
                     continue
                 while num_sk > max_sk:
                     controller.delete_skip()
+                    num_sk=controller.get_skip_number()
 
                 logger.info('Number of skip-connect: %d', max_sk)
                 logger.info(controller.genotype(final=True))
