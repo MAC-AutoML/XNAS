@@ -1,7 +1,8 @@
-import os
 import gc
-import sys
-sys.path.append("..")
+import os
+
+from torch.utils.tensorboard import SummaryWriter
+
 import xnas.core.checkpoint as checkpoint
 import xnas.core.config as config
 import xnas.core.logging as logging
@@ -12,7 +13,6 @@ from xnas.core.trainer import setup_env, test_epoch
 from xnas.datasets.loader import _construct_loader
 from xnas.search_algorithm.pc_darts import *
 from xnas.search_space.cell_based import DartsCNN, NASBench201CNN
-from torch.utils.tensorboard import SummaryWriter
 
 # config load and assert
 config.load_cfg_fom_args()
@@ -53,7 +53,8 @@ def main():
     logger.info("Start epoch: {}".format(start_epoch + 1))
     for cur_epoch in range(start_epoch, cfg.OPTIM.MAX_EPOCH):
         lr = lr_scheduler.get_last_lr()[0]
-        train_epoch(train_, val_, darts_controller, architect, loss_fun, w_optim, alpha_optim, lr, train_meter, cur_epoch)
+        train_epoch(train_, val_, darts_controller, architect, loss_fun,
+                    w_optim, alpha_optim, lr, train_meter, cur_epoch)
         # Save a checkpoint
         if (cur_epoch + 1) % cfg.SEARCH.CHECKPOINT_PERIOD == 0:
             checkpoint_file = checkpoint.save_checkpoint(
@@ -137,7 +138,7 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         writer.add_scalar('train/loss', loss, cur_step)
         writer.add_scalar('train/top1_error', top1_err, cur_step)
         writer.add_scalar('train/top5_error', top5_err, cur_step)
-        #print("###cur_iter:"+str(cur_iter)+",[loss,top1_error,top5_error]:"+str(loss)+","+str(top1_err)+","+str(top5_err))
+        # print("###cur_iter:"+str(cur_iter)+",[loss,top1_error,top5_error]:"+str(loss)+","+str(top1_err)+","+str(top5_err))
         cur_step += 1
     # Log epoch stats
     train_meter.log_epoch_stats(cur_epoch)
