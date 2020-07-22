@@ -7,6 +7,7 @@ import random
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
 import xnas.core.checkpoint as checkpoint
@@ -17,7 +18,6 @@ from xnas.core.builders import build_space, lr_scheduler_builder, sng_builder
 from xnas.core.config import cfg
 from xnas.core.trainer import setup_env
 from xnas.datasets.loader import _construct_loader
-import torch.nn.functional as F
 
 # config load and assert
 config.load_cfg_fom_args()
