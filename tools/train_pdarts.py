@@ -32,24 +32,23 @@ def main():
     [train_, val_] = _construct_loader(
         cfg.SEARCH.DATASET, cfg.SEARCH.SPLIT, cfg.SEARCH.BATCH_SIZE)
 
-    num_to_keep=[5,3,1]
-    num_to_drop=[3,2,2]
-    eps_no_archs=[10,10,10]
-    drop_rate=[0.1,0.4,0.7]
-    add_layers=[0,6,12]
-    add_width=[0,0,0]
+    num_to_keep = [5, 3, 1]
+    eps_no_archs = [10, 10, 10]
+    drop_rate = [0.1, 0.4, 0.7]
+    add_layers = [0, 6, 12]
+    add_width = [0, 0, 0]
     PRIMITIVES = cfg.SPACE.PRIMITIVES
-    edgs_num=(cfg.SPACE.NODES+3)*cfg.SPACE.NODES//2
-    basic_op=[]
+    edgs_num = (cfg.SPACE.NODES+3)*cfg.SPACE.NODES//2
+    basic_op = []
     for i in range(edgs_num*2):
         basic_op.append(PRIMITIVES)
     for sp in range(len(num_to_keep)):
-        #update the info of the supernet config
+        # update the info of the supernet config
         cfg.defrost()
-        cfg.SEARCH.add_layers=add_layers[sp]
-        cfg.SEARCH.add_width=add_width[sp]
-        cfg.SEARCH.dropout_rate=float(drop_rate[sp])
-        cfg.SPACE.BASIC_OP=basic_op
+        cfg.SEARCH.add_layers = add_layers[sp]
+        cfg.SEARCH.add_width = add_width[sp]
+        cfg.SEARCH.dropout_rate = float(drop_rate[sp])
+        cfg.SPACE.BASIC_OP = basic_op
 
         search_space = build_space()
         controller = PdartsCNNController(search_space, loss_fun)
@@ -69,16 +68,18 @@ def main():
         start_epoch = 0
         # Perform the training loop
         logger.info("Start epoch: {}".format(start_epoch + 1))
-        scale_factor=0.2
+        scale_factor = 0.2
         for cur_epoch in range(start_epoch, cfg.OPTIM.MAX_EPOCH):
             print('cur_epoch', cur_epoch)
             lr = lr_scheduler.get_last_lr()[0]
-            if cur_epoch<eps_no_archs[sp]:
+            if cur_epoch < eps_no_archs[sp]:
                 controller.update_p(float(drop_rate[sp]) * (cfg.OPTIM.MAX_EPOCH - cur_epoch - 1) / cfg.OPTIM.MAX_EPOCH)
-                train_epoch(train_, val_, controller, architect, loss_fun, w_optim, alpha_optim, lr, train_meter, cur_epoch, train_arch=False)
+                train_epoch(train_, val_, controller, architect, loss_fun, w_optim,
+                            alpha_optim, lr, train_meter, cur_epoch, train_arch=False)
             else:
                 controller.update_p(float(drop_rate[sp]) * np.exp(-(cur_epoch - eps_no_archs[sp]) * scale_factor))
-                train_epoch(train_, val_, controller, architect, loss_fun, w_optim, alpha_optim, lr, train_meter, cur_epoch, train_arch=True)
+                train_epoch(train_, val_, controller, architect, loss_fun, w_optim,
+                            alpha_optim, lr, train_meter, cur_epoch, train_arch=True)
             # Save a checkpoint
             if (cur_epoch + 1) % cfg.SEARCH.CHECKPOINT_PERIOD == 0:
                 checkpoint_file = checkpoint.save_checkpoint(
@@ -100,8 +101,6 @@ def main():
             gc.collect()
             print("now top k primitive", num_to_keep[sp], controller.get_topk_op(num_to_keep[sp]))
 
-
-
         if sp == len(num_to_keep) - 1:
             logger.info("###############final Optimal genotype: {}############")
             logger.info(controller.genotype(final=True))
@@ -110,18 +109,18 @@ def main():
 
             logger.info('Restricting skipconnect...')
             for sks in range(0, 9):
-                max_sk=8-sks
-                num_sk=controller.get_skip_number()
+                max_sk = 8-sks
+                num_sk = controller.get_skip_number()
                 if not num_sk > max_sk:
                     continue
                 while num_sk > max_sk:
                     controller.delete_skip()
-                    num_sk=controller.get_skip_number()
+                    num_sk = controller.get_skip_number()
 
                 logger.info('Number of skip-connect: %d', max_sk)
                 logger.info(controller.genotype(final=True))
         else:
-            basic_op=controller.get_topk_op(num_to_keep[sp])
+            basic_op = controller.get_topk_op(num_to_keep[sp])
         logger.info("###############final Optimal genotype: {}############")
         logger.info(controller.genotype(final=True))
         logger.info("########################################################")
@@ -129,27 +128,19 @@ def main():
 
         logger.info('Restricting skipconnect...')
         for sks in range(0, 9):
-            max_sk=8-sks
-            num_sk=controller.get_skip_number()
+            max_sk = 8-sks
+            num_sk = controller.get_skip_number()
             if not num_sk > max_sk:
                 continue
             while num_sk > max_sk:
                 controller.delete_skip()
-                num_sk=controller.get_skip_number()
+                num_sk = controller.get_skip_number()
 
             logger.info('Number of skip-connect: %d', max_sk)
             logger.info(controller.genotype(final=True))
 
 
-
-
-
-
-
-
-
-
-def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimizer, alpha_optimizer, \
+def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimizer, alpha_optimizer,
                 lr, train_meter, cur_epoch, train_arch=True):
     model.train()
     train_meter.iter_tic()
@@ -173,13 +164,11 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
             val_X, val_y = val_X.cuda(), val_y.cuda(non_blocking=True)
             alpha_optimizer.zero_grad()
             # architect.unrolled_backward(trn_X, trn_y, val_X, val_y, lr, w_optimizer)
-            logits=model(val_X)
-            loss_a=loss_fun(logits, val_y)
+            logits = model(val_X)
+            loss_a = loss_fun(logits, val_y)
             loss_a.backward()
             nn.utils.clip_grad_norm_(model.alphas_weight(), cfg.OPTIM.GRAD_CLIP)
             alpha_optimizer.step()
-
-
 
         # phase 1. child network step (w)
         # if scaler is not None:
