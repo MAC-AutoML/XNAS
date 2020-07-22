@@ -7,23 +7,24 @@ from collections import namedtuple
 from xnas.search_space.cell_based import _MixedOp
 from xnas.search_space.cell_based import *
 
+
 class _MixOp4Pdarts(_MixedOp):
     '''for pdarts to add dropout for identity'''
+
     def __init__(self, C_in, C_out, stride, p, basic_op_list=None):
         super(_MixOp4Pdarts, self).__init__(C_in, C_out, stride, basic_op_list)
-        self.p=p
-        new_ops=[]
+        self.p = p
         for i, op in enumerate(self._ops):
             if isinstance(op, Identity):
-                self._ops[i]=nn.Sequential(op, nn.Dropout(self.p))
+                self._ops[i] = nn.Sequential(op, nn.Dropout(self.p))
+
     def update_p(self, p):
         for op in self._ops:
             if isinstance(op, nn.Sequential):
                 if isinstance(op[0], Identity):
-                    self.p=p
+                    self.p = p
                     op[1].p = self.p
                     # print(op, op[1].p)
-
 
 
 # the search cell in pdarts
@@ -42,7 +43,7 @@ class PdartsCell(nn.Module):
         self.reduction = reduction
         self.n_nodes = n_nodes
         self.basic_op_list = basic_op_list
-        self.p=dropout_p
+        self.p = dropout_p
 
         # If previous cell is reduction cell, current input size does not match with
         # output size of cell[k-2]. So the output[k-2] should be reduced by preprocessing.
@@ -54,16 +55,16 @@ class PdartsCell(nn.Module):
 
         # generate dag
         self.dag = nn.ModuleList()
-        pre=0
+        pre = 0
         for i in range(self.n_nodes):
             self.dag.append(nn.ModuleList())
             for j in range(2+i):  # include 2 input nodes
                 # reduction should be used only for input node
                 stride = 2 if reduction and j < 2 else 1
-                edg_id=pre+j
+                edg_id = pre+j
                 op = _MixOp4Pdarts(C, C, stride, self.p, self.basic_op_list[edg_id])
                 self.dag[i].append(op)
-        pre+=2+i
+        pre += 2+i
 
     def forward(self, s0, s1, sample):
         s0 = self.preproc0(s0)
@@ -77,17 +78,17 @@ class PdartsCell(nn.Module):
             states.append(s_cur)
         s_out = torch.cat(states[2:], 1)
         return s_out
+
     def update_p(self, p):
         for i in range(self.n_nodes):
             for op in self.dag[i]:
                 op.update_p(p)
 
 
-
 class PdartsCNN(nn.Module):
     def __init__(self, C=16, n_classes=10, n_layers=8, n_nodes=4, basic_op_list=[], p=0.0):
         super().__init__()
-        self.p=float(p)
+        self.p = float(p)
         stem_multiplier = 3
         self.C_in = 3  # 3
         self.C = C  # 16
@@ -98,7 +99,7 @@ class PdartsCNN(nn.Module):
                               'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5', 'none',
                               ] if len(basic_op_list) == 0 else basic_op_list
         print("basic_op_list", self.basic_op_list)
-        self.len_op=len(self.basic_op_list)
+        self.len_op = len(self.basic_op_list)
         C_cur = stem_multiplier * C  # 3 * 16 = 48
         self.stem = nn.Sequential(
             nn.Conv2d(self.C_in, C_cur, 3, 1, 1, bias=False),
@@ -166,7 +167,7 @@ class PdartsCNN(nn.Module):
         """
 
         gene = []
-        pre=[0,2,5,9]
+        pre = [0, 2, 5, 9]
 
         # 1) Convert the mixed op to discrete edge (single op) by choosing top-1 weight edge
         # 2) Choose top-k edges per node by edge score (top-1 weight in edge)
@@ -199,6 +200,7 @@ class PdartsCNN(nn.Module):
         concat = range(2, 2+self.n_nodes)  # concat all intermediate nodes
         return Genotype(normal=gene_normal, normal_concat=concat,
                         reduce=gene_reduce, reduce_concat=concat)
+
     def update_p(self, p):
         for cell in self.cells:
             # cell.p=self.p
