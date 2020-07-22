@@ -289,31 +289,29 @@ class PcMixedOp(nn.Module):
     def forward(self, x, weights):
         #channel proportion k=4
         dim_2 = x.shape[1]
-        print("#####################print(dim_2)")
-        print(dim_2)
-        print(self.k)
-        print(C_in//self.k)
         xtemp = x[ : , :  dim_2//self.k, :, :]
         xtemp2 = x[ : ,  dim_2//self.k:, :, :]
         assert len(self._ops) == len(weights)
-        #print("#######op(xtemp)")
-        #print((self._ops[0](xtemp).size()))
-        #print("#######weights")
-        #print(weights)
-        #temp1 = sum(w * op(xtemp) for w, op in zip(weights, self._ops))
-
+        '''
         temp1 = 0
         for i, value in enumerate(weights):
             if value == 1:
                 temp1 += self._ops[i](xtemp)
             if 0 < value < 1:
-                temp1 += value * self._ops[i](xtemp)
+                temp1 += value * self._ops[i](xtemp)'''
+        _x = []
+        for i, value in enumerate(weights):
+            if value == 1:
+                _x.append(self._ops[i](xtemp))
+            if 0 < value < 1:
+                _x.append(value * self._ops[i](xtemp))
 
         #reduction cell needs pooling before concat
-        if temp1.shape[2] == x.shape[2]:
-          ans = torch.cat([temp1,xtemp2],dim=1)
+        part_x = sum(_x)
+        if part_x.shape[2] == x.shape[2]:
+          ans = torch.cat([part_x,xtemp2],dim=1)
         else:
-          ans = torch.cat([temp1,self.mp(xtemp2)], dim=1)
+          ans = torch.cat([part_x,self.mp(xtemp2)], dim=1)
         ans = channel_shuffle(ans,self.k)
         #ans = torch.cat([ans[ : ,  dim_2//4:, :, :],ans[ : , :  dim_2//4, :, :]],dim=1)
         #except channe shuffle, channel shift also works
@@ -454,10 +452,6 @@ class PcDartsCNN(nn.Module):
                     start = end
                     n += 1
                     weights2 = torch.cat([weights2, tw2], dim=0)
-            #print("#########################################weights")
-            #print(weights)
-            #print("#########################################weights2")
-            #print(weights2)
             s0, s1 = s1, cell(s0, s1, weights , weights2)
 
         out = self.gap(s1)
@@ -510,4 +504,11 @@ class PcDartsCNN(nn.Module):
                         reduce=gene_reduce, reduce_concat=concat)
 
 
-
+def _PcdartsCNN():
+    from xnas.core.config import cfg
+    return PcDartsCNN(
+        C=cfg.SPACE.CHANNEL,
+        n_classes=cfg.SPACE.NUM_CLASSES,
+        n_layers=cfg.SPACE.LAYERS,
+        n_nodes=cfg.SPACE.NODES,
+        basic_op_list=cfg.SPACE.BASIC_OP)

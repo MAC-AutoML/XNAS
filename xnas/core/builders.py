@@ -18,10 +18,11 @@ from xnas.search_algorithm.SNG import SNG, Dynamic_SNG
 from xnas.search_algorithm.MDENAS import CategoricalMDENAS
 from xnas.search_algorithm.MIGO import MIGO
 from xnas.search_algorithm.DDPNAS import CategoricalDDPNAS
+from xnas.search_algorithm.pc_darts import _PcdartsCNN
 
 
 # Supported models
-_spaces = {"darts": _DartsCNN, "nasbench201": _NASbench201, "ofa": build_super_net,
+_spaces = {"darts": _DartsCNN, "nasbench201": _NASbench201, "ofa": build_super_net,"pcdarts": _PcdartsCNN,
            "proxyless": build_super_net, "google": build_super_net, "pdarts": _PdartsCNN}
 
 # Supported loss functions
