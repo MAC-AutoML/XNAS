@@ -74,9 +74,6 @@ def parse_from_numpy(alpha, k, basic_op_list=None):
     return gene
 
 
-
-
-
 class ReLUConvBN(nn.Module):
 
     def __init__(self, C_in, C_out, kernel_size, stride, padding, affine=True):
@@ -298,7 +295,6 @@ class _MixedOp(nn.Module):
         return sum(_x)
 
 
-
 class BasicBlock(nn.Module):
     expansion = 1
 
@@ -413,7 +409,6 @@ class DartsCell(nn.Module):
         return s_out
 
 
-
 class DartsCNN(nn.Module):
 
     def __init__(self, C=16, n_classes=10, n_layers=8, n_nodes=4, basic_op_list=[]):
@@ -484,7 +479,6 @@ class DartsCNN(nn.Module):
         concat = range(2, 2+self.n_nodes)  # concat all intermediate nodes
         return Genotype(normal=gene_normal, normal_concat=concat,
                         reduce=gene_reduce, reduce_concat=concat)
-
 
 
 # This module is used for NAS-Bench-201, represents a small search space with a complete DAG
@@ -608,8 +602,6 @@ def _DartsCNN():
         n_layers=cfg.SPACE.LAYERS,
         n_nodes=cfg.SPACE.NODES,
         basic_op_list=cfg.SPACE.BASIC_OP)
-
-
 
 
 def _NASbench201():
