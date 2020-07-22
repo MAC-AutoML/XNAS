@@ -17,7 +17,7 @@ class DartsCNNController(nn.Module):
             device_ids = list(range(torch.cuda.device_count()))
         self.net = net
         self.device_ids = device_ids
-        self.n_ops = len(self.net.basic_op_list)
+        self.n_ops = self.net.num_ops
         self.alpha = nn.Parameter(
             1e-3*torch.randn(self.net.all_edges, self.n_ops))
         self.criterion = criterion

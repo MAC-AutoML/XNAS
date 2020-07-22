@@ -50,6 +50,55 @@ _C.SPACE.BASIC_OP = []
 
 
 # ------------------------------------------------------------------------------------ #
+# Mobilenet Search Space options
+# ------------------------------------------------------------------------------------ #
+_C.MB = CfgNode()
+
+_C.MB.NAME = 'ofa'
+
+# number of depth
+_C.MB.DEPTH = 4
+
+# number of depth
+_C.MB.WIDTH_MULTI = 1.0
+
+# number of nodes in a cell
+_C.MB.BASIC_OP = []
+
+# ------------------------------------------------------------------------------------ #
+# Stotiscas natural gradient algorithm options
+# ------------------------------------------------------------------------------------ #
+_C.SNG = CfgNode()
+
+# learning rate of the theta
+_C.SNG.NAME = 'MIGO'
+
+# learning rate of the theta
+_C.SNG.THETA_LR = 0.1
+
+# pruning step
+_C.SNG.PRUNING = True
+
+# pruning step
+_C.SNG.PRUNING_STEP = 3
+
+# sampling process
+_C.SNG.PROB_SAMPLING = False
+
+# utility function
+_C.SNG.UTILITY = 'log'
+
+# utility function factor
+_C.SNG.UTILITY_FACTOR = 0.4
+
+# nature gradient momentum
+_C.SNG.MOMENTUM = True
+
+# nature gradient momentum factor
+_C.SNG.GAMMA = 0.9
+
+
+# ------------------------------------------------------------------------------------ #
 # Optimizer options in network
 # ------------------------------------------------------------------------------------ #
 _C.OPTIM = CfgNode()
@@ -64,7 +113,7 @@ _C.OPTIM.LR_POLICY = "cos"
 _C.OPTIM.GAMMA = 0.1
 
 # Steps for 'steps' policy (in epochs)
-_C.OPTIM.STEPS = []
+_C.OPTIM.STEPS = [30, 60, 90]
 
 # Learning rate multiplier for 'steps' policy
 _C.OPTIM.LR_MULT = 0.1
@@ -233,6 +282,18 @@ _C.DETERMINSTIC = True
 _C.DARTS = CfgNode()
 _C.DARTS.ALPHA_LR = 3e-4
 _C.DARTS.ALPHA_WEIGHT_DECAY = 1e-3
+
+# ------------------------------------------------------------------------------------ #
+# Batch norm options
+# ------------------------------------------------------------------------------------ #
+_C.BN = CfgNode()
+
+# BN epsilon
+_C.BN.EPS = 1e-5
+
+# BN momentum (BN momentum in PyTorch = 1 - BN momentum in Caffe2)
+_C.BN.MOM = 0.1
+
 # ------------------------------------------------------------------------------------ #
 # Deprecated keys
 # ------------------------------------------------------------------------------------ #

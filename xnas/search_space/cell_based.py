@@ -289,13 +289,13 @@ class _MixedOp(nn.Module):
             weights: weight for each operation
         """
         assert len(self._ops) == len(weights)
-        _x = 0
+        _x = []
         for i, value in enumerate(weights):
             if value == 1:
-                _x += self._ops[i](x)
+                _x.append(self._ops[i](x))
             if 0 < value < 1:
-                _x += value * self._ops[i](x)
-        return _x
+                _x.append(value * self._ops[i](x))
+        return sum(_x)
 
 
 
@@ -454,6 +454,7 @@ class DartsCNN(nn.Module):
         self.linear = nn.Linear(C_p, n_classes)
         # number of edges per cell
         self.num_edges = sum(list(range(2, self.n_nodes + 2)))
+        self.num_ops = len(self.basic_op_list)
         # whole edges
         self.all_edges = 2 * self.num_edges
 
@@ -561,6 +562,7 @@ class NASBench201CNN(nn.Module):
         self.edge2index = edge2index
         self.num_edges = num_edge
         self.all_edges = self.num_edges
+        self.num_ops = len(self.basic_op_list)
         self.lastact = nn.Sequential(
             nn.BatchNorm2d(C_prev), nn.ReLU(inplace=True))
         self.global_pooling = nn.AdaptiveAvgPool2d(1)
