@@ -11,7 +11,6 @@ import torch
 from xnas.core.config import cfg
 from xnas.search_space.cell_based import _DartsCNN
 from xnas.search_space.cell_based import _NASbench201
-<<<<<<< HEAD
 from xnas.search_space.method.pdarts import _PdartsCNN
 from xnas.search_space.mb_v3_cnn import build_super_net
 from xnas.search_algorithm.ASNG import ASNG, Dynamic_ASNG
