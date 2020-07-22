@@ -11,6 +11,7 @@ SEARCH:
   SPLIT: [0.5, 0.5]
   BATCH_SIZE: 64
   IM_SIZE: 32
+  EVAL_PERIOD: 50
 OPTIM:
   MAX_EPOCH: 50
 OUT_DIR: '/userhome/XNAS/experiment/pcdarts'
