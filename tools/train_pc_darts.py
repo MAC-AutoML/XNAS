@@ -10,7 +10,8 @@ from xnas.core.builders import build_space
 from xnas.core.config import cfg
 from xnas.core.trainer import setup_env, test_epoch
 from xnas.datasets.loader import _construct_loader
-from xnas.search_algorithm.darts import *
+from xnas.search_algorithm.pc_darts import *
+from xnas.search_space.cell_based import DartsCNN, NASBench201CNN
 from torch.utils.tensorboard import SummaryWriter
 
 # config load and assert
@@ -29,7 +30,7 @@ def main():
     search_space = build_space()
     # init controller and architect
     loss_fun = nn.CrossEntropyLoss().cuda()
-    darts_controller = DartsCNNController(search_space, loss_fun)
+    darts_controller = PCDartsCNNController(search_space, loss_fun)
     darts_controller.cuda()
     architect = Architect(
         darts_controller, cfg.OPTIM.MOMENTUM, cfg.OPTIM.WEIGHT_DECAY)
@@ -42,6 +43,7 @@ def main():
     # alphas optimizer
     alpha_optim = torch.optim.Adam(darts_controller.alphas(), cfg.DARTS.ALPHA_LR, betas=(0.5, 0.999),
                                    weight_decay=cfg.DARTS.ALPHA_WEIGHT_DECAY)
+
     lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         w_optim, cfg.OPTIM.MAX_EPOCH, eta_min=cfg.OPTIM.MIN_LR)
     train_meter = meters.TrainMeter(len(train_))
@@ -92,9 +94,10 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         trn_X, trn_y = trn_X.cuda(), trn_y.cuda(non_blocking=True)
         val_X, val_y = val_X.cuda(), val_y.cuda(non_blocking=True)
         # phase 2. architect step (alpha)
-        alpha_optimizer.zero_grad()
-        architect.unrolled_backward(trn_X, trn_y, val_X, val_y, lr, w_optimizer)
-        alpha_optimizer.step()
+        if cur_epoch >= 15:
+            alpha_optimizer.zero_grad()
+            architect.unrolled_backward(trn_X, trn_y, val_X, val_y, lr, w_optimizer)
+            alpha_optimizer.step()
 
         # phase 1. child network step (w)
         if scaler is not None:
@@ -134,6 +137,7 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         writer.add_scalar('train/loss', loss, cur_step)
         writer.add_scalar('train/top1_error', top1_err, cur_step)
         writer.add_scalar('train/top5_error', top5_err, cur_step)
+        #print("###cur_iter:"+str(cur_iter)+",[loss,top1_error,top5_error]:"+str(loss)+","+str(top1_err)+","+str(top5_err))
         cur_step += 1
     # Log epoch stats
     train_meter.log_epoch_stats(cur_epoch)
