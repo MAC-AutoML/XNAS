@@ -74,6 +74,9 @@ def parse_from_numpy(alpha, k, basic_op_list=None):
     return gene
 
 
+
+
+
 class ReLUConvBN(nn.Module):
 
     def __init__(self, C_in, C_out, kernel_size, stride, padding, affine=True):
@@ -286,13 +289,14 @@ class _MixedOp(nn.Module):
             weights: weight for each operation
         """
         assert len(self._ops) == len(weights)
-        _x = 0
+        _x = []
         for i, value in enumerate(weights):
             if value == 1:
-                _x += self._ops[i](x)
+                _x.append(self._ops[i](x))
             if 0 < value < 1:
-                _x += value * self._ops[i](x)
-        return _x
+                _x.append(value * self._ops[i](x))
+        return sum(_x)
+
 
 
 class BasicBlock(nn.Module):
@@ -408,7 +412,6 @@ class DartsCell(nn.Module):
         s_out = torch.cat(states[2:], 1)
         return s_out
 
-# DartsCNN
 
 
 class DartsCNN(nn.Module):
@@ -451,6 +454,7 @@ class DartsCNN(nn.Module):
         self.linear = nn.Linear(C_p, n_classes)
         # number of edges per cell
         self.num_edges = sum(list(range(2, self.n_nodes + 2)))
+        self.num_ops = len(self.basic_op_list)
         # whole edges
         self.all_edges = 2 * self.num_edges
 
@@ -480,6 +484,7 @@ class DartsCNN(nn.Module):
         concat = range(2, 2+self.n_nodes)  # concat all intermediate nodes
         return Genotype(normal=gene_normal, normal_concat=concat,
                         reduce=gene_reduce, reduce_concat=concat)
+
 
 
 # This module is used for NAS-Bench-201, represents a small search space with a complete DAG
@@ -557,6 +562,7 @@ class NASBench201CNN(nn.Module):
         self.edge2index = edge2index
         self.num_edges = num_edge
         self.all_edges = self.num_edges
+        self.num_ops = len(self.basic_op_list)
         self.lastact = nn.Sequential(
             nn.BatchNorm2d(C_prev), nn.ReLU(inplace=True))
         self.global_pooling = nn.AdaptiveAvgPool2d(1)
@@ -602,6 +608,8 @@ def _DartsCNN():
         n_layers=cfg.SPACE.LAYERS,
         n_nodes=cfg.SPACE.NODES,
         basic_op_list=cfg.SPACE.BASIC_OP)
+
+
 
 
 def _NASbench201():

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 
 # Copyright (c) Facebook, Inc. and its affiliates.
 #
@@ -41,8 +41,61 @@ _C.SPACE.LAYERS = 8
 # number of nodes in a cell
 _C.SPACE.NODES = 4
 
+#number of  PRIMITIVE
+_C.SPACE.PRIMITIVES=[ ]
+
 # number of nodes in a cell
 _C.SPACE.BASIC_OP = []
+
+
+
+# ------------------------------------------------------------------------------------ #
+# Mobilenet Search Space options
+# ------------------------------------------------------------------------------------ #
+_C.MB = CfgNode()
+
+_C.MB.NAME = 'ofa'
+
+# number of depth
+_C.MB.DEPTH = 4
+
+# number of depth
+_C.MB.WIDTH_MULTI = 1.0
+
+# number of nodes in a cell
+_C.MB.BASIC_OP = []
+
+# ------------------------------------------------------------------------------------ #
+# Stotiscas natural gradient algorithm options
+# ------------------------------------------------------------------------------------ #
+_C.SNG = CfgNode()
+
+# learning rate of the theta
+_C.SNG.NAME = 'MIGO'
+
+# learning rate of the theta
+_C.SNG.THETA_LR = 0.1
+
+# pruning step
+_C.SNG.PRUNING = True
+
+# pruning step
+_C.SNG.PRUNING_STEP = 3
+
+# sampling process
+_C.SNG.PROB_SAMPLING = False
+
+# utility function
+_C.SNG.UTILITY = 'log'
+
+# utility function factor
+_C.SNG.UTILITY_FACTOR = 0.4
+
+# nature gradient momentum
+_C.SNG.MOMENTUM = True
+
+# nature gradient momentum factor
+_C.SNG.GAMMA = 0.9
 
 
 # ------------------------------------------------------------------------------------ #
@@ -60,7 +113,7 @@ _C.OPTIM.LR_POLICY = "cos"
 _C.OPTIM.GAMMA = 0.1
 
 # Steps for 'steps' policy (in epochs)
-_C.OPTIM.STEPS = []
+_C.OPTIM.STEPS = [30, 60, 90]
 
 # Learning rate multiplier for 'steps' policy
 _C.OPTIM.LR_MULT = 0.1
@@ -146,6 +199,15 @@ _C.SEARCH.WEIGHTS = ""
 
 # using FP16
 _C.SEARCH.AMP = False
+
+#adujust the number of layers
+_C.SEARCH.add_layers=0
+
+#adujust the width
+_C.SEARCH.add_width=0
+
+#droupout_rate of skip operation
+_C.SEARCH.dropout_rate=0.0
 
 # ------------------------------------------------------------------------------------ #
 # Precise timing options
@@ -271,6 +333,7 @@ def load_cfg_fom_args(description="Config file options."):
     args = parser.parse_args()
     _C.merge_from_file(args.cfg_file)
     _C.merge_from_list(args.opts)
+    _C.freeze()
 
 
 def assert_and_infer_cfg(cache_urls=True):

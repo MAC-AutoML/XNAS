@@ -11,7 +11,6 @@ from xnas.core.config import cfg
 from xnas.core.trainer import setup_env, test_epoch
 from xnas.datasets.loader import _construct_loader
 from xnas.search_algorithm.darts import *
-from xnas.search_space.cell_based import DartsCNN, NASBench201CNN
 from torch.utils.tensorboard import SummaryWriter
 
 # config load and assert
