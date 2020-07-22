@@ -2,6 +2,8 @@ import os
 import gc
 import sys
 sys.path.append(".")
+sys.path.append("..")
+sys.path.append("...")
 import xnas.core.checkpoint as checkpoint
 import xnas.core.config as config
 import xnas.core.logging as logging
