@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 
 # Copyright (c) Facebook, Inc. and its affiliates.
 #
@@ -41,8 +41,12 @@ _C.SPACE.LAYERS = 8
 # number of nodes in a cell
 _C.SPACE.NODES = 4
 
+#number of  PRIMITIVE
+_C.SPACE.PRIMITIVES=[ ]
+
 # number of nodes in a cell
 _C.SPACE.BASIC_OP = []
+
 
 
 # ------------------------------------------------------------------------------------ #
@@ -196,6 +200,15 @@ _C.SEARCH.WEIGHTS = ""
 # using FP16
 _C.SEARCH.AMP = False
 
+#adujust the number of layers
+_C.SEARCH.add_layers=0
+
+#adujust the width
+_C.SEARCH.add_width=0
+
+#droupout_rate of skip operation
+_C.SEARCH.dropout_rate=0.0
+
 # ------------------------------------------------------------------------------------ #
 # Precise timing options
 # ------------------------------------------------------------------------------------ #
@@ -320,6 +333,7 @@ def load_cfg_fom_args(description="Config file options."):
     args = parser.parse_args()
     _C.merge_from_file(args.cfg_file)
     _C.merge_from_list(args.opts)
+    _C.freeze()
 
 
 def assert_and_infer_cfg(cache_urls=True):

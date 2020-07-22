@@ -11,6 +11,7 @@ import torch
 from xnas.core.config import cfg
 from xnas.search_space.cell_based import _DartsCNN
 from xnas.search_space.cell_based import _NASbench201
+from xnas.search_space.method.pdarts import _PdartsCNN
 from xnas.search_space.mb_v3_cnn import build_super_net
 from xnas.search_algorithm.ASNG import ASNG, Dynamic_ASNG
 from xnas.search_algorithm.SNG import SNG, Dynamic_SNG
@@ -21,8 +22,7 @@ from xnas.search_algorithm.DDPNAS import CategoricalDDPNAS
 
 # Supported models
 _spaces = {"darts": _DartsCNN, "nasbench201": _NASbench201, "ofa": build_super_net,
-           "proxyless": build_super_net, "google": build_super_net}
-
+           "proxyless": build_super_net, "google": build_super_net, "pdarts": _PdartsCNN}
 
 # Supported loss functions
 _loss_funs = {"cross_entropy": torch.nn.CrossEntropyLoss}
