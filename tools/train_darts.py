@@ -94,7 +94,7 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         val_X, val_y = val_X.cuda(), val_y.cuda(non_blocking=True)
         # phase 2. architect step (alpha)
         alpha_optimizer.zero_grad()
-        architect.unrolled_backward(trn_X, trn_y, val_X, val_y, lr, w_optimizer)
+        architect.unrolled_backward(trn_X, trn_y, val_X, val_y, lr, w_optimizer, unrolled=cfg.SEARCH.DARTS.SECOND)
         alpha_optimizer.step()
 
         # phase 1. child network step (w)
