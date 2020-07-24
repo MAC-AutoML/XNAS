@@ -91,10 +91,10 @@ def run(M=10, N=10, func='rastrigin', optimizer_name='SNG', runing_times=500, ru
 if __name__ == '__main__':
     func = 'rastrigin'
     step = 4
-    gamma = 0.8
+    gamma = 0.9
     save_dir = '/userhome/project/XNAS/experiment/MIGO/test_function'
-    optimizer_name = 'MIGO'
-    run(M=10, N=10, func=func, optimizer_name=optimizer_name, runing_times=500, runing_epochs=1000,
+    optimizer_name = 'dynamic_ASNG'
+    run(M=10, N=1000, func=func, optimizer_name=optimizer_name, runing_times=500, runing_epochs=1000,
         step=step, gamma=gamma, save_dir=save_dir)
     # for func in ['rastrigin']:
     #     for step in [1, 2, 3, 4, 5, 6, 7, 8, 9]:
