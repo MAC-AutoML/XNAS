@@ -69,7 +69,7 @@ def run(M=10, N=10, func='rastrigin', optimizer_name='SNG', runing_times=500, ru
             if hasattr(distribution_optimizer, 'training_finish'):
                 if distribution_optimizer.training_finish:
                     break
-            sample = distribution_optimizer.sampling_index()
+            sample = distribution_optimizer.sampling()
             objective = test_function.objective_function(sample)
             distribution_optimizer.record_information(sample, objective)
             distribution_optimizer.update()
