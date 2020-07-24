@@ -81,7 +81,10 @@ class EpochSumCategoryTestFunction(TestFunction):
         return (input - self.bias) * self.scale
 
     def objective_function(self, sample):
-        import pdb; pdb.set_trace()
+        _sample = []
+        for i in sample:
+            _sample.append(np.argmax(i))
+        sample = np.array(_sample)
         sample = self.input_trans(sample)
         epoch = []
         for i in range(sample.shape[0]):
