@@ -89,12 +89,20 @@ def run(M=10, N=10, func='rastrigin', optimizer_name='SNG', runing_times=500, ru
 
 
 if __name__ == '__main__':
-    func = 'rastrigin'
-    step = 4
-    gamma = 0.9
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--N", help="function dimension", type=int, default=10)
+    parser.add_argument("--M", help="dicrete level", type=int, default=10)
+    parser.add_argument("--func", help="test functions in [rastrigin, index_sum, rosenbrock]", type=str, default='rastrigin')
+    parser.add_argument("--optimizer", help="dicrete level", type=str, default='rastrigin')
+    parser.add_argument("--step", help="pruning step", type=int, default=4)
+    parser.add_argument("--gamma", help="gamma value", type=float, default=0.9)
+    args = parser.parse_args()
+    func = args.func
+    step = args.step
+    gamma = args.gamma
     save_dir = '/userhome/project/XNAS/experiment/MIGO/test_function'
     optimizer_name = 'dynamic_ASNG'
-    run(M=10, N=1000, func=func, optimizer_name=optimizer_name, runing_times=500, runing_epochs=1000,
+    run(M=args.M, N=args.N, func=func, optimizer_name=optimizer_name, runing_times=500, runing_epochs=1000,
         step=step, gamma=gamma, save_dir=save_dir)
     # for func in ['rastrigin']:
     #     for step in [1, 2, 3, 4, 5, 6, 7, 8, 9]:
