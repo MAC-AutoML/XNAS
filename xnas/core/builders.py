@@ -21,7 +21,7 @@ from xnas.search_space.cell_based import _DartsCNN, _NASbench201
 from xnas.search_space.mb_v3_cnn import build_super_net
 
 # Supported models
-_spaces = {"darts": _DartsCNN, "nasbench201": _NASbench201, "ofa": build_super_net,"pcdarts": _PcdartsCNN,
+_spaces = {"darts": _DartsCNN, "nasbench201": _NASbench201, "ofa": build_super_net, "pcdarts": _PcdartsCNN,
            "proxyless": build_super_net, "google": build_super_net, "pdarts": _PdartsCNN}
 
 # Supported loss functions
