@@ -41,12 +41,11 @@ _C.SPACE.LAYERS = 8
 # number of nodes in a cell
 _C.SPACE.NODES = 4
 
-#number of  PRIMITIVE
-_C.SPACE.PRIMITIVES=[ ]
+# number of  PRIMITIVE
+_C.SPACE.PRIMITIVES = []
 
 # number of nodes in a cell
 _C.SPACE.BASIC_OP = []
-
 
 
 # ------------------------------------------------------------------------------------ #
@@ -171,7 +170,7 @@ _C.DATA_LOADER.PCA_JITTER = False
 _C.DATA_LOADER.COLOR_JITTER = False
 
 # ------------------------------------------------------------------------------------ #
-# Training options
+# Searching options
 # ------------------------------------------------------------------------------------ #
 _C.SEARCH = CfgNode()
 
@@ -200,14 +199,26 @@ _C.SEARCH.WEIGHTS = ""
 # using FP16
 _C.SEARCH.AMP = False
 
-#adujust the number of layers
-_C.SEARCH.add_layers=0
+# ------------------------------------------------------------------------------------ #
+# Darts options
+# ------------------------------------------------------------------------------------ #
+_C.SEARCH.DARTS = CfgNode()
 
-#adujust the width
-_C.SEARCH.add_width=0
+_C.SEARCH.DARTS.SECOND = True
 
-#droupout_rate of skip operation
-_C.SEARCH.dropout_rate=0.0
+# ------------------------------------------------------------------------------------ #
+# Parts options
+# ------------------------------------------------------------------------------------ #
+_C.SEARCH.PDARTS = CfgNode()
+
+_C.SEARCH.PDARTS.SECOND = True
+
+_C.SEARCH.PDARTS.add_layers = 0
+
+_C.SEARCH.PDARTS.add_width = 0
+
+_C.SEARCH.PDARTS.dropout_rate = 0.0
+
 
 # ------------------------------------------------------------------------------------ #
 # Precise timing options

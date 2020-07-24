@@ -124,31 +124,35 @@ class Architect():
             for a, va in zip(self.net.alphas(), self.v_net.alphas()):
                 va.copy_(a)
 
-    def unrolled_backward(self, trn_X, trn_y, val_X, val_y, xi, w_optim):
+    def unrolled_backward(self, trn_X, trn_y, val_X, val_y, xi, w_optim, unrolled=True):
         """ Compute unrolled loss and backward its gradients
         Args:
             xi: learning rate for virtual gradient step (same as net lr)
             w_optim: weights optimizer - for virtual step
         """
         # do virtual step (calc w`)
-        self.virtual_step(trn_X, trn_y, xi, w_optim)
+        if unrolled:
+            self.virtual_step(trn_X, trn_y, xi, w_optim)
 
-        # calc unrolled loss
-        loss = self.v_net.loss(val_X, val_y)  # L_val(w`)
+            # calc unrolled loss
+            loss = self.v_net.loss(val_X, val_y)  # L_val(w`)
 
-        # compute gradient
-        v_alphas = tuple(self.v_net.alphas())
-        v_weights = tuple(self.v_net.weights())
-        v_grads = torch.autograd.grad(loss, v_alphas + v_weights)
-        dalpha = v_grads[:len(v_alphas)]
-        dw = v_grads[len(v_alphas):]
+            # compute gradient
+            v_alphas = tuple(self.v_net.alphas())
+            v_weights = tuple(self.v_net.weights())
+            v_grads = torch.autograd.grad(loss, v_alphas + v_weights)
+            dalpha = v_grads[:len(v_alphas)]
+            dw = v_grads[len(v_alphas):]
 
-        hessian = self.compute_hessian(dw, trn_X, trn_y)
+            hessian = self.compute_hessian(dw, trn_X, trn_y)
 
-        # update final gradient = dalpha - xi*hessian
-        with torch.no_grad():
-            for alpha, da, h in zip(self.net.alphas(), dalpha, hessian):
-                alpha.grad = da - xi*h
+            # update final gradient = dalpha - xi*hessian
+            with torch.no_grad():
+                for alpha, da, h in zip(self.net.alphas(), dalpha, hessian):
+                    alpha.grad = da - xi*h
+        else:
+            loss = self.net.loss(val_X, val_y)  # L_trn(w)
+            loss.loss.backward()
 
     def compute_hessian(self, dw, trn_X, trn_y):
         """
