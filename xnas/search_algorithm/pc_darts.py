@@ -182,19 +182,18 @@ class Architect():
         # do virtual step (calc w`)
         self.virtual_step(trn_X, trn_y, xi, w_optim)
 
-        # calc unrolled loss
+       # calc unrolled loss
         loss = self.v_net.loss(val_X, val_y)  # L_val(w`)
 
         # compute gradient
         v_weights = tuple(self.v_net.weights())
         ####alpha
         v_alphas = tuple(self.v_net.alphas())
-        #v_betas = tuple(self.v_net.betas())
+
         v_grads = torch.autograd.grad(loss, v_alphas + v_weights,retain_graph=True)
         dalpha = v_grads[:len(v_alphas)]
         #dbeta = v_grads[len(v_alphas):len(v_alphas)+len(v_betas)]
         dw = v_grads[len(v_alphas):]
-
         hessiana = self.compute_hessian(dw, trn_X, trn_y)
         #hessianb = self.compute_hessian(dw, trn_X, trn_y, 1)
         # update final gradient = dalpha - xi*hessian
