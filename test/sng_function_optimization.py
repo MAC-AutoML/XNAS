@@ -92,7 +92,7 @@ if __name__ == '__main__':
     func = 'rastrigin'
     step = 4
     gamma = 0.8
-    save_dir = '/userhomeproject/XNAS/experiment/MIGO/test_function'
+    save_dir = '/userhome/project/XNAS/experiment/MIGO/test_function'
     optimizer_name = 'MIGO'
     run(M=10, N=10, func=func, optimizer_name=optimizer_name, runing_times=500, runing_epochs=1000,
         step=step, gamma=gamma, save_dir=save_dir)
