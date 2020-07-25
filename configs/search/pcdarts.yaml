@@ -14,4 +14,6 @@ SEARCH:
   EVAL_PERIOD: 50
 OPTIM:
   MAX_EPOCH: 50
+  UNROLLED: False
+
 OUT_DIR: '/userhome/XNAS/experiment/pcdarts'

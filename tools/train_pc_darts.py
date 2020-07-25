@@ -99,7 +99,11 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         # phase 2. architect step (alpha)
         if cur_epoch >= 15:
             alpha_optimizer.zero_grad()
-            architect.unrolled_backward(trn_X, trn_y, val_X, val_y, lr, w_optimizer)
+            if cfg.OPTIM.UNROLLED:
+                architect.unrolled_backward(trn_X, trn_y, val_X, val_y, lr, w_optimizer)
+            else:
+                loss = architect.net.loss(val_X, val_y)
+                loss.backward()
             alpha_optimizer.step()
 
         # phase 1. child network step (w)

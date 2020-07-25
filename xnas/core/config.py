@@ -145,6 +145,8 @@ _C.OPTIM.WARMUP_EPOCHS = 0
 # Momentum dampening
 _C.OPTIM.GRAD_CLIP = 5.0
 
+# Use one-step unrolled validation loss
+_C.OPTIM.UNROLLED = False
 
 # ------------------------------------------------------------------------------------ #
 # Common train/test data loader options

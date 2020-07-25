@@ -197,12 +197,8 @@ class Architect():
         hessiana = self.compute_hessian(dw, trn_X, trn_y)
         #hessianb = self.compute_hessian(dw, trn_X, trn_y, 1)
         # update final gradient = dalpha - xi*hessian
-        #with torch.no_grad():
 
-        #####beta
-
-
-        # update final gradient = dbeta - xi*hessian
+      # update final gradient = dbeta - xi*hessian
         with torch.no_grad():
             for alpha, da, h in zip(self.net.alphas(), dalpha, hessiana):
                 alpha.grad = da - xi * h
