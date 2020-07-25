@@ -17,6 +17,7 @@ import xnas.core.meters as meters
 from xnas.core.builders import build_space, lr_scheduler_builder, sng_builder
 from xnas.core.config import cfg
 from xnas.core.trainer import setup_env
+from xnas.core.utils import index_to_one_hot
 from xnas.datasets.loader import _construct_loader
 
 # config load and assert
@@ -58,6 +59,7 @@ def main():
         array_sample = np.array(array_sample)
         for i in range(num_ops):
             sample = np.transpose(array_sample[:, i])
+            sample = index_to_one_hot(sample, distribution_optimizer.p_model.Cmax)
             train(train_, val_, search_space, w_optim, lr, epoch, sample, loss_fun, warm_train_meter)
     logger.info("end warm up training")
     logger.info("start One shot searching")
