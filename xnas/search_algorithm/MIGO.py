@@ -66,6 +66,13 @@ class MIGO:
     def sampling(self):
         return index_to_one_hot(self.sampling_index(), self.p_model.Cmax)
 
+    def sampling_best(self):
+        sample = []
+        for i in range(self.p_model.d):
+            sample.append(np.argmax(self.p_model.theta[i]))
+        sample = np.array(sample)
+        return index_to_one_hot(sample, self.p_model.Cmax)
+
     def sampling_index(self):
         # fairness sampling
         sample = []

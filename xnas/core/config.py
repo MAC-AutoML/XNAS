@@ -120,6 +120,9 @@ _C.OPTIM.LR_MULT = 0.1
 # Maximal number of epochs
 _C.OPTIM.MAX_EPOCH = 200
 
+# final training of epochs
+_C.OPTIM.FINAL_EPOCH = 0
+
 # Minimal learning rate in cosine
 _C.OPTIM.MIN_LR = 0.001
 
