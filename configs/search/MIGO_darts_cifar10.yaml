@@ -10,7 +10,7 @@ OPTIM:
   BASE_LR: 0.5
   MOMENTUM: 0.9
   STEPS: [60, 120]
-  LR_POLICY: 'steps'
+  LR_POLICY: 'step'
   WARMUP_EPOCHS: 10
   MAX_EPOCH: 400
 SNG:
