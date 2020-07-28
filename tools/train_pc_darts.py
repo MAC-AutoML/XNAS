@@ -1,5 +1,6 @@
 import gc
 import os
+import time
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -25,6 +26,7 @@ logger = logging.get_logger(__name__)
 
 
 def main():
+    tic = time.time()
     setup_env()
     # loadiong search space
     search_space = build_space()
@@ -74,6 +76,9 @@ def main():
             torch.cuda.synchronize()
             torch.cuda.empty_cache()  # https://forums.fast.ai/t/clearing-gpu-memory-pytorch/14637
         gc.collect()
+
+    toc = time.time()
+    logger.info("Search-time(GPUh): {}".format((toc - tic)/3600))
 
 
 def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimizer, alpha_optimizer, lr, train_meter, cur_epoch):
