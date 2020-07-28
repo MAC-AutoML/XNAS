@@ -120,7 +120,7 @@ class MIGO:
         return x
 
     def update(self):
-        if len(self.sample_index[0]) == 0:
+        if len(self.sample_index[0]) < self.sampling_number_per_edge:
             objective = np.array(self.objective)
             sample_array = np.array(self.sample)
             self.update_function(sample_array, objective)
