@@ -7,7 +7,9 @@ import random
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
+import time
 
 import xnas.core.checkpoint as checkpoint
 import xnas.core.config as config
@@ -16,8 +18,8 @@ import xnas.core.meters as meters
 from xnas.core.builders import build_space, lr_scheduler_builder, sng_builder
 from xnas.core.config import cfg
 from xnas.core.trainer import setup_env
+from xnas.core.utils import index_to_one_hot
 from xnas.datasets.loader import _construct_loader
-import torch.nn.functional as F
 
 # config load and assert
 config.load_cfg_fom_args()
@@ -50,6 +52,9 @@ def main():
     # training loop
     logger.info("start warm up training")
     warm_train_meter = meters.TrainMeter(len(train_))
+    warm_val_meter = meters.TestMeter(len(val_))
+    start_time = time.time()
+    _over_all_epoch = 0
     for epoch in range(cfg.OPTIM.WARMUP_EPOCHS):
         # lr_scheduler.step()
         lr = lr_scheduler.get_last_lr()[0]
@@ -58,7 +63,10 @@ def main():
         array_sample = np.array(array_sample)
         for i in range(num_ops):
             sample = np.transpose(array_sample[:, i])
-            train(train_, val_, search_space, w_optim, lr, epoch, sample, loss_fun, warm_train_meter)
+            sample = index_to_one_hot(sample, distribution_optimizer.p_model.Cmax)
+            _over_all_epoch += 1
+            train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, warm_train_meter)
+            top1 = test_epoch(val_, search_space, warm_val_meter, _over_all_epoch, sample, writer)
     logger.info("end warm up training")
     logger.info("start One shot searching")
     train_meter = meters.TrainMeter(len(train_))
@@ -71,10 +79,11 @@ def main():
         sample = distribution_optimizer.sampling()
 
         # training
-        train(train_, val_, search_space, w_optim, lr, epoch, sample, loss_fun, train_meter)
+        _over_all_epoch += 1
+        train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, train_meter)
 
         # validation
-        top1 = test_epoch(val_, search_space, val_meter, epoch, sample, writer)
+        top1 = test_epoch(val_, search_space, val_meter, _over_all_epoch, sample, writer)
         lr_scheduler.step()
         distribution_optimizer.record_information(sample, top1)
         distribution_optimizer.update()
@@ -94,6 +103,13 @@ def main():
             torch.cuda.synchronize()
             torch.cuda.empty_cache()  # https://forums.fast.ai/t/clearing-gpu-memory-pytorch/14637
         gc.collect()
+    for epoch in range(cfg.OPTIM.FINAL_EPOCH):
+        sample = distribution_optimizer.sampling_best()
+        _over_all_epoch += 1
+        train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, train_meter)
+        test_epoch(val_, search_space, val_meter, _over_all_epoch, sample, writer)
+    end_time = time.time()
+    logger.info("Overall training time (hr) is:{}".format(str((end_time-start_time)/3600.)))
 
 
 def train(train_loader, valid_loader, model, w_optim, lr, epoch, sample, net_crit, train_meter):

@@ -1,7 +1,8 @@
-import os
 import gc
-import sys
-sys.path.append("..")
+import os
+
+from torch.utils.tensorboard import SummaryWriter
+
 import xnas.core.checkpoint as checkpoint
 import xnas.core.config as config
 import xnas.core.logging as logging
@@ -11,7 +12,6 @@ from xnas.core.config import cfg
 from xnas.core.trainer import setup_env, test_epoch
 from xnas.datasets.loader import _construct_loader
 from xnas.search_algorithm.darts import *
-from torch.utils.tensorboard import SummaryWriter
 
 # config load and assert
 config.load_cfg_fom_args()
@@ -51,7 +51,8 @@ def main():
     logger.info("Start epoch: {}".format(start_epoch + 1))
     for cur_epoch in range(start_epoch, cfg.OPTIM.MAX_EPOCH):
         lr = lr_scheduler.get_last_lr()[0]
-        train_epoch(train_, val_, darts_controller, architect, loss_fun, w_optim, alpha_optim, lr, train_meter, cur_epoch)
+        train_epoch(train_, val_, darts_controller, architect, loss_fun,
+                    w_optim, alpha_optim, lr, train_meter, cur_epoch)
         # Save a checkpoint
         if (cur_epoch + 1) % cfg.SEARCH.CHECKPOINT_PERIOD == 0:
             checkpoint_file = checkpoint.save_checkpoint(
@@ -93,7 +94,7 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         val_X, val_y = val_X.cuda(), val_y.cuda(non_blocking=True)
         # phase 2. architect step (alpha)
         alpha_optimizer.zero_grad()
-        architect.unrolled_backward(trn_X, trn_y, val_X, val_y, lr, w_optimizer)
+        architect.unrolled_backward(trn_X, trn_y, val_X, val_y, lr, w_optimizer, unrolled=cfg.SEARCH.DARTS.SECOND)
         alpha_optimizer.step()
 
         # phase 1. child network step (w)

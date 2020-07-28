@@ -48,7 +48,7 @@ class SumCategoryTestFunction(TestFunction):
 
 
 class EpochSumCategoryTestFunction(TestFunction):
-    def __init__(self, category, epoch_func='quad', func='index_sum'):
+    def __init__(self, category, epoch_func='quad', func='index_sum', noise_std=0.0):
         assert epoch_func in ['quad', 'linear', 'exp', 'constant']
         assert func in ['index_sum', 'rastrigin', 'rosenbrock']
         self.category = category
@@ -70,6 +70,7 @@ class EpochSumCategoryTestFunction(TestFunction):
             self.scale = 1.
             self.bias = int(self.category[0]/2)
         self.maxmize = 1 if self.func == 'index_sum' else -1
+        self.noise_std = noise_std
 
     def re_new(self):
         self.epoch_recoder = []
@@ -81,7 +82,10 @@ class EpochSumCategoryTestFunction(TestFunction):
         return (input - self.bias) * self.scale
 
     def objective_function(self, sample):
-
+        _sample = []
+        for i in sample:
+            _sample.append(np.argmax(i))
+        sample = np.array(_sample)
         sample = self.input_trans(sample)
         epoch = []
         for i in range(sample.shape[0]):
@@ -111,7 +115,8 @@ class EpochSumCategoryTestFunction(TestFunction):
         min_epoch = np.min(epoch)
         random_seed = np.random.randn() * (max_epoch - min_epoch) + 1.
         result *= random_seed
-        return result * self.maxmize
+        random_noise = np.random.randn() * self.random_noise + 1.
+        return result * self.maxmize * random_noise
 
     def optimal_value(self):
         if self.func == 'index_sum':

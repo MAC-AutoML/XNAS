@@ -3,11 +3,17 @@ SPACE:
   NUM_CLASSES: 10
 SEARCH:
   DATASET: 'cifar10'
-  SPLIT: [0.8, 0.2]
+  SPLIT: [0.5, 0.5]
   BATCH_SIZE: 256
   IM_SIZE: 32
 OPTIM:
-  STEPS: [48, 96]
+  BASE_LR: 0.1
+  MOMENTUM: 0.9
+  STEPS: [60, 120]
+  LR_POLICY: 'step'
+  WARMUP_EPOCHS: 5
+  MAX_EPOCH: 400
+  FINAL_EPOCH: 10
 SNG:
   NAME: 'MIGO'
   THETA_LR: 0.1
@@ -16,7 +22,8 @@ SNG:
   UTILITY: 'log'
   UTILITY_FACTOR: 0.4
   MOMENTUM: True
-  GAMMA: 0.9
+  GAMMA: 0.5
+  PRUNING_STEP: 5
 DATA_LOADER:
   BACKEND: 'custom'
 OUT_DIR: '/userhome/project/XNAS/experiment/MIGO_test'
