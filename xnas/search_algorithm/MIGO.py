@@ -17,7 +17,7 @@ class MIGO:
                  delta_init=1., step=3, pruning=True,
                  init_theta=None, max_mize=True, sample_with_prob=False,
                  utility_function='picewise', utility_function_hyper=0.5,
-                 momentum=True, gamma=0.9):
+                 momentum=True, gamma=0.9, sampling_number_per_edge=1):
         # Categorical distribution
         self.p_model = Categorical(categories)
         # valid dimension size
@@ -49,6 +49,7 @@ class MIGO:
         self.gamma = gamma
         self.velocity = np.zeros(self.p_model.theta.shape)
         self.init_record()
+        self.sampling_number_per_edge = sampling_number_per_edge
 
     def init_record(self):
         for i in range(self.p_model.d):
@@ -64,7 +65,27 @@ class MIGO:
         self.objective.append(objective*self.max_mize)
 
     def sampling(self):
-        return index_to_one_hot(self.sampling_index(), self.p_model.Cmax)
+        if self.sampling_number_per_edge == 1:
+            return index_to_one_hot(self.sampling_index(), self.p_model.Cmax)
+        else:
+            sample = []
+            sample_one_hot_like = np.zeros([self.p_model.d, self.p_model.Cmax])
+            for i in range(self.p_model.d):
+                # get the prob
+                if self.sample_with_prob:
+                    prob = copy.deepcopy(self.p_model.theta[i, self.sample_index[i]])
+                    prob = prob / prob.sum()
+                    sample.append(np.random.choice(
+                        self.sample_index[i], size=self.sampling_number_per_edge, p=prob, replace=False))
+                else:
+                    sample.append(np.random.choice(self.sample_index[i],
+                                                   size=self.sampling_number_per_edge, replace=False))
+                if len(self.sample_index[i]) > 0:
+                    for j in sample[i]:
+                        self.sample_index[i].remove(int(j))
+                for j in range(self.sampling_number_per_edge):
+                    sample_one_hot_like[i, int(sample[i][j])] = 1
+        return sample_one_hot_like
 
     def sampling_best(self):
         sample = []
@@ -113,7 +134,7 @@ class MIGO:
                     if not len(self.pruned_index[index]) == 0:
                         pruned_weight[index, self.pruned_index[index]] = np.nan
                     self.pruned_index[index].append(np.nanargmin(pruned_weight[index, :]))
-                if len(self.pruned_index[0]) >= (self.p_model.Cmax - 1):
+                if len(self.pruned_index[0]) >= (self.p_model.Cmax - self.sampling_number_per_edge):
                     self.training_finish = True
                 self.current_step = 1
             self.update_sample_index()
