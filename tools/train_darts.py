@@ -48,6 +48,7 @@ def main():
     val_meter = meters.TestMeter(len(val_))
     start_epoch = 0
     # Perform the training loop
+    start_time = time.time()
     logger.info("Start epoch: {}".format(start_epoch + 1))
     for cur_epoch in range(start_epoch, cfg.OPTIM.MAX_EPOCH):
         lr = lr_scheduler.get_last_lr()[0]
@@ -72,6 +73,8 @@ def main():
             torch.cuda.synchronize()
             torch.cuda.empty_cache()  # https://forums.fast.ai/t/clearing-gpu-memory-pytorch/14637
         gc.collect()
+    end_time = time.time()
+    logger.info("Overall training time (hr) is:{}".format(str((end_time-start_time)/3600.)))
 
 
 def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimizer, alpha_optimizer, lr, train_meter, cur_epoch):
