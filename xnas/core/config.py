@@ -64,6 +64,15 @@ _C.MB.WIDTH_MULTI = 1.0
 # number of nodes in a cell
 _C.MB.BASIC_OP = []
 
+# stage of strides
+_C.MB.STRIDE_STAGES = []
+
+# stage of acts
+_C.MB.ACT_STAGES = []
+
+# stage of SE
+_C.MB.SE_STAGES = []
+
 # ------------------------------------------------------------------------------------ #
 # Stotiscas natural gradient algorithm options
 # ------------------------------------------------------------------------------------ #

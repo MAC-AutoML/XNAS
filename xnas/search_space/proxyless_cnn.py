@@ -7,7 +7,7 @@ import pdb
 class ProxylessNASNets(MyNetwork):
 
     def __init__(self, n_classes=1000, base_stage_width='proxyless',
-                 width_mult=1.3, conv_candidates=None, depth=4):
+                 width_mult=1.3, conv_candidates=None, depth=4, stride_stages=None):
         super(ProxylessNASNets, self).__init__()
         self.width_mult = width_mult
         self.depth = depth
@@ -49,7 +49,7 @@ class ProxylessNASNets(MyNetwork):
         blocks = nn.ModuleList()
         blocks.append(first_block)
 
-        stride_stages = [2, 2, 2, 1, 2, 1]
+        self.stride_stages = [2, 2, 2, 1, 2, 1] if stride_stages is None else stride_stages
         n_block_list = [self.depth] * 5 + [1]
         width_list = []
         for base_width in base_stage_width[2:-1]:
@@ -58,7 +58,7 @@ class ProxylessNASNets(MyNetwork):
         feature_dim = input_channel
 
         self.candidate_ops = []
-        for width, n_block, s in zip(width_list, n_block_list, stride_stages):
+        for width, n_block, s in zip(width_list, n_block_list, self.stride_stages):
             for i in range(n_block):
                 if i == 0:
                     stride = s
