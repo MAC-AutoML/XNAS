@@ -64,9 +64,9 @@ def main():
         for i in range(num_ops):
             sample = np.transpose(array_sample[:, i])
             sample = index_to_one_hot(sample, distribution_optimizer.p_model.Cmax)
-            _over_all_epoch += 1
             train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, warm_train_meter)
             top1 = test_epoch(val_, search_space, warm_val_meter, _over_all_epoch, sample, writer)
+            _over_all_epoch += 1
     logger.info("end warm up training")
     logger.info("start One shot searching")
     train_meter = meters.TrainMeter(len(train_))
@@ -79,11 +79,11 @@ def main():
         sample = distribution_optimizer.sampling()
 
         # training
-        _over_all_epoch += 1
         train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, train_meter)
 
         # validation
         top1 = test_epoch(val_, search_space, val_meter, _over_all_epoch, sample, writer)
+        _over_all_epoch += 1
         lr_scheduler.step()
         distribution_optimizer.record_information(sample, top1)
         distribution_optimizer.update()
