@@ -105,6 +105,9 @@ _C.SNG.MOMENTUM = True
 # nature gradient momentum factor
 _C.SNG.GAMMA = 0.9
 
+# nature gradient momentum factor
+_C.SNG.SAMPLING_PER_EDGE = 1
+
 
 # ------------------------------------------------------------------------------------ #
 # Optimizer options in network
