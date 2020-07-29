@@ -14,7 +14,7 @@ from xnas.search_space.test_function import (EpochSumCategoryTestFunction,
                                              SumCategoryTestFunction)
 
 
-def get_optimizer(name, category, step=4, gamma=0.9):
+def get_optimizer(name, category, step=4, gamma=0.9, sample_with_prob=True, utility_function='log', utility_function_hyper=0.4):
     if name == 'DDPNAS':
         return CategoricalDDPNAS(category, 3)
     elif name == 'MDENAS':
@@ -24,20 +24,21 @@ def get_optimizer(name, category, step=4, gamma=0.9):
     elif name == 'ASNG':
         return ASNG(categories=category)
     elif name == 'dynamic_ASNG':
-        return Dynamic_ASNG(categories=category, step=step, pruning=True)
+        return Dynamic_ASNG(categories=category, step=step, pruning=True, sample_with_prob=sample_with_prob)
     elif name == 'dynamic_SNG':
         return Dynamic_SNG(categories=category, step=step,
-                           pruning=True, sample_with_prob=True)
+                           pruning=True, sample_with_prob=sample_with_prob)
     elif name == 'MIGO':
         return MIGO(categories=category, step=step,
-                    pruning=True, sample_with_prob=False,
-                    utility_function='log', utility_function_hyper=0.4,
+                    pruning=True, sample_with_prob=sample_with_prob,
+                    utility_function='log', utility_function_hyper=utility_function_hyper,
                     momentum=True, gamma=gamma)
     else:
         raise NotImplementedError
 
 
-def run(M=10, N=10, func='rastrigin', optimizer_name='SNG', runing_times=500, runing_epochs=200, step=4, gamma=0.9, save_dir=None, noise=0.0):
+def run(M=10, N=10, func='rastrigin', optimizer_name='SNG', runing_times=500, runing_epochs=200,
+        step=4, gamma=0.9, save_dir=None, noise=0.0):
     category = [M]*N
     # test_function = SumCategoryTestFunction(category)
     # ['quad', 'linear', 'exp', 'constant']

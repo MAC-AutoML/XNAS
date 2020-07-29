@@ -103,12 +103,12 @@ def main():
             torch.cuda.synchronize()
             torch.cuda.empty_cache()  # https://forums.fast.ai/t/clearing-gpu-memory-pytorch/14637
         gc.collect()
+    end_time = time.time()
     for epoch in range(cfg.OPTIM.FINAL_EPOCH):
         sample = distribution_optimizer.sampling_best()
         _over_all_epoch += 1
         train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, train_meter)
         test_epoch(val_, search_space, val_meter, _over_all_epoch, sample, writer)
-    end_time = time.time()
     logger.info("Overall training time (hr) is:{}".format(str((end_time-start_time)/3600.)))
 
 
