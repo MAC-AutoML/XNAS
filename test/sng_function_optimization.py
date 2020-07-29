@@ -27,7 +27,7 @@ def get_optimizer(name, category, step=4, gamma=0.9):
         return Dynamic_ASNG(categories=category, step=step, pruning=True)
     elif name == 'dynamic_SNG':
         return Dynamic_SNG(categories=category, step=step,
-                           pruning=False, sample_with_prob=False)
+                           pruning=True, sample_with_prob=True)
     elif name == 'MIGO':
         return MIGO(categories=category, step=step,
                     pruning=True, sample_with_prob=False,
