@@ -115,7 +115,7 @@ class EpochSumCategoryTestFunction(TestFunction):
         min_epoch = np.min(epoch)
         random_seed = np.random.randn() * (max_epoch - min_epoch) + 1.
         result *= random_seed
-        random_noise = np.random.randn() * self.random_noise + 1.
+        random_noise = np.random.randn() * self.noise_std + 1.
         return result * self.maxmize * random_noise
 
     def optimal_value(self):
