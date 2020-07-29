@@ -38,7 +38,8 @@ def get_optimizer(name, category, step=4, gamma=0.9, sample_with_prob=True, util
 
 
 def run(M=10, N=10, func='rastrigin', optimizer_name='SNG', runing_times=500, runing_epochs=200,
-        step=4, gamma=0.9, save_dir=None, noise=0.0):
+        step=4, gamma=0.9, save_dir=None, noise=0.0, sample_with_prob=True, utility_function='log',
+        utility_function_hyper=0.4):
     category = [M]*N
     # test_function = SumCategoryTestFunction(category)
     # ['quad', 'linear', 'exp', 'constant']
@@ -47,13 +48,15 @@ def run(M=10, N=10, func='rastrigin', optimizer_name='SNG', runing_times=500, ru
     test_function = EpochSumCategoryTestFunction(category, epoch_func=epoc_function, func=func, noise_std=noise)
 
     # distribution_optimizer = Category_DDPNAS.CategoricalDDPNAS(category, 3)
-    distribution_optimizer = get_optimizer(optimizer_name, category, step=step, gamma=gamma)
-    if optimizer_name == 'MIGO':
-        file_name = '{}_{}_{}_{}_{}_{}_{}_{}_{}.npz'.format(optimizer_name, str(N), str(M), str(runing_epochs),
-                                                            epoc_function, func, str(step), str(gamma), str(noise))
-    else:
-        file_name = '{}_{}_{}_{}_{}_{}_{}.npz'.format(optimizer_name, str(N), str(M), str(runing_epochs),
-                                                      epoc_function, func, str(noise))
+    distribution_optimizer = get_optimizer(optimizer_name, category, step=step, gamma=gamma,
+                                           sample_with_prob=sample_with_prob, utility_function=utility_function,
+                                           utility_function_hyper=utility_function_hyper)
+    file_name = '{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.npz'.format(optimizer_name, str(N), str(M), str(runing_epochs),
+                                                                 epoc_function, func, str(step), str(gamma), str(noise),
+                                                                 str(sample_with_prob), utility_function, str(utility_function_hyper))
+    # else:
+    #     file_name = '{}_{}_{}_{}_{}_{}_{}.npz'.format(optimizer_name, str(N), str(M), str(runing_epochs),
+    #                                                   epoc_function, func, str(noise))
     file_name = os.path.join(save_dir, file_name)
     record = {
         'objective': np.zeros([runing_times, runing_epochs]) - 1,
@@ -82,7 +85,9 @@ def run(M=10, N=10, func='rastrigin', optimizer_name='SNG', runing_times=500, ru
             running_time_interval[i, j] = end_time - start_time
         test_function.re_new()
         del distribution_optimizer
-        distribution_optimizer = get_optimizer(optimizer_name, category)
+        distribution_optimizer = get_optimizer(optimizer_name, category, step=step, gamma=gamma,
+                                               sample_with_prob=sample_with_prob, utility_function=utility_function,
+                                               utility_function_hyper=utility_function_hyper)
     # mean_obj = np.mean(record['objective'], axis=0)
     # mean_distance = np.mean(record['l2_distance'], axis=0)
     np.savez(file_name, record['l2_distance'], running_time_interval)
@@ -99,16 +104,22 @@ if __name__ == '__main__':
     parser.add_argument("--step", help="pruning step", type=int, default=4)
     parser.add_argument("--gamma", help="gamma value", type=float, default=0.9)
     parser.add_argument("--noise", help="noise std", type=float, default=0.0)
+    parser.add_argument("-uh", "--utility_function_hyper",
+                        help="the factor of utility_function", type=float, default=0.4)
+    parser.add_argument("-ut", "--utility_function_type", help="the type of utility_function", type=str, default='log')
+    parser.add_argument("-sp", "--sample_with_prob",  action='store_true')
+
     args = parser.parse_args()
     func = args.func
     step = args.step
     gamma = args.gamma
     save_dir = '/userhome/project/XNAS/experiment/MIGO/test_function'
     optimizer_name = args.optimizer
-    print("N={}, M={}, function={}, step={}, gamma={}, optimizer={}, noise_std={}".format(
-        str(args.N), str(args.M), func, str(step), str(gamma), optimizer_name, str(args.noise)))
+    print("N={}, M={}, function={}, step={}, gamma={}, optimizer={}, noise_std={}, utility_function_hyper={}, utility_function_type={}, sample_with_prob={}".format(
+        str(args.N), str(args.M), func, str(step), str(gamma), optimizer_name, str(args.noise), str(args.utility_function_hyper), args.utility_function_type, str(args.sample_with_prob)))
     run(M=args.M, N=args.N, func=func, optimizer_name=optimizer_name, runing_times=500, runing_epochs=1000,
-        step=step, gamma=gamma, save_dir=save_dir, noise=args.noise)
+        step=step, gamma=gamma, save_dir=save_dir, noise=args.noise, sample_with_prob=args.sample_with_prob,
+        utility_function=args.utility_function_type, utility_function_hyper=args.utility_function_hyper)
     # for func in ['rastrigin']:
     #     for step in [1, 2, 3, 4, 5, 6, 7, 8, 9]:
     #         for gamma in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
