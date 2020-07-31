@@ -11,7 +11,8 @@ logger = logging.get_logger(__name__)
 class MobileNetV3(MyNetwork):
 
     def __init__(self, n_classes=1000, base_stage_width=None,
-                 width_mult=1.2, conv_candidates=None, depth=4):
+                 width_mult=1.2, conv_candidates=None, depth=4,
+                 stride_stages=None, act_stages=None, se_stages=None):
         super(MobileNetV3, self).__init__()
 
         self.width_mult = width_mult
@@ -32,9 +33,10 @@ class MobileNetV3(MyNetwork):
         final_expand_width = make_divisible(base_stage_width[-2] * self.width_mult, 8)
         last_channel = make_divisible(base_stage_width[-1] * self.width_mult, 8)
 
-        stride_stages = [1, 2, 2, 2, 1, 2]
-        act_stages = ['relu', 'relu', 'relu', 'h_swish', 'h_swish', 'h_swish']
-        se_stages = [False, False, True, False, True, True]
+        self.stride_stages = [1, 2, 2, 2, 1, 2] if stride_stages is None else stride_stages
+        self.act_stages = ['relu', 'relu', 'relu', 'h_swish',
+                           'h_swish', 'h_swish'] if act_stages is None else act_stages
+        self.se_stages = [False, False, True, False, True, True] if se_stages is None else se_stages
         n_block_list = [1] + [self.depth] * 5
         width_list = []
         for base_width in base_stage_width[:-2]:
@@ -45,8 +47,8 @@ class MobileNetV3(MyNetwork):
         # first conv layer
         first_conv = ConvLayer(3, input_channel, kernel_size=3, stride=2, act_func='h_swish')
         first_block_conv = MBInvertedConvLayer(
-            in_channels=input_channel, out_channels=input_channel, kernel_size=3, stride=stride_stages[0],
-            expand_ratio=1, act_func=act_stages[0], use_se=se_stages[0],
+            in_channels=input_channel, out_channels=input_channel, kernel_size=3, stride=self.stride_stages[0],
+            expand_ratio=1, act_func=self.act_stages[0], use_se=self.se_stages[0],
         )
         first_block = MobileInvertedResidualBlock(first_block_conv, IdentityLayer(input_channel, input_channel))
 
@@ -57,7 +59,7 @@ class MobileNetV3(MyNetwork):
         self.candidate_ops = []
 
         for width, n_block, s, act_func, use_se in zip(width_list[1:], n_block_list[1:],
-                                                       stride_stages[1:], act_stages[1:], se_stages[1:]):
+                                                       self.stride_stages[1:], self.act_stages[1:], self.se_stages[1:]):
 
             for i in range(n_block):
                 if i == 0:
@@ -190,7 +192,8 @@ class MobileNetV3(MyNetwork):
         return genotype
 
 
-def get_super_net(n_classes=1000, base_stage_width=None, width_mult=1.2, conv_candidates=None, depth=4):
+def get_super_net(n_classes=1000, base_stage_width=None, width_mult=1.2, conv_candidates=None, depth=4,
+                  stride_stages=None, act_stages=None, se_stages=None):
     # proxyless, google,
     if base_stage_width in ['proxyless', 'google']:
         return ProxylessNASNets(n_classes=n_classes, base_stage_width=base_stage_width,
@@ -199,7 +202,7 @@ def get_super_net(n_classes=1000, base_stage_width=None, width_mult=1.2, conv_ca
     elif base_stage_width == 'ofa':
         return MobileNetV3(n_classes=n_classes, base_stage_width=base_stage_width,
                            width_mult=width_mult, conv_candidates=conv_candidates,
-                           depth=depth)
+                           depth=depth, stride_stages=stride_stages, act_stages=act_stages, se_stages=se_stages)
     else:
         raise NotImplementedError
 
@@ -208,7 +211,11 @@ def build_super_net():
     import os
     from xnas.core.config import cfg
     basic_op = None if len(cfg.MB.BASIC_OP) == 0 else cfg.MB.BASIC_OP
-    super_net = get_super_net(cfg.SPACE.NUM_CLASSES, cfg.SPACE.NAME, cfg.MB.WIDTH_MULTI, basic_op, cfg.MB.DEPTH)
+    stride_stages = None if len(cfg.MB.STRIDE_STAGES) == 0 else cfg.MB.STRIDE_STAGES
+    act_stages = None if len(cfg.MB.ACT_STAGES) == 0 else act_stages
+    se_stages = None if len(cfg.MB.SE_STAGES) == 0 else se_stages
+    super_net = get_super_net(cfg.SPACE.NUM_CLASSES, cfg.SPACE.NAME, cfg.MB.WIDTH_MULTI,
+                              basic_op, cfg.MB.DEPTH, stride_stages, act_stages, se_stages)
     super_net.all_edges = len(super_net.blocks) - 1
     super_net.num_edges = len(super_net.blocks) - 1
     super_net.num_ops = len(super_net.conv_candidates) + 1
@@ -218,7 +225,7 @@ def build_super_net():
     logger.info("Saving search supernet to {}".format(super_net_config_path))
     json.dump(super_net_config, open(super_net_config_path, 'a+'))
     flops_path = os.path.join(cfg.OUT_DIR, 'flops.json')
-    flops_ = super_net.flops_counter_per_layer(input_size=[1, 3, 224, 224])
+    flops_ = super_net.flops_counter_per_layer(input_size=[1, 3, cfg.SEARCH.IM_SIZE, cfg.SEARCH.IM_SIZE])
     logger.info("Saving flops to {}".format(flops_path))
     json.dump(flops_, open(flops_path, 'a+'))
     return super_net

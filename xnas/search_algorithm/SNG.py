@@ -185,7 +185,7 @@ class Dynamic_SNG:
 
     def __init__(self, categories,
                  delta_init=1., lam=6, step=3, pruning=True,
-                 Delta_max=np.inf, init_theta=None, max_mize=True, sample_with_prob=False):
+                 Delta_max=np.inf, init_theta=None, max_mize=True, sample_with_prob=True):
 
         self.N = np.sum(np.array(categories) - 1)
         # Categorical distribution

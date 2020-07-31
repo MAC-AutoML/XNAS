@@ -80,7 +80,7 @@ def sng_builder(category):
                     step=cfg.SNG.PRUNING_STEP,
                     pruning=cfg.SNG.PRUNING, sample_with_prob=cfg.SNG.PROB_SAMPLING,
                     utility_function=cfg.SNG.UTILITY, utility_function_hyper=cfg.SNG.UTILITY_FACTOR,
-                    momentum=cfg.SNG.MOMENTUM, gamma=cfg.SNG.GAMMA)
+                    momentum=cfg.SNG.MOMENTUM, gamma=cfg.SNG.GAMMA, sampling_number_per_edge=cfg.SNG.SAMPLING_PER_EDGE)
     else:
         raise NotImplementedError
 
