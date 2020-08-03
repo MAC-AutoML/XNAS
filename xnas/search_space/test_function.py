@@ -12,7 +12,7 @@ def rastrigin_function(input):
 def rosenbrock_function(input):
     f_x = 0
     for i in range(input.shape[0]-1):
-        f_x += 100 * (input[i+1] - input[i]**2)**2 + (1 - input[i] ** 2)
+        f_x += 100 * (input[i+1] - input[i]**2)**2 + (1 - input[i]) ** 2
     return f_x
 
 
