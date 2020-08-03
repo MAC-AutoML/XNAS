@@ -1,7 +1,6 @@
 import argparse
 import os
 import time
-
 import numpy as np
 import tqdm
 
@@ -9,6 +8,7 @@ from xnas.search_algorithm.ASNG import ASNG, Dynamic_ASNG
 from xnas.search_algorithm.DDPNAS import CategoricalDDPNAS
 from xnas.search_algorithm.MDENAS import CategoricalMDENAS
 from xnas.search_algorithm.MIGO import MIGO
+from xnas.search_algorithm.GridSearch import GridSearch
 from xnas.search_algorithm.SNG import SNG, Dynamic_SNG
 from xnas.search_space.test_function import (EpochSumCategoryTestFunction,
                                              SumCategoryTestFunction)
@@ -33,6 +33,8 @@ def get_optimizer(name, category, step=4, gamma=0.9, sample_with_prob=True, util
                     pruning=True, sample_with_prob=sample_with_prob,
                     utility_function='log', utility_function_hyper=utility_function_hyper,
                     momentum=True, gamma=gamma)
+    elif name == 'GridSearch':
+        return GridSearch(category)
     else:
         raise NotImplementedError
 
