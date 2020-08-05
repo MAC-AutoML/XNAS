@@ -17,10 +17,6 @@ We reimplement several widely used NAS methods including:
 | darts |3    |4.450    |27.63      |39.7      |97.32|708.468 |-       |90.09       |cell-based  |
 | darts |4    |4.467    |21.48      |48        |97.39|717.454 |-       |90.52       |cell-based  |
 |paper  |-    |3.3      |96         |-         |97.24|-       |-       |-           |cell-based  |
-| pcdarts(official)|1   |   4.052   |    3.61     |   41.28    | 97.20| 638.823  |          | 85.296      | cell-based   |
-| pcdarts(official)|2   |   3.247   |     3.6     |   27.96    | 97.23| 512.444  |          | 84.552      | cell-based   |
-| pcdarts(official)|3   |   4.368   |    3.63     |   38.68    | 97.25| 688.561  |          | 84.792      | cell-based   |
-| pcdarts(official)|4   |   4.148   |    3.16     |   34.58    | 97.49| 649.108  |          | 85.280      | cell-based   |
 | sng   |1    |3.042    |2.5        |33.45     |96.87|506.002 |-       |87.52       |cell-based  |
 | sng   |2    |2.477    |3.0        |26.62     |96.73|397.068 |-       |87.81       |cell-based  |
 | sng   |3    |2.087    |3.0        |21.75     |96.56|339.201 |-       |87.00       |cell-based  |
@@ -29,11 +25,19 @@ We reimplement several widely used NAS methods including:
 | asng  |2    |2.749    |2.5        |25.66     |96.48|450.153 |-       |87.47       |cell-based  |
 | asng  |3    |2.991    |2.5        |27.88     |97.31|476.695 |-       |85.52       |cell-based  |
 | asng  |4    |2.189    |2.5        |23.88     |96.55|350.647 |-       |86.41       |cell-based  |
-| dynamic_ASNG   |1    |2.901    |0.0        |31.77     |96.86|465.193 |-       |78.65       |cell-based  |
-| dynamic_ASNG   |2    |2.208    |0.0        |18.00     |96.78|351.145 |-       |79.2        |cell-based  |
-| dynamic_ASNG   |3    |2.365    |0.0        |19.93     |96.20|387.364 |-       |79.87       |cell-based  |
-| dynamic_ASNG   |4    |3.466    |0.0        |31.35     |97.11|565.058 |-       |79.87       |cell-based  |
-| dynamic_SNG    |1    |2.245    |0.0        |23.98     |96.28|352.693 |-       |78.95       |cell-based  |
-| dynamic_SNG    |2    |2.927    |0.0        |24.13     |96.87|473.156 |-       |78.07       |cell-based  |
-| dynamic_SNG    |3    |2.724    |0.0        |28.07     |97.45|442.826 |-       |77.68       |cell-based  |
-| dynamic_SNG    |4    |3.323    |0.0        |31.85     |96.65|528.784 |-       |79.78       |cell-based  |
+| MIGO  |1    |3.266    |1.5        |28.20     |97.35|531.217 |-       |84.75       |cell-based  |
+| MIGO  |2    |3.274    |1.5        |26.33     |97.41|523.973 |-       |84.61       |cell-based  |
+| MIGO  |3    |2.848    |1.5        |25.91     |97.36|451.480 |-       |84.89       |cell-based  |
+| MIGO  |4    |2.749    |1.5        |30.19     |97.28|439.619 |-       |84.44       |cell-based  |
+| pcdarts(official)|1   |4.052    |3.61       |41.28     |97.20|638.823 |        |85.296      |cell-based  |
+| pcdarts(official)|2   |3.247    |3.6        |27.96     |97.23|512.444 |        |84.552      |cell-based  |
+| pcdarts(official)|3   |4.368    |3.63       |38.68     |97.25|688.561 |        |84.792      |cell-based  |
+| pcdarts(official)|4   |4.148    |3.16       |34.58     |97.49|649.108 |        |85.280      |cell-based  |
+| dynamic_ASNG     |1   |2.901    |0.0        |31.77     |96.86|465.193 |-       |78.65       |cell-based  |
+| dynamic_ASNG     |2   |2.208    |0.0        |18.00     |96.78|351.145 |-       |79.2        |cell-based  |
+| dynamic_ASNG     |3   |2.365    |0.0        |19.93     |96.20|387.364 |-       |79.87       |cell-based  |
+| dynamic_ASNG     |4   |3.466    |0.0        |31.35     |97.11|565.058 |-       |79.87       |cell-based  |
+| dynamic_SNG      |1   |2.245    |0.0        |23.98     |96.28|352.693 |-       |78.95       |cell-based  |
+| dynamic_SNG      |2   |2.927    |0.0        |24.13     |96.87|473.156 |-       |78.07       |cell-based  |
+| dynamic_SNG      |3   |2.724    |0.0        |28.07     |97.45|442.826 |-       |77.68       |cell-based  |
+| dynamic_SNG      |4   |3.323    |0.0        |31.85     |96.65|528.784 |-       |79.78       |cell-based  |
