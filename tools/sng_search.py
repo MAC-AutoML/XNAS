@@ -79,6 +79,7 @@ def main():
                         _num = _num + 1
         else:
             sample = np.array([random.sample(list(range(num_ops)), 1)[0] for i in range(total_edges)])
+        sample = index_to_one_hot(sample, distribution_optimizer.p_model.Cmax)
         train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, warm_train_meter)
         top1 = test_epoch(val_, search_space, warm_val_meter, _over_all_epoch, sample, writer)
         _over_all_epoch += 1
