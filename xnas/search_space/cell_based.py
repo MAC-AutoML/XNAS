@@ -28,8 +28,11 @@ PARAMETER_OP = ['sep_conv_3x3', 'sep_conv_5x5', 'sep_conv_7x7', 'dil_conv_3x3',
 
 
 def get_op_index(op_list, parameter_list):
-    op_idx = [parameter_list.index(i) for i in op_list]
-    return op_idx
+    op_idx_list = []
+    for op_idx, op in enumerate(op_list):
+        if op in parameter_list:
+            op_idx_list.append(op_idx)
+    return op_idx_list
 
 
 def darts_weight_unpack(weight, n_nodes, input_nodes=2):
