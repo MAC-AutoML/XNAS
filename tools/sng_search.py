@@ -59,14 +59,29 @@ def main():
         # lr_scheduler.step()
         lr = lr_scheduler.get_last_lr()[0]
         # warm up training
-        array_sample = [random.sample(list(range(num_ops)), num_ops) for i in range(total_edges)]
-        array_sample = np.array(array_sample)
-        for i in range(num_ops):
-            sample = np.transpose(array_sample[:, i])
-            sample = index_to_one_hot(sample, distribution_optimizer.p_model.Cmax)
-            train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, warm_train_meter)
-            top1 = test_epoch(val_, search_space, warm_val_meter, _over_all_epoch, sample, writer)
-            _over_all_epoch += 1
+        # array_sample = [random.sample(list(range(num_ops)), num_ops) for i in range(total_edges)]
+        # array_sample = np.array(array_sample)
+        # for i in range(num_ops):
+        #     sample = np.transpose(array_sample[:, i])
+        #     sample = index_to_one_hot(sample, distribution_optimizer.p_model.Cmax)
+        #     train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, warm_train_meter)
+        #     top1 = test_epoch(val_, search_space, warm_val_meter, _over_all_epoch, sample, writer)
+        #     _over_all_epoch += 1
+        # new version of warmup epoch
+        if random.random() < cfg.SNG.BIGMODEL_SAMPLE_PROB:
+            # sample the network with high complexity
+            _num = 100
+            while _num > cfg.SNG.BIGMODEL_NON_PARA:
+                sample = np.array([random.sample(list(range(num_ops)), 1)[0] for i in range(total_edges)])
+                _num = 0
+                for i in sample[0:search_space.num_edges]:
+                    if i in search_space.non_op_idx:
+                        _num = _num + 1
+        else:
+            sample = np.array([random.sample(list(range(num_ops)), 1)[0] for i in range(total_edges)])
+        train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, warm_train_meter)
+        top1 = test_epoch(val_, search_space, warm_val_meter, _over_all_epoch, sample, writer)
+        _over_all_epoch += 1
     logger.info("end warm up training")
     logger.info("start One shot searching")
     train_meter = meters.TrainMeter(len(train_))
