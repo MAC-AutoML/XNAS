@@ -24,6 +24,8 @@ SNG:
   MOMENTUM: True
   GAMMA: 0.5
   PRUNING_STEP: 2
+  BIGMODEL_SAMPLE_PROB: 0.5
+  BIGMODEL_NON_PARA: 2
 DATA_LOADER:
   BACKEND: 'custom'
 OUT_DIR: '/userhome/project/XNAS/experiment/MIGO_test'
