@@ -100,7 +100,7 @@ def main():
         # sample by the distribution optimizer
         _ = distribution_optimizer.sampling()
         # random sample
-        sample = random_sampling()
+        sample = random_sampling(search_space, distribution_optimizer)
 
         # training
         train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, train_meter)
