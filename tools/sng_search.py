@@ -31,6 +31,23 @@ writer = SummaryWriter(log_dir=os.path.join(cfg.OUT_DIR, "tb"))
 logger = logging.get_logger(__name__)
 
 
+def random_sampling(search_space, distribution_optimizer):
+    num_ops, total_edges = search_space.num_ops, search_space.all_edges
+    if random.random() < cfg.SNG.BIGMODEL_SAMPLE_PROB:
+        # sample the network with high complexity
+        _num = 100
+        while _num > cfg.SNG.BIGMODEL_NON_PARA:
+            sample = np.array([random.sample(list(range(num_ops)), 1)[0] for i in range(total_edges)])
+            _num = 0
+            for i in sample[0:search_space.num_edges]:
+                if i in search_space.non_op_idx:
+                    _num = _num + 1
+    else:
+        sample = np.array([random.sample(list(range(num_ops)), 1)[0] for i in range(total_edges)])
+    sample = index_to_one_hot(sample, distribution_optimizer.p_model.Cmax)
+    return sample
+
+
 def main():
     setup_env()
     # loadiong search space
@@ -48,7 +65,6 @@ def main():
 
     distribution_optimizer = sng_builder([search_space.num_ops]*search_space.all_edges)
     lr_scheduler = lr_scheduler_builder(w_optim)
-    num_ops, total_edges = search_space.num_ops, search_space.all_edges
     # training loop
     logger.info("start warm up training")
     warm_train_meter = meters.TrainMeter(len(train_))
@@ -68,18 +84,7 @@ def main():
         #     top1 = test_epoch(val_, search_space, warm_val_meter, _over_all_epoch, sample, writer)
         #     _over_all_epoch += 1
         # new version of warmup epoch
-        if random.random() < cfg.SNG.BIGMODEL_SAMPLE_PROB:
-            # sample the network with high complexity
-            _num = 100
-            while _num > cfg.SNG.BIGMODEL_NON_PARA:
-                sample = np.array([random.sample(list(range(num_ops)), 1)[0] for i in range(total_edges)])
-                _num = 0
-                for i in sample[0:search_space.num_edges]:
-                    if i in search_space.non_op_idx:
-                        _num = _num + 1
-        else:
-            sample = np.array([random.sample(list(range(num_ops)), 1)[0] for i in range(total_edges)])
-        sample = index_to_one_hot(sample, distribution_optimizer.p_model.Cmax)
+        sample = random_sampling(search_space, distribution_optimizer)
         train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, warm_train_meter)
         top1 = test_epoch(val_, search_space, warm_val_meter, _over_all_epoch, sample, writer)
         _over_all_epoch += 1
@@ -92,7 +97,10 @@ def main():
             if distribution_optimizer.training_finish:
                 break
         lr = w_optim.param_groups[0]['lr']
-        sample = distribution_optimizer.sampling()
+        # sample by the distribution optimizer
+        _ = distribution_optimizer.sampling()
+        # random sample
+        sample = random_sampling()
 
         # training
         train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, train_meter)
