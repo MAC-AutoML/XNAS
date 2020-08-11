@@ -134,7 +134,7 @@ def plot_error_curves_pyplot(log_files, names, filename=None, metric="top1_err")
         plt.show()
 
 
-def plot(genotype, file_path, caption=None, search_space='darts'):
+def graph_plot(genotype, file_path, caption=None, search_space='darts'):
     """ make DAG plot and save to file_path as .png """
     edge_attr = {
         'fontsize': '20',
