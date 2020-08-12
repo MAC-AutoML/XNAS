@@ -22,6 +22,18 @@ OPS_ = {
     'nor_conv_1x1': lambda C_in, C_out, stride, affine: ReLUConvBN(C_in, C_out, 1, stride, 0, affine=affine),
 }
 
+NON_PARAMETER_OP = ['none', 'avg_pool_3x3', 'max_pool_3x3', 'skip_connect']
+PARAMETER_OP = ['sep_conv_3x3', 'sep_conv_5x5', 'sep_conv_7x7', 'dil_conv_3x3',
+                'dil_conv_5x5', 'conv_7x1_1x7', 'nor_conv_3x3', 'nor_conv_1x1']
+
+
+def get_op_index(op_list, parameter_list):
+    op_idx_list = []
+    for op_idx, op in enumerate(op_list):
+        if op in parameter_list:
+            op_idx_list.append(op_idx)
+    return op_idx_list
+
 
 def darts_weight_unpack(weight, n_nodes, input_nodes=2):
     w_dag = []
@@ -421,6 +433,8 @@ class DartsCNN(nn.Module):
         self.n_nodes = n_nodes  # 4
         self.basic_op_list = ['max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3',
                               'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5', 'none'] if len(basic_op_list) == 0 else basic_op_list
+        self.non_op_idx = get_op_index(self.basic_op_list, NON_PARAMETER_OP)
+        self.para_op_idx = get_op_index(self.basic_op_list, PARAMETER_OP)
         C_cur = stem_multiplier * C  # 3 * 16 = 48
         self.stem = nn.Sequential(
             nn.Conv2d(self.C_in, C_cur, 3, 1, 1, bias=False),
@@ -528,6 +542,8 @@ class NASBench201CNN(nn.Module):
         self.max_nodes = max_nodes
         self.basic_op_list = ['none', 'skip_connect', 'nor_conv_1x1',
                               'nor_conv_3x3', 'avg_pool_3x3'] if len(basic_op_list) == 0 else basic_op_list
+        self.non_op_idx = get_op_index(self.basic_op_list, NON_PARAMETER_OP)
+        self.para_op_idx = get_op_index(self.basic_op_list, PARAMETER_OP)
         self.stem = nn.Sequential(
             nn.Conv2d(3, C, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(C))
