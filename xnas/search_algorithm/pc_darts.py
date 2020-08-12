@@ -22,10 +22,14 @@ class PCDartsCNNController(nn.Module):
         self.net = net
         self.device_ids = device_ids
         self.n_ops = len(self.net.basic_op_list)
-        self.alpha = nn.Parameter(
-            1e-3*torch.randn(self.net.all_edges, self.n_ops))
-        self.beta = nn.Parameter(
-            1e-3*torch.randn(self.net.all_edges))
+        an = 1e-3 * torch.randn(self.net.all_edges//2, self.n_ops)
+        ar = 1e-3 * torch.randn(self.net.all_edges//2, self.n_ops)
+        al = torch.cat([an,ar],0)
+        self.alpha = nn.Parameter(al)
+        bn = 1e-3 * torch.randn(self.net.all_edges//2)
+        br = 1e-3 * torch.randn(self.net.all_edges//2)
+        bl = torch.cat([bn,br],0)
+        self.beta = nn.Parameter(bl)
 
         self.criterion = criterion
 
@@ -363,9 +367,8 @@ class PcDartsCell(nn.Module):
         w_w_dag = darts_weight_unpack(sample2, self.n_nodes)
 
         for edges, w_list, w_w_list in zip(self.dag, w_dag, w_w_dag):
-
             s_cur = sum(ww * edges[i](s, w)
-                        for i, (s, w, ww) in enumerate(zip(states, w_list, w_w_list)))
+                for i, (s, w, ww) in enumerate(zip(states, w_list, w_w_list)))
             states.append(s_cur)
         s_out = torch.cat(states[-self._multiplier:], 1)
         return s_out
@@ -385,8 +388,8 @@ class PcDartsCNN(nn.Module):
         self.n_classes = n_classes  # 10
         self.n_layers = n_layers  # 8
         self.n_nodes = n_nodes  # 4
-        self.basic_op_list = ['max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3',
-                              'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5', 'none'] if len(basic_op_list) == 0 else basic_op_list
+        self.basic_op_list = ['none','max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3',
+                              'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5' ] if len(basic_op_list) == 0 else basic_op_list
         C_cur = stem_multiplier * C  # 3 * 16 = 48
         self.stem = nn.Sequential(
             nn.Conv2d(self.C_in, C_cur, 3, 1, 1, bias=False),
@@ -490,14 +493,53 @@ class PcDartsCNN(nn.Module):
             for tt, eetheta in enumerate(etheta):
                 theta_reduce[t][tt] *= theta2_reduce[t][tt]
 
-        gene_normal = parse_from_numpy(
+        gene_normal = pc_parse_from_numpy(
             theta_norm, k=2, basic_op_list=self.basic_op_list)
-        gene_reduce = parse_from_numpy(
+        gene_reduce = pc_parse_from_numpy(
             theta_reduce, k=2, basic_op_list=self.basic_op_list)
         concat = range(2 + self.n_nodes - self._multiplier, 2 + self.n_nodes)  # concat all intermediate nodes
         return Genotype(normal=gene_normal, normal_concat=concat,
                         reduce=gene_reduce, reduce_concat=concat)
 
+
+def pc_parse_from_numpy(alpha, k, basic_op_list=None):
+    """
+    parse continuous alpha to discrete gene.
+    alpha is ParameterList:
+    ParameterList [
+        Parameter(n_edges1, n_ops),
+        Parameter(n_edges2, n_ops),
+        ...
+    ]
+
+    gene is list:
+    [
+        [('node1_ops_1', node_idx), ..., ('node1_ops_k', node_idx)],
+        [('node2_ops_1', node_idx), ..., ('node2_ops_k', node_idx)],
+        ...
+    ]
+    each node has two edges (k=2) in CNN.
+    """
+
+    gene = []
+    assert basic_op_list[0] == 'none'  # assume last PRIMITIVE is 'none'
+
+    # 1) Convert the mixed op to discrete edge (single op) by choosing top-1 weight edge
+    # 2) Choose top-k edges per node by edge score (top-1 weight in edge)
+    for edges in alpha:
+        # edges: Tensor(n_edges, n_ops)
+        edge_max, primitive_indices = torch.topk(
+            torch.tensor(edges[:, 1:]), 1)  # ignore 'none'
+        topk_edge_values, topk_edge_indices = torch.topk(edge_max.view(-1), k)
+        node_gene = []
+        for edge_idx in topk_edge_indices:
+            prim_idx = primitive_indices[edge_idx]
+            prim = basic_op_list[prim_idx+1]
+            node_gene.append((prim, edge_idx.item()))
+
+        gene.append(node_gene)
+
+    return gene
 
 def _PcdartsCNN():
     from xnas.core.config import cfg

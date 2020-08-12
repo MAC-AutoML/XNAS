@@ -2,6 +2,8 @@ import gc
 import os
 import time
 
+import torchvision.transforms as transforms
+import torchvision.datasets as dset
 from torch.utils.tensorboard import SummaryWriter
 
 import xnas.core.checkpoint as checkpoint
@@ -36,9 +38,29 @@ def main():
     darts_controller.cuda()
     architect = Architect(
         darts_controller, cfg.OPTIM.MOMENTUM, cfg.OPTIM.WEIGHT_DECAY)
+
     # load dataset
-    [train_, val_] = _construct_loader(
-        cfg.SEARCH.DATASET, cfg.SEARCH.SPLIT, cfg.SEARCH.BATCH_SIZE)
+    #[train_, val_] = _construct_loader(
+    #    cfg.SEARCH.DATASET, cfg.SEARCH.SPLIT, cfg.SEARCH.BATCH_SIZE)
+
+    train_transform, valid_transform = _data_transforms_cifar10()
+
+    train_data = dset.CIFAR10(root=cfg.SEARCH.DATASET, train=True, download=True, transform=train_transform)
+
+    num_train = len(train_data)
+    indices = list(range(num_train))
+    split = int(np.floor(cfg.SEARCH.SPLIT[0] * num_train))
+
+    train_ = torch.utils.data.DataLoader(
+        train_data, batch_size=cfg.SEARCH.BATCH_SIZE,
+        sampler=torch.utils.data.sampler.SubsetRandomSampler(indices[:split]),
+        pin_memory=True, num_workers=2)
+
+    val_ = torch.utils.data.DataLoader(
+        train_data, batch_size=cfg.SEARCH.BATCH_SIZE,
+        sampler=torch.utils.data.sampler.SubsetRandomSampler(indices[split:num_train]),
+        pin_memory=True, num_workers=2)
+
     # weights optimizer
     w_optim = torch.optim.SGD(darts_controller.weights(), cfg.OPTIM.BASE_LR, momentum=cfg.OPTIM.MOMENTUM,
                               weight_decay=cfg.OPTIM.WEIGHT_DECAY)
@@ -54,6 +76,12 @@ def main():
     # Perform the training loop
     logger.info("Start epoch: {}".format(start_epoch + 1))
     for cur_epoch in range(start_epoch, cfg.OPTIM.MAX_EPOCH):
+        logger.info("###############Optimal genotype at epoch: {}############".format(cur_epoch))
+        logger.info(darts_controller.genotype())
+        logger.info("########################################################")
+        darts_controller.print_alphas(logger)
+
+        lr_scheduler.step()
         lr = lr_scheduler.get_last_lr()[0]
         train_epoch(train_, val_, darts_controller, architect, loss_fun,
                     w_optim, alpha_optim, lr, train_meter, cur_epoch)
@@ -62,7 +90,6 @@ def main():
             checkpoint_file = checkpoint.save_checkpoint(
                 darts_controller, w_optim, cur_epoch)
             logger.info("Wrote checkpoint to: {}".format(checkpoint_file))
-        lr_scheduler.step()
         # Evaluate the model
         next_epoch = cur_epoch + 1
         if next_epoch % cfg.SEARCH.EVAL_PERIOD == 0 or next_epoch == cfg.OPTIM.MAX_EPOCH:
@@ -82,7 +109,6 @@ def main():
 
 
 def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimizer, alpha_optimizer, lr, train_meter, cur_epoch):
-    model.train()
     train_meter.iter_tic()
     cur_step = cur_epoch*len(train_loader)
     writer.add_scalar('train/lr', lr, cur_step)
@@ -91,6 +117,7 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         torch.cuda.amp, 'autocast') else None
     valid_loader_iter = iter(valid_loader)
     for cur_iter, (trn_X, trn_y) in enumerate(train_loader):
+        model.train()
         try:
             (val_X, val_y) = next(valid_loader_iter)
         except StopIteration:
@@ -102,7 +129,8 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         # phase 2. architect step (alpha)
         if cur_epoch >= 15:
             alpha_optimizer.zero_grad()
-            architect.unrolled_backward(trn_X, trn_y, val_X, val_y, lr, w_optimizer)
+            aloss = architect.net.loss(val_X, val_y)
+            aloss.backward()
             alpha_optimizer.step()
 
         # phase 1. child network step (w)
@@ -149,6 +177,22 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
     train_meter.log_epoch_stats(cur_epoch)
     train_meter.reset()
 
+def _data_transforms_cifar10():
+  CIFAR_MEAN = [0.49139968, 0.48215827, 0.44653124]
+  CIFAR_STD = [0.24703233, 0.24348505, 0.26158768]
+
+  train_transform = transforms.Compose([
+    transforms.RandomCrop(32, padding=4),
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
+  ])
+
+  valid_transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
+    ])
+  return train_transform, valid_transform
 
 if __name__ == "__main__":
     main()
