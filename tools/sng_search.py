@@ -65,7 +65,7 @@ def random_sampling(search_space, distribution_optimizer, epoch=-1000):
                         _error = True
                     _num = _num + 1
             if _error:
-                _num = 0
+                _num = 100
     else:
         if cfg.SNG.PROB_SAMPLING:
             sample = np.array([np.random.choice(num_ops, 1, p=distribution_optimizer.p_model.theta[i, :])[0] for i in range(total_edges)])
