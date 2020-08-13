@@ -18,7 +18,7 @@ import xnas.core.meters as meters
 from xnas.core.builders import build_space, lr_scheduler_builder, sng_builder
 from xnas.core.config import cfg
 from xnas.core.trainer import setup_env
-from xnas.core.utils import index_to_one_hot
+from xnas.core.utils import index_to_one_hot, one_hot_to_index
 from xnas.datasets.loader import _construct_loader
 
 # config load and assert
@@ -109,7 +109,7 @@ def main():
         #     _over_all_epoch += 1
         # new version of warmup epoch
         sample = random_sampling(search_space, distribution_optimizer, epoch=epoch)
-        logger.info("The sample is: {}".format(sample))
+        logger.info("The sample is: {}".format(one_hot_to_index(sample)))
         train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, warm_train_meter)
         top1 = test_epoch(val_, search_space, warm_val_meter, _over_all_epoch, sample, writer)
         _over_all_epoch += 1
@@ -126,7 +126,7 @@ def main():
         _ = distribution_optimizer.sampling()
         # random sample
         sample = random_sampling(search_space, distribution_optimizer, epoch=epoch)
-        logger.info("The sample is: {}".format(sample))
+        logger.info("The sample is: {}".format(one_hot_to_index(sample)))
 
         # training
         train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, train_meter)
