@@ -60,7 +60,11 @@ def random_sampling(search_space, distribution_optimizer, epoch=-1000):
                 if i in non_edge_idx:
                     continue
                 if i in search_space.non_op_idx:
+                    if i == 7:
+                        _error = True
                     _num = _num + 1
+            if _error:
+                _num = 0
     else:
         if cfg.SNG.PROB_SAMPLING:
             sample = np.array([np.random.choice(num_ops, 1, p=distribution_optimizer.p_model.theta[i, :])[0] for i in range(total_edges)])
