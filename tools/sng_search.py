@@ -51,6 +51,7 @@ def random_sampling(search_space, distribution_optimizer, epoch=-1000):
         # sample the network with high complexity
         _num = 100
         while _num > cfg.SNG.BIGMODEL_NON_PARA:
+            _error = False
             if cfg.SNG.PROB_SAMPLING:
                 sample = np.array([np.random.choice(num_ops, 1, p=distribution_optimizer.p_model.theta[i, :])[0] for i in range(total_edges)])
             else:
