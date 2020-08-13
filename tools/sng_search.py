@@ -31,7 +31,7 @@ writer = SummaryWriter(log_dir=os.path.join(cfg.OUT_DIR, "tb"))
 logger = logging.get_logger(__name__)
 
 
-def random_sampling(search_space, distribution_optimizer, epoch=1000):
+def random_sampling(search_space, distribution_optimizer, epoch=-1000):
     num_ops, total_edges = search_space.num_ops, search_space.all_edges
     # edge importance
     non_edge_idx = []
@@ -108,7 +108,8 @@ def main():
         #     top1 = test_epoch(val_, search_space, warm_val_meter, _over_all_epoch, sample, writer)
         #     _over_all_epoch += 1
         # new version of warmup epoch
-        sample = random_sampling(search_space, distribution_optimizer)
+        sample = random_sampling(search_space, distribution_optimizer, epoch=epoch)
+        logger.info("The sample is: {}".format(sample))
         train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, warm_train_meter)
         top1 = test_epoch(val_, search_space, warm_val_meter, _over_all_epoch, sample, writer)
         _over_all_epoch += 1
