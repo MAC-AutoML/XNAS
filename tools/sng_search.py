@@ -59,8 +59,8 @@ def random_sampling(search_space, distribution_optimizer, epoch=-1000):
             _num = 0
             for i in sample[0:search_space.num_edges]:
                 if i in non_edge_idx:
-                    continue
-                if i in search_space.non_op_idx:
+                    pass
+                elif i in search_space.non_op_idx:
                     if i == 7:
                         _error = True
                     _num = _num + 1
