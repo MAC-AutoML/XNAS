@@ -114,6 +114,12 @@ _C.SNG.BIGMODEL_SAMPLE_PROB = 0.5
 # the definiation of big model
 _C.SNG.BIGMODEL_NON_PARA = 2
 
+# edge sampling
+_C.SNG.EDGE_SAMPLING = False
+
+# edge sampling epoch
+_C.SNG.EDGE_SAMPLING_EPOCH = -1
+
 # ------------------------------------------------------------------------------------ #
 # Optimizer options in network
 # ------------------------------------------------------------------------------------ #

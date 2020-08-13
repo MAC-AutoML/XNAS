@@ -31,19 +31,43 @@ writer = SummaryWriter(log_dir=os.path.join(cfg.OUT_DIR, "tb"))
 logger = logging.get_logger(__name__)
 
 
-def random_sampling(search_space, distribution_optimizer):
+def random_sampling(search_space, distribution_optimizer, epoch = 0):
     num_ops, total_edges = search_space.num_ops, search_space.all_edges
+    # edge importance
+    non_edge_idx = []
+    if cfg.SNG.EDGE_SAMPLING and epoch > cfg.SNG.EDGE_SAMPLING_EPOCH:
+        assert cfg.SPACE.NAME == 'darts', "only support darts for now!"
+        norm_indexes = search_space.norm_node_index
+        non_edge_idx = []
+        for node in norm_indexes:
+            edge_non_prob = distribution_optimizer.p_model.theta[np.array(node), 7]
+            edge_non_prob = edge_non_prob / np.sum(edge_non_prob)
+            if len(node) == 2:
+                pass
+            else:
+                non_edge_sampling_num = len(node)-2
+                non_edge_idx +=  list(np.random.choice(node, non_edge_sampling_num,p=edge_non_prob,replace=False))
     if random.random() < cfg.SNG.BIGMODEL_SAMPLE_PROB:
         # sample the network with high complexity
         _num = 100
         while _num > cfg.SNG.BIGMODEL_NON_PARA:
-            sample = np.array([random.sample(list(range(num_ops)), 1)[0] for i in range(total_edges)])
+            if cfg.PROB_SAMPLING:
+                sample = np.array([np.random.choice(num_ops, 1, p=distribution_optimizer.p_model.theta[i, :])[0] for i in range(total_edges)])
+            else:
+                sample = np.array([np.random.choice(num_ops, 1)[0] for i in range(total_edges)])
             _num = 0
             for i in sample[0:search_space.num_edges]:
+                if i in non_edge_idx:
+                    continue
                 if i in search_space.non_op_idx:
                     _num = _num + 1
     else:
-        sample = np.array([random.sample(list(range(num_ops)), 1)[0] for i in range(total_edges)])
+        if cfg.PROB_SAMPLING:
+                sample = np.array([np.random.choice(num_ops, 1, p=distribution_optimizer.p_model.theta[i, :])[0] for i in range(total_edges)])
+            else:
+                sample = np.array([np.random.choice(num_ops, 1)[0] for i in range(total_edges)])
+    for i in non_edge_idx:
+        sample[i] = 7
     sample = index_to_one_hot(sample, distribution_optimizer.p_model.Cmax)
     return sample
 
@@ -129,7 +153,11 @@ def main():
         gc.collect()
     end_time = time.time()
     for epoch in range(cfg.OPTIM.FINAL_EPOCH):
-        sample = distribution_optimizer.sampling_best()
+        if cfg.SPACE.NAME == 'darts':
+            genotype = search_space.genotype(distribution_optimizer.p_model.theta)
+            sample = search_space.genotype_to_onehot_sample(genotype)
+        else:
+            sample = distribution_optimizer.sampling_best()
         _over_all_epoch += 1
         train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, train_meter)
         test_epoch(val_, search_space, val_meter, _over_all_epoch, sample, writer)
