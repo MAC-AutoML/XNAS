@@ -31,7 +31,7 @@ writer = SummaryWriter(log_dir=os.path.join(cfg.OUT_DIR, "tb"))
 logger = logging.get_logger(__name__)
 
 
-def random_sampling(search_space, distribution_optimizer, epoch = 0):
+def random_sampling(search_space, distribution_optimizer, epoch=1000):
     num_ops, total_edges = search_space.num_ops, search_space.all_edges
     # edge importance
     non_edge_idx = []
@@ -46,7 +46,7 @@ def random_sampling(search_space, distribution_optimizer, epoch = 0):
                 pass
             else:
                 non_edge_sampling_num = len(node)-2
-                non_edge_idx +=  list(np.random.choice(node, non_edge_sampling_num,p=edge_non_prob,replace=False))
+                non_edge_idx += list(np.random.choice(node, non_edge_sampling_num, p=edge_non_prob, replace=False))
     if random.random() < cfg.SNG.BIGMODEL_SAMPLE_PROB:
         # sample the network with high complexity
         _num = 100
@@ -63,9 +63,9 @@ def random_sampling(search_space, distribution_optimizer, epoch = 0):
                     _num = _num + 1
     else:
         if cfg.PROB_SAMPLING:
-                sample = np.array([np.random.choice(num_ops, 1, p=distribution_optimizer.p_model.theta[i, :])[0] for i in range(total_edges)])
-            else:
-                sample = np.array([np.random.choice(num_ops, 1)[0] for i in range(total_edges)])
+            sample = np.array([np.random.choice(num_ops, 1, p=distribution_optimizer.p_model.theta[i, :])[0] for i in range(total_edges)])
+        else:
+            sample = np.array([np.random.choice(num_ops, 1)[0] for i in range(total_edges)])
     for i in non_edge_idx:
         sample[i] = 7
     sample = index_to_one_hot(sample, distribution_optimizer.p_model.Cmax)
@@ -108,7 +108,7 @@ def main():
         #     top1 = test_epoch(val_, search_space, warm_val_meter, _over_all_epoch, sample, writer)
         #     _over_all_epoch += 1
         # new version of warmup epoch
-        sample = random_sampling(search_space, distribution_optimizer)
+        sample = random_sampling(search_space, distribution_optimizer, epoch=epoch)
         train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, warm_train_meter)
         top1 = test_epoch(val_, search_space, warm_val_meter, _over_all_epoch, sample, writer)
         _over_all_epoch += 1
@@ -125,6 +125,7 @@ def main():
         _ = distribution_optimizer.sampling()
         # random sample
         sample = random_sampling(search_space, distribution_optimizer)
+        logger.info("The sample is: {}".format(sample))
 
         # training
         train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, train_meter)
