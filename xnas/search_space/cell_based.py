@@ -514,7 +514,7 @@ class DartsCNN(nn.Module):
                         else:
                             _temp = sum(num_select[0:i])
                         true_id = op_id + _temp + j * self.num_edges
-                    sample[true_id, self.basic_op_list.index(op_name)]
+                    sample[true_id, self.basic_op_list.index(op_name)] = 1
         for i in range(self.all_edges):
             if np.sum(sample[i, :]) == 0:
                 sample[i, 7] = 1
