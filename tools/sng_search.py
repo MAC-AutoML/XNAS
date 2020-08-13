@@ -70,8 +70,9 @@ def random_sampling(search_space, distribution_optimizer, epoch=-1000):
             sample = np.array([np.random.choice(num_ops, 1, p=distribution_optimizer.p_model.theta[i, :])[0] for i in range(total_edges)])
         else:
             sample = np.array([np.random.choice(num_ops, 1)[0] for i in range(total_edges)])
-    for i in non_edge_idx:
-        sample[i] = 7
+    if cfg.SNG.EDGE_SAMPLING and epoch > cfg.SNG.EDGE_SAMPLING_EPOCH:
+        for i in non_edge_idx:
+            sample[i] = 7
     sample = index_to_one_hot(sample, distribution_optimizer.p_model.Cmax)
     return sample
 
