@@ -160,6 +160,7 @@ def main():
             torch.cuda.empty_cache()  # https://forums.fast.ai/t/clearing-gpu-memory-pytorch/14637
         gc.collect()
     end_time = time.time()
+    lr = w_optim.param_groups[0]['lr']
     for epoch in range(cfg.OPTIM.FINAL_EPOCH):
         if cfg.SPACE.NAME == 'darts':
             genotype = search_space.genotype(distribution_optimizer.p_model.theta)
