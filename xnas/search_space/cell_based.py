@@ -515,6 +515,9 @@ class DartsCNN(nn.Module):
                             _temp = sum(num_select[0:i])
                         true_id = op_id + _temp + j * self.num_edges
                     sample[true_id, self.basic_op_list.index(op_name)]
+        for i in range(self.all_edges):
+            if np.sum(sample[i, :]) == 0:
+                sample[i, 7] = 1
         return sample
 
     def _node_index(self, n_nodes, input_nodes=2, start_index=0):
