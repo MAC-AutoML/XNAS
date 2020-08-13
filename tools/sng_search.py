@@ -108,7 +108,7 @@ def main():
         #     top1 = test_epoch(val_, search_space, warm_val_meter, _over_all_epoch, sample, writer)
         #     _over_all_epoch += 1
         # new version of warmup epoch
-        sample = random_sampling(search_space, distribution_optimizer, epoch=epoch)
+        sample = random_sampling(search_space, distribution_optimizer)
         train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, warm_train_meter)
         top1 = test_epoch(val_, search_space, warm_val_meter, _over_all_epoch, sample, writer)
         _over_all_epoch += 1
@@ -124,7 +124,7 @@ def main():
         # sample by the distribution optimizer
         _ = distribution_optimizer.sampling()
         # random sample
-        sample = random_sampling(search_space, distribution_optimizer)
+        sample = random_sampling(search_space, distribution_optimizer, epoch=epoch)
         logger.info("The sample is: {}".format(sample))
 
         # training
