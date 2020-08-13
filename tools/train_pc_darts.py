@@ -128,10 +128,17 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         val_X, val_y = val_X.cuda(), val_y.cuda(non_blocking=True)
         # phase 2. architect step (alpha)
         if cur_epoch >= 15:
-            alpha_optimizer.zero_grad()
-            aloss = architect.net.loss(val_X, val_y)
-            aloss.backward()
-            alpha_optimizer.step()
+            if cfg.OPTIM.UNROLLED == False:
+                alpha_optimizer.zero_grad()
+                aloss = architect.net.loss(val_X, val_y)
+                aloss.backward()
+                alpha_optimizer.step()
+            else:
+                alpha_optimizer.zero_grad()
+                architect.unrolled_backward(trn_X, trn_y, val_X, val_y, lr, w_optimizer,
+                                            unrolled=cfg.SEARCH.DARTS.SECOND)
+                alpha_optimizer.step()
+
 
         # phase 1. child network step (w)
         if scaler is not None:
