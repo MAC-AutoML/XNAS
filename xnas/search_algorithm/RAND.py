@@ -36,6 +36,7 @@ class RAND:
     def sampling(self):
         """
         Draw a sample from the categorical distribution (one-hot)
+        Sample one archi at once
         """
         c=np.zeros(self.p_model.theta.shape,dtype=np.bool)
         for i,upper in enumerate(self.p_model.C):
