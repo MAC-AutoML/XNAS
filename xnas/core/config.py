@@ -108,6 +108,12 @@ _C.SNG.GAMMA = 0.9
 # nature gradient momentum factor
 _C.SNG.SAMPLING_PER_EDGE = 1
 
+# random sampling
+_C.SNG.RANDOM_SAMPLE = True
+
+# random sampling
+_C.SNG.WARMUP_RANDOM_SAMPLE = True
+
 # the large model sampling prob in training process
 _C.SNG.BIGMODEL_SAMPLE_PROB = 0.5
 
