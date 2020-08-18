@@ -466,6 +466,8 @@ class DartsCNN(nn.Module):
         self.num_ops = len(self.basic_op_list)
         # whole edges
         self.all_edges = 2 * self.num_edges
+        self.norm_node_index = self._node_index(n_nodes, input_nodes=2, start_index=0)
+        self.reduce_node_index = self._node_index(n_nodes, input_nodes=2, start_index=self.num_edges)
 
     def forward(self, x, sample):
         s0 = s1 = self.stem(x)
@@ -493,6 +495,40 @@ class DartsCNN(nn.Module):
         concat = range(2, 2+self.n_nodes)  # concat all intermediate nodes
         return Genotype(normal=gene_normal, normal_concat=concat,
                         reduce=gene_reduce, reduce_concat=concat)
+
+    def genotype_to_onehot_sample(self, genotype):
+        sample = np.zeros([self.all_edges, len(self.basic_op_list)])
+        norm_gene = genotype[0]
+        reduce_gene = genotype[2]
+        num_select = list(range(2, 2+self.n_nodes))
+        for j, _gene in enumerate([norm_gene, reduce_gene]):
+            for i, node in enumerate(_gene):
+                for op in node:
+                    op_name = op[0]
+                    op_id = op[1]
+                    if i == 0:
+                        true_id = op_id + j * self.num_edges
+                    else:
+                        if i == 1:
+                            _temp = num_select[0]
+                        else:
+                            _temp = sum(num_select[0:i])
+                        true_id = op_id + _temp + j * self.num_edges
+                    sample[true_id, self.basic_op_list.index(op_name)] = 1
+        for i in range(self.all_edges):
+            if np.sum(sample[i, :]) == 0:
+                sample[i, 7] = 1
+        return sample
+
+    def _node_index(self, n_nodes, input_nodes=2, start_index=0):
+        node_index = []
+        start_index = start_index
+        end_index = input_nodes + start_index
+        for i in range(n_nodes):
+            node_index.append(list(range(start_index, end_index)))
+            start_index = end_index
+            end_index += input_nodes + i + 1
+        return node_index
 
 
 # This module is used for NAS-Bench-201, represents a small search space with a complete DAG

@@ -68,7 +68,7 @@ def run(space=1, optimizer_name='SNG', runing_times=500, runing_epochs=200,
     for h in cs.get_hyperparameters():
         if type(h) == ConfigSpace.hyperparameters.CategoricalHyperparameter:
             cat_variables.append(len(h.choices))
-    
+
     # distribution_optimizer = Category_DDPNAS.CategoricalDDPNAS(category, 3)
     distribution_optimizer = get_optimizer(optimizer_name, category, step=step, gamma=gamma,
                                            sample_with_prob=sample_with_prob, utility_function=utility_function,

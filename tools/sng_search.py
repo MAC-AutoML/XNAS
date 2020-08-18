@@ -18,7 +18,7 @@ import xnas.core.meters as meters
 from xnas.core.builders import build_space, lr_scheduler_builder, sng_builder
 from xnas.core.config import cfg
 from xnas.core.trainer import setup_env
-from xnas.core.utils import index_to_one_hot
+from xnas.core.utils import index_to_one_hot, one_hot_to_index
 from xnas.datasets.loader import _construct_loader
 
 # config load and assert
@@ -31,21 +31,60 @@ writer = SummaryWriter(log_dir=os.path.join(cfg.OUT_DIR, "tb"))
 logger = logging.get_logger(__name__)
 
 
-def random_sampling(search_space, distribution_optimizer):
+def random_sampling(search_space, distribution_optimizer, epoch=-1000, _random=True):
     num_ops, total_edges = search_space.num_ops, search_space.all_edges
-    if random.random() < cfg.SNG.BIGMODEL_SAMPLE_PROB:
-        # sample the network with high complexity
-        _num = 100
-        while _num > cfg.SNG.BIGMODEL_NON_PARA:
-            sample = np.array([random.sample(list(range(num_ops)), 1)[0] for i in range(total_edges)])
-            _num = 0
-            for i in sample[0:search_space.num_edges]:
-                if i in search_space.non_op_idx:
-                    _num = _num + 1
+    # 判断是否需要进行随机采样，random为true的时候，根据某些限制条件进行随机采样，否则为根据distribution samplar
+    if _random:
+        # edge importance
+        non_edge_idx = []
+        if cfg.SNG.EDGE_SAMPLING and epoch > cfg.SNG.EDGE_SAMPLING_EPOCH:
+            # 仅支持darts搜索空间，判断是否需要进行边的采样
+            assert cfg.SPACE.NAME == 'darts', "only support darts for now!"
+            norm_indexes = search_space.norm_node_index
+            non_edge_idx = []
+            for node in norm_indexes:
+                edge_non_prob = distribution_optimizer.p_model.theta[np.array(node), 7]
+                edge_non_prob = edge_non_prob / np.sum(edge_non_prob)
+                if len(node) == 2:
+                    pass
+                else:
+                    non_edge_sampling_num = len(node)-2
+                    non_edge_idx += list(np.random.choice(node, non_edge_sampling_num, p=edge_non_prob, replace=False))
+        if random.random() < cfg.SNG.BIGMODEL_SAMPLE_PROB:
+            # 一定概率下进行大模型采样，
+            # sample the network with high complexity
+            _num = 100
+            while _num > cfg.SNG.BIGMODEL_NON_PARA:
+                # 当采样模型非参数层 小于一个阈值，才跳出循环
+                _error = False
+                if cfg.SNG.PROB_SAMPLING:
+                    sample = np.array([np.random.choice(num_ops, 1, p=distribution_optimizer.p_model.theta[i, :])[
+                                      0] for i in range(total_edges)])
+                else:
+                    sample = np.array([np.random.choice(num_ops, 1)[0] for i in range(total_edges)])
+                _num = 0
+                for i in sample[0:search_space.num_edges]:
+                    if i in non_edge_idx:
+                        pass
+                    elif i in search_space.non_op_idx:
+                        if i == 7:
+                            _error = True
+                        _num = _num + 1
+                if _error:
+                    _num = 100
+        else:
+            if cfg.SNG.PROB_SAMPLING:
+                sample = np.array([np.random.choice(num_ops, 1, p=distribution_optimizer.p_model.theta[i, :])[0]
+                                   for i in range(total_edges)])
+            else:
+                sample = np.array([np.random.choice(num_ops, 1)[0] for i in range(total_edges)])
+        if cfg.SNG.EDGE_SAMPLING and epoch > cfg.SNG.EDGE_SAMPLING_EPOCH:
+            for i in non_edge_idx:
+                sample[i] = 7
+        sample = index_to_one_hot(sample, distribution_optimizer.p_model.Cmax)
+        return sample
     else:
-        sample = np.array([random.sample(list(range(num_ops)), 1)[0] for i in range(total_edges)])
-    sample = index_to_one_hot(sample, distribution_optimizer.p_model.Cmax)
-    return sample
+        return distribution_optimizer.sampling()
 
 
 def main():
@@ -75,19 +114,23 @@ def main():
         # lr_scheduler.step()
         lr = lr_scheduler.get_last_lr()[0]
         # warm up training
-        # array_sample = [random.sample(list(range(num_ops)), num_ops) for i in range(total_edges)]
-        # array_sample = np.array(array_sample)
-        # for i in range(num_ops):
-        #     sample = np.transpose(array_sample[:, i])
-        #     sample = index_to_one_hot(sample, distribution_optimizer.p_model.Cmax)
-        #     train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, warm_train_meter)
-        #     top1 = test_epoch(val_, search_space, warm_val_meter, _over_all_epoch, sample, writer)
-        #     _over_all_epoch += 1
+        if cfg.WARMUP_RANDOM_SAMPLE:
+            sample = random_sampling(search_space, distribution_optimizer, epoch=epoch)
+            logger.info("The sample is: {}".format(one_hot_to_index(sample)))
+            train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, warm_train_meter)
+            top1 = test_epoch(val_, search_space, warm_val_meter, _over_all_epoch, sample, writer)
+            _over_all_epoch += 1
+        else:
+            num_ops, total_edges = search_space.num_ops, search_space.all_edges
+            array_sample = [random.sample(list(range(num_ops)), num_ops) for i in range(total_edges)]
+            array_sample = np.array(array_sample)
+            for i in range(num_ops):
+                sample = np.transpose(array_sample[:, i])
+                sample = index_to_one_hot(sample, distribution_optimizer.p_model.Cmax)
+                train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, warm_train_meter)
+                top1 = test_epoch(val_, search_space, warm_val_meter, _over_all_epoch, sample, writer)
+                _over_all_epoch += 1
         # new version of warmup epoch
-        sample = random_sampling(search_space, distribution_optimizer)
-        train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, warm_train_meter)
-        top1 = test_epoch(val_, search_space, warm_val_meter, _over_all_epoch, sample, writer)
-        _over_all_epoch += 1
     logger.info("end warm up training")
     logger.info("start One shot searching")
     train_meter = meters.TrainMeter(len(train_))
@@ -98,9 +141,10 @@ def main():
                 break
         lr = w_optim.param_groups[0]['lr']
         # sample by the distribution optimizer
-        _ = distribution_optimizer.sampling()
+        # _ = distribution_optimizer.sampling()
         # random sample
-        sample = random_sampling(search_space, distribution_optimizer)
+        sample = random_sampling(search_space, distribution_optimizer, epoch=epoch, _random=cfg.SNG.RANDOM_SAMPLE)
+        logger.info("The sample is: {}".format(one_hot_to_index(sample)))
 
         # training
         train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, train_meter)
@@ -128,8 +172,13 @@ def main():
             torch.cuda.empty_cache()  # https://forums.fast.ai/t/clearing-gpu-memory-pytorch/14637
         gc.collect()
     end_time = time.time()
+    lr = w_optim.param_groups[0]['lr']
     for epoch in range(cfg.OPTIM.FINAL_EPOCH):
-        sample = distribution_optimizer.sampling_best()
+        if cfg.SPACE.NAME == 'darts':
+            genotype = search_space.genotype(distribution_optimizer.p_model.theta)
+            sample = search_space.genotype_to_onehot_sample(genotype)
+        else:
+            sample = distribution_optimizer.sampling_best()
         _over_all_epoch += 1
         train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, train_meter)
         test_epoch(val_, search_space, val_meter, _over_all_epoch, sample, writer)

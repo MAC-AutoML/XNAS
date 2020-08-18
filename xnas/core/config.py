@@ -108,11 +108,23 @@ _C.SNG.GAMMA = 0.9
 # nature gradient momentum factor
 _C.SNG.SAMPLING_PER_EDGE = 1
 
+# random sampling
+_C.SNG.RANDOM_SAMPLE = True
+
+# random sampling
+_C.SNG.WARMUP_RANDOM_SAMPLE = True
+
 # the large model sampling prob in training process
 _C.SNG.BIGMODEL_SAMPLE_PROB = 0.5
 
 # the definiation of big model
 _C.SNG.BIGMODEL_NON_PARA = 2
+
+# edge sampling
+_C.SNG.EDGE_SAMPLING = False
+
+# edge sampling epoch
+_C.SNG.EDGE_SAMPLING_EPOCH = -1
 
 # ------------------------------------------------------------------------------------ #
 # Optimizer options in network
@@ -164,6 +176,8 @@ _C.OPTIM.WARMUP_EPOCHS = 0
 # Momentum dampening
 _C.OPTIM.GRAD_CLIP = 5.0
 
+# Use one-step unrolled validation loss
+_C.OPTIM.UNROLLED = False
 
 # ------------------------------------------------------------------------------------ #
 # Common train/test data loader options
