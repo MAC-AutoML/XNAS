@@ -68,16 +68,16 @@ def sng_builder(category):
     elif cfg.SNG.NAME == 'DDPNAS':
         return CategoricalDDPNAS(category, cfg.SNG.PRUNING_STEP)
     elif cfg.SNG.NAME == 'SNG':
-        return SNG(category)
+        return SNG(category, lam=cfg.SNG.LAMBDA)
     elif cfg.SNG.NAME == 'ASNG':
-        return ASNG(category)
+        return ASNG(category, lam=cfg.SNG.LAMBDA)
     elif cfg.SNG.NAME == 'dynamic_SNG':
         return Dynamic_SNG(category, step=cfg.SNG.PRUNING_STEP, pruning=cfg.SNG.PRUNING)
     elif cfg.SNG.NAME == 'dynamic_ASNG':
         return Dynamic_ASNG(category, step=cfg.SNG.PRUNING_STEP, pruning=cfg.SNG.PRUNING)
     elif cfg.SNG.NAME == 'MIGO':
         return MIGO(categories=category,
-                    step=cfg.SNG.PRUNING_STEP,
+                    step=cfg.SNG.PRUNING_STEP, lam=cfg.SNG.LAMBDA,
                     pruning=cfg.SNG.PRUNING, sample_with_prob=cfg.SNG.PROB_SAMPLING,
                     utility_function=cfg.SNG.UTILITY, utility_function_hyper=cfg.SNG.UTILITY_FACTOR,
                     momentum=cfg.SNG.MOMENTUM, gamma=cfg.SNG.GAMMA, sampling_number_per_edge=cfg.SNG.SAMPLING_PER_EDGE)
