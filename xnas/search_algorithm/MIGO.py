@@ -13,13 +13,14 @@ class MIGO:
     Stochastic Natural Gradient for Categorical Distribution
     """
 
-    def __init__(self, categories,
+    def __init__(self, categories, lam=-1,
                  delta_init=1., step=3, pruning=True,
                  init_theta=None, max_mize=True, sample_with_prob=False,
                  utility_function='picewise', utility_function_hyper=0.5,
                  momentum=True, gamma=0.9, sampling_number_per_edge=1):
         # Categorical distribution
         self.p_model = Categorical(categories)
+        self.lam = lam
         # valid dimension size
         self.p_model.C = np.array(self.p_model.C)
         self.valid_d = len(self.p_model.C[self.p_model.C > 1])
@@ -121,22 +122,23 @@ class MIGO:
 
     def update(self):
         if len(self.sample_index[0]) < self.sampling_number_per_edge:
-            objective = np.array(self.objective)
-            sample_array = np.array(self.sample)
-            self.update_function(sample_array, objective)
-            self.sample = []
-            self.objective = []
-            self.current_step += 1
-            if self.pruning and self.current_step > self.steps:
-                # pruning the index
-                pruned_weight = copy.deepcopy(self.p_model.theta)
-                for index in range(self.p_model.d):
-                    if not len(self.pruned_index[index]) == 0:
-                        pruned_weight[index, self.pruned_index[index]] = np.nan
-                    self.pruned_index[index].append(np.nanargmin(pruned_weight[index, :]))
-                if len(self.pruned_index[0]) >= (self.p_model.Cmax - self.sampling_number_per_edge):
-                    self.training_finish = True
-                self.current_step = 1
+            if len(self.objective) > self.lam:
+                objective = np.array(self.objective)
+                sample_array = np.array(self.sample)
+                self.update_function(sample_array, objective)
+                self.sample = []
+                self.objective = []
+                self.current_step += 1
+                if self.pruning and self.current_step > self.steps:
+                    # pruning the index
+                    pruned_weight = copy.deepcopy(self.p_model.theta)
+                    for index in range(self.p_model.d):
+                        if not len(self.pruned_index[index]) == 0:
+                            pruned_weight[index, self.pruned_index[index]] = np.nan
+                        self.pruned_index[index].append(np.nanargmin(pruned_weight[index, :]))
+                    if len(self.pruned_index[0]) >= (self.p_model.Cmax - self.sampling_number_per_edge):
+                        self.training_finish = True
+                    self.current_step = 1
             self.update_sample_index()
 
     def update_sample_index(self):

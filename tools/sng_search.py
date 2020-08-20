@@ -82,6 +82,8 @@ def random_sampling(search_space, distribution_optimizer, epoch=-1000, _random=T
             for i in non_edge_idx:
                 sample[i] = 7
         sample = index_to_one_hot(sample, distribution_optimizer.p_model.Cmax)
+        # in the pruning method we have to sampling anyway
+        distribution_optimizer.sampling()
         return sample
     else:
         return distribution_optimizer.sampling()

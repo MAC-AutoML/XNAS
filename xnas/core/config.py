@@ -99,6 +99,9 @@ _C.SNG.UTILITY = 'log'
 # utility function factor
 _C.SNG.UTILITY_FACTOR = 0.4
 
+# utility function factor
+_C.SNG.LAMBDA = -1
+
 # nature gradient momentum
 _C.SNG.MOMENTUM = True
 
