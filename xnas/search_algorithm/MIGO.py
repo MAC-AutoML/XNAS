@@ -51,7 +51,6 @@ class MIGO:
         self.velocity = np.zeros(self.p_model.theta.shape)
         self.init_record()
         self.sampling_number_per_edge = sampling_number_per_edge
-        self.sample_count = 0
 
     def init_record(self):
         for i in range(self.p_model.d):
@@ -87,7 +86,6 @@ class MIGO:
                         self.sample_index[i].remove(int(j))
                 for j in range(self.sampling_number_per_edge):
                     sample_one_hot_like[i, int(sample[i][j])] = 1
-        self.sample_count += 1
         return sample_one_hot_like
 
     def sampling_best(self):
@@ -124,7 +122,7 @@ class MIGO:
 
     def update(self):
         if len(self.sample_index[0]) < self.sampling_number_per_edge:
-            if self.sample_count > self.lam:
+            if len(self.objective) > self.lam:
                 objective = np.array(self.objective)
                 sample_array = np.array(self.sample)
                 self.update_function(sample_array, objective)
