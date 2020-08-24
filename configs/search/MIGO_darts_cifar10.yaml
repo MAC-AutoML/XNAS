@@ -28,6 +28,8 @@ SNG:
   BIGMODEL_NON_PARA: 2
   EDGE_SAMPLING: True
   EDGE_SAMPLING_EPOCH: -1
+  RANDOM_SAMPLE: True
+  WARMUP_RANDOM_SAMPLE: True
 DATA_LOADER:
   BACKEND: 'custom'
 OUT_DIR: '/userhome/project/XNAS/experiment/MIGO_test'
