@@ -116,7 +116,7 @@ def main():
         # lr_scheduler.step()
         lr = lr_scheduler.get_last_lr()[0]
         # warm up training
-        if cfg.WARMUP_RANDOM_SAMPLE:
+        if cfg.SNG.WARMUP_RANDOM_SAMPLE:
             sample = random_sampling(search_space, distribution_optimizer, epoch=epoch)
             logger.info("The sample is: {}".format(one_hot_to_index(sample)))
             train(train_, val_, search_space, w_optim, lr, _over_all_epoch, sample, loss_fun, warm_train_meter)

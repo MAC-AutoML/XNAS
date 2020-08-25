@@ -33,6 +33,14 @@ We reimplement several widely used NAS methods including:
 | pcdarts(official)|2   |3.247    |3.6        |27.96     |97.23|512.444 |        |84.552      |cell-based  |
 | pcdarts(official)|3   |4.368    |3.63       |38.68     |97.25|688.561 |        |84.792      |cell-based  |
 | pcdarts(official)|4   |4.148    |3.16       |34.58     |97.49|649.108 |        |85.280      |cell-based  |
+| xnas-pcdarts     |  1 | 3.779   |    3.46   |    31.9  |97.55|595.498 |        | 85.192     | cell-based |
+| xnas-pcdarts     |  2 | 3.641   |    3.03   |   33.08  |96.92|573.933 |        | 85.036     | cell-based |
+| xnas-pcdarts     |  3 | 4.536   |    3.02   |   41.18  |97.37|722.790 |        | 84.592     | cell-based |
+| xnas-pcdarts     |  4 | 3.143   |    3.48   |   32.26  |97.25|505.227 |        | 85.088     | cell-based |
+| pdarts(official) |1   |4.052    |3.50       |-         |97.41|555.270 |        |-           |cell-based  |
+| pdarts(official) |2   |3.247    |3.31       |-         |97.25|529.419 |        |-           |cell-based  |
+| pdarts(official) |3   |4.368    |3.39       |-         |97.25|545.732 |        |-           |cell-based  |
+| pdarts(official) |4   |4.148    |4.08       |-         |97.29|642.555 |        |-           |cell-based  |
 | dynamic_ASNG     |1   |2.901    |0.0        |31.77     |96.86|465.193 |-       |78.65       |cell-based  |
 | dynamic_ASNG     |2   |2.208    |0.0        |18.00     |96.78|351.145 |-       |79.2        |cell-based  |
 | dynamic_ASNG     |3   |2.365    |0.0        |19.93     |96.20|387.364 |-       |79.87       |cell-based  |
