@@ -47,7 +47,8 @@ _C.SPACE.PRIMITIVES = []
 # number of nodes in a cell
 _C.SPACE.BASIC_OP = []
 
-
+# whether using nasbenchmark,nasbench is selected in ["NASbench201","NASbench1shot1"]
+_C.SPACE.NASBENCH = 'NASbench201'
 # ------------------------------------------------------------------------------------ #
 # Mobilenet Search Space options
 # ------------------------------------------------------------------------------------ #

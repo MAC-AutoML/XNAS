@@ -29,6 +29,7 @@ def upscale_to_nasbench_format(adjacency_matrix):
     :param adjacency_matrix:
     :return:
     """
+    # 先竖着加一行再横着加一行，变成7x7满足查表的格式
     return np.insert(
         np.insert(adjacency_matrix,
                   5, [0, 0, 0, 0, 0, 0], axis=1),
@@ -37,6 +38,7 @@ def upscale_to_nasbench_format(adjacency_matrix):
 
 def parent_combinations_old(adjacency_matrix, node, n_parents=2):
     """Get all possible parent combinations for the current node."""
+    # 相比于parent_combinations，这个方法是根据邻接矩阵取可能的组合，而下面的方法默认目标节点的所有父节点都没和目标节点连接过
     if node != 1:
         # Parents can only be nodes which have an index that is lower than the current index,
         # because of the upper triangular adjacency matrix and because the index is also a
@@ -68,6 +70,7 @@ class SearchSpace:
         pass
 
     def sample(self, with_loose_ends, upscale=True):
+        # 返回随机采样的邻接矩阵和所有choiceblock的一个采样的可能操作(list格式)
         if with_loose_ends:
             adjacency_matrix_sample = self._sample_adjacency_matrix_with_loose_ends()
         else:
@@ -81,11 +84,12 @@ class SearchSpace:
         return adjacency_matrix_sample, random.choices(PRIMITIVES, k=self.num_intermediate_nodes)
 
     def _sample_adjacency_matrix_with_loose_ends(self):
+        # 返回带loose_ends的邻接矩阵
         parents_per_node = [random.sample(list(itertools.combinations(list(range(int(node))), num_parents)), 1) for
-                            node, num_parents in self.num_parents_per_node.items()][2:]
+                            node, num_parents in self.num_parents_per_node.items()][2:] # num_parents_per_node的前两个节点是输入节点和第一个节点，第一个节点父节点肯定是输入节点且只有一个
         parents = {
-            '0': [],
-            '1': [0]
+            '0': [],# 输入节点
+            '1': [0]# 第一个中间节点
         }
         for node, node_parent in enumerate(parents_per_node, 2):
             parents[str(node)] = node_parent
@@ -93,6 +97,7 @@ class SearchSpace:
         return adjacency_matrix
 
     def _sample_adjacency_matrix_without_loose_ends(self, adjacency_matrix, node):
+        # 返回不带lose_ends的邻接矩阵
         req_num_parents = self.num_parents_per_node[str(node)]
         current_num_parents = np.sum(adjacency_matrix[:, node], dtype=np.int)
         num_parents_left = req_num_parents - current_num_parents
@@ -109,11 +114,12 @@ class SearchSpace:
         pass
 
     def convert_config_to_nasbench_format(self, config):
+        # 从config读取结构信息，返回choiceBLock的邻接矩阵和操作
         parents = {node: config["choice_block_{}_parents".format(node)] for node in
-                   list(self.num_parents_per_node.keys())[1:]}
+                   list(self.num_parents_per_node.keys())[1:]} # 从第一个中间节点开始到输出节点
         parents['0'] = []
         adjacency_matrix = self.create_nasbench_adjacency_matrix_with_loose_ends(parents)
-        ops = [config["choice_block_{}_op".format(node)] for node in list(self.num_parents_per_node.keys())[1:-1]]
+        ops = [config["choice_block_{}_op".format(node)] for node in list(self.num_parents_per_node.keys())[1:-1]]# 所有的中间节点
         return adjacency_matrix, ops
 
     def get_configuration_space(self):
@@ -121,14 +127,14 @@ class SearchSpace:
 
         for node in list(self.num_parents_per_node.keys())[1:-1]:
             cs.add_hyperparameter(ConfigSpace.CategoricalHyperparameter("choice_block_{}_op".format(node),
-                                                                        [CONV1X1, CONV3X3, MAXPOOL3X3]))
+                                                                        [CONV1X1, CONV3X3, MAXPOOL3X3])) # 在cs这个设置空间内，加入了choice_block_i_op这个设置项，并将范围固定,只设置了所有的中间节点
 
-        for choice_block_index, num_parents in list(self.num_parents_per_node.items())[1:]:
+        for choice_block_index, num_parents in list(self.num_parents_per_node.items())[1:]: # 字符串组成的列表
             cs.add_hyperparameter(
                 ConfigSpace.CategoricalHyperparameter(
                     "choice_block_{}_parents".format(choice_block_index),
-                    parent_combinations(node=choice_block_index, num_parents=num_parents)))
-        return cs
+                    parent_combinations(node=choice_block_index, num_parents=num_parents))) # 在cs这个设置空间内，加入了choice_block_i_parents这个设置项，并将范围固定，通过parent_combinations方法，由于没有用到邻接矩阵，所以是所有的父节点的可能性组合，从节点1到输出节点
+        return cs # 元组组成的列别
 
     def generate_search_space_without_loose_ends(self):
         # Create all possible connectivity patterns
@@ -136,8 +142,8 @@ class SearchSpace:
             print(iter)
             # Print graph
             # Evaluate every possible combination of node ops.
-            n_repeats = int(np.sum(np.sum(adjacency_matrix, axis=1)[1:-1] > 0))
-            for combination in itertools.product([CONV1X1, CONV3X3, MAXPOOL3X3], repeat=n_repeats):
+            n_repeats = int(np.sum(np.sum(adjacency_matrix, axis=1)[1:-1] > 0)) # n_repeats=有父节点的节点的个数
+            for combination in itertools.product([CONV1X1, CONV3X3, MAXPOOL3X3], repeat=n_repeats): # combination是由n_repeats个操作组成的list
                 # Create node labels
                 # Add some op as node 6 which isn't used, here conv1x1
                 ops = [INPUT]
@@ -146,12 +152,12 @@ class SearchSpace:
                     if np.sum(adjacency_matrix, axis=1)[i + 1] > 0:
                         ops.append(combination.pop())
                     else:
-                        ops.append(CONV1X1)
+                        ops.append(CONV1X1) # 如果是空，就没有父节点，ops加个CONV1X1
                 assert len(combination) == 0, 'Something is wrong'
                 ops.append(OUTPUT)
 
                 # Create nested list from numpy matrix
-                nasbench_adjacency_matrix = adjacency_matrix.astype(np.int).tolist()
+                nasbench_adjacency_matrix = adjacency_matrix.astype(np.int).tolist()# 邻接矩阵转化为list类型
 
                 # Assemble the model spec
                 model_spec = api.ModelSpec(
@@ -163,9 +169,10 @@ class SearchSpace:
                 yield adjacency_matrix, ops, model_spec
 
     def _generate_adjacency_matrix(self, adjacency_matrix, node):
+        # 从node开始生成邻接矩阵，根据num_parents_per_node产生邻接矩阵,不保证looseend
         if self._check_validity_of_adjacency_matrix(adjacency_matrix):
             # If graph from search space then yield.
-            yield adjacency_matrix
+            yield adjacency_matrix # 这是递归出口，合法了就输出，否则就继续递归
         else:
             req_num_parents = self.num_parents_per_node[str(node)]
             current_num_parents = np.sum(adjacency_matrix[:, node], dtype=np.int)
@@ -181,6 +188,7 @@ class SearchSpace:
                         yield graph
 
     def _create_adjacency_matrix(self, parents, adjacency_matrix, node):
+        # 从node开始，根据parents生成邻接矩阵，这都不保证looseend
         if self._check_validity_of_adjacency_matrix(adjacency_matrix):
             # If graph from search space then yield.
             return adjacency_matrix
@@ -194,6 +202,7 @@ class SearchSpace:
 
     def _create_adjacency_matrix_with_loose_ends(self, parents):
         # Create the adjacency_matrix on a per node basis
+        # 根据parents矩阵产生邻接矩阵
         adjacency_matrix = np.zeros([len(parents), len(parents)])
         for node, node_parents in parents.items():
             for parent in node_parents:
@@ -240,68 +249,9 @@ class SearchSpace:
             return False
 
         return True
-
-
-class SearchSpace1(SearchSpace):
-    def __init__(self):
-        super(SearchSpace1, self).__init__(search_space_number=1, num_intermediate_nodes=4)
-        """
-        SEARCH SPACE 1
-        """
-        self.num_parents_per_node = {
-            '0': 0,
-            '1': 1,
-            '2': 2,
-            '3': 2,
-            '4': 2,
-            '5': 2
-        }
-        if sum(self.num_parents_per_node.values()) > 9:
-            raise ValueError('Each nasbench cell has at most 9 edges.')
-
-        self.test_min_error = 0.05448716878890991
-        self.valid_min_error = 0.049278855323791504
-
-    def create_nasbench_adjacency_matrix(self, parents, **kwargs):
-        adjacency_matrix = self._create_adjacency_matrix(parents, adjacency_matrix=np.zeros([6, 6]),
-                                                         node=OUTPUT_NODE - 1)
-        # Create nasbench compatible adjacency matrix
-        return upscale_to_nasbench_format(adjacency_matrix)
-
-    def create_nasbench_adjacency_matrix_with_loose_ends(self, parents):
-        return upscale_to_nasbench_format(self._create_adjacency_matrix_with_loose_ends(parents))
-
-    def generate_adjacency_matrix_without_loose_ends(self):
-        for adjacency_matrix in self._generate_adjacency_matrix(adjacency_matrix=np.zeros([6, 6]),
-                                                                node=OUTPUT_NODE - 1):
-            yield upscale_to_nasbench_format(adjacency_matrix)
-
-    def objective_function(self, nasbench, config, budget=108):
-        adjacency_matrix, node_list = super(SearchSpace1, self).convert_config_to_nasbench_format(config)
-        # adjacency_matrix = upscale_to_nasbench_format(adjacency_matrix)
-        node_list = [INPUT, *node_list, CONV1X1, OUTPUT]
-        adjacency_list = adjacency_matrix.astype(np.int).tolist()
-        model_spec = api.ModelSpec(matrix=adjacency_list, ops=node_list)
-        nasbench_data = nasbench.query(model_spec, epochs=budget)
-        return nasbench_data['validation_accuracy'], nasbench_data['training_time']
-
-    def generate_with_loose_ends(self):
-        for _, parent_node_3, parent_node_4, output_parents in itertools.product(
-                *[itertools.combinations(list(range(int(node))), num_parents) for node, num_parents in
-                  self.num_parents_per_node.items()][2:]):
-            parents = {
-                '0': [],
-                '1': [0],
-                '2': [0, 1],
-                '3': parent_node_3,
-                '4': parent_node_4,
-                '5': output_parents
-            }
-            adjacency_matrix = self.create_nasbench_adjacency_matrix_with_loose_ends(parents)
-            yield adjacency_matrix
-
-
-Architecture = namedtuple('Architecture', ['adjacency_matrix', 'node_list'])
+ 
+ 
+ Architecture = namedtuple('Architecture', ['adjacency_matrix', 'node_list'])
 
 
 class Model(object):
@@ -356,7 +306,7 @@ class Model(object):
     def query_nasbench(self, nasbench, sample, search_space=None):
         config = ConfigSpace.Configuration(
             search_space.get_configuration_space(), vector=sample
-        )
+        ) # 通过vector为config赋值
         adjacency_matrix, node_list = search_space.convert_config_to_nasbench_format(config)
         if type(search_space) == SearchSpace3:
             node_list = [INPUT, *node_list, OUTPUT]
@@ -371,6 +321,70 @@ class Model(object):
         self.validation_accuracy = nasbench_data['validation_accuracy']
         self.test_accuracy = nasbench_data['test_accuracy']
         self.training_time = nasbench_data['training_time']
+
+
+class SearchSpace1(SearchSpace):
+    def __init__(self):
+        super(SearchSpace1, self).__init__(search_space_number=1, num_intermediate_nodes=4)
+        """
+        SEARCH SPACE 1
+        """
+        self.num_parents_per_node = {
+            '0': 0,
+            '1': 1,
+            '2': 2,
+            '3': 2,
+            '4': 2,
+            '5': 2
+        }
+        if sum(self.num_parents_per_node.values()) > 9:
+            raise ValueError('Each nasbench cell has at most 9 edges.')
+
+        self.test_min_error = 0.05448716878890991
+        self.valid_min_error = 0.049278855323791504
+
+    def create_nasbench_adjacency_matrix(self, parents, **kwargs):
+        # 根据parents产生邻接矩阵，从最后一个节点开始，可以保证不带loose_ends
+        adjacency_matrix = self._create_adjacency_matrix(parents, adjacency_matrix=np.zeros([6, 6]),
+                                                         node=OUTPUT_NODE - 1)
+        # Create nasbench compatible adjacency matrix
+        return upscale_to_nasbench_format(adjacency_matrix)
+
+    def create_nasbench_adjacency_matrix_with_loose_ends(self, parents):
+        # 直接用parents初始化，带looseends
+        return upscale_to_nasbench_format(self._create_adjacency_matrix_with_loose_ends(parents))
+
+    def generate_adjacency_matrix_without_loose_ends(self):
+        # 遍历生成邻接矩阵，不带looseends
+        for adjacency_matrix in self._generate_adjacency_matrix(adjacency_matrix=np.zeros([6, 6]),
+                                                                node=OUTPUT_NODE - 1):
+            yield upscale_to_nasbench_format(adjacency_matrix)
+
+    def objective_function(self, nasbench, config, budget=108):
+        # 从config读入网络结构，在budget个epoch下，输出在nasbench的数据下的验证准确率和训练时间
+        adjacency_matrix, node_list = super(SearchSpace1, self).convert_config_to_nasbench_format(config)
+        # adjacency_matrix = upscale_to_nasbench_format(adjacency_matrix)
+        node_list = [INPUT, *node_list, CONV1X1, OUTPUT]
+        adjacency_list = adjacency_matrix.astype(np.int).tolist()
+        model_spec = api.ModelSpec(matrix=adjacency_list, ops=node_list)
+        nasbench_data = nasbench.query(model_spec, epochs=budget)
+        return nasbench_data['validation_accuracy'], nasbench_data['training_time']
+
+    def generate_with_loose_ends(self):
+        # 遍历生成网络的邻接矩阵
+        for _, parent_node_3, parent_node_4, output_parents in itertools.product(
+                *[itertools.combinations(list(range(int(node))), num_parents) for node, num_parents in
+                  self.num_parents_per_node.items()][2:]):
+            parents = {
+                '0': [],
+                '1': [0],
+                '2': [0, 1],
+                '3': parent_node_3,
+                '4': parent_node_4,
+                '5': output_parents
+            }
+            adjacency_matrix = self.create_nasbench_adjacency_matrix_with_loose_ends(parents)
+            yield adjacency_matrix
 
 
 class SearchSpace2(SearchSpace):

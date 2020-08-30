@@ -17,7 +17,7 @@ import xnas.core.logging as logging
 import xnas.core.meters as meters
 from xnas.core.builders import build_space, lr_scheduler_builder, sng_builder
 from xnas.core.config import cfg
-from xnas.core.trainer import setup_env
+from xnas.core.trainer import setup_env, EvaluateNasbench
 from xnas.core.utils import index_to_one_hot, one_hot_to_index
 from xnas.datasets.loader import _construct_loader
 
@@ -90,6 +90,10 @@ def random_sampling(search_space, distribution_optimizer, epoch=-1000, _random=T
 
 
 def main():
+    print("helloddddddddd")
+    print('******************************8************************')
+    print("helloddddddddd")
+    print('******************************8************************')
     setup_env()
     # loadiong search space
     search_space = build_space()
@@ -186,6 +190,11 @@ def main():
         test_epoch(val_, search_space, val_meter, _over_all_epoch, sample, writer)
     logger.info("Overall training time (hr) is:{}".format(str((end_time-start_time)/3600.)))
 
+    # whether to evaluate through nasbench ;   
+    if cfg.SPACE.NASBENCH != "None":
+        logger.info("starting test using nasbench:{}".format(cfg.SPACE.NASBENCH))
+        theta=distribution_optimizer.p_model.theta
+        EvaluateNasbench(theta, search_space, logger, cfg.SPACE.NASBENCH)
 
 def train(train_loader, valid_loader, model, w_optim, lr, epoch, sample, net_crit, train_meter):
 

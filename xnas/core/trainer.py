@@ -26,7 +26,16 @@ import xnas.core.optimizer as optim
 import xnas.datasets.loader as loader
 from xnas.core.config import cfg
 
+import sys
+from nas_201_api import NASBench201API as API
+# from nasbench import api
+# from xnas.search_space.cell_based_nasben1shot import *
+
 logger = logging.get_logger(__name__)
+
+# nasbench1shot1_path = 'benchmark/nasbench_full.tfrecord'
+nasbench201_path= 'benchmark/NAS-Bench-102-v1_0-e61699.pth'
+api_nasben201 = API(nasbench201_path, verbose = False)
 
 
 def setup_env():
@@ -257,3 +266,18 @@ def time_model():
     test_loader = loader.construct_test_loader()
     # Compute model and loader timings
     benchmark.compute_time_full(model, loss_fun, train_loader, test_loader)
+
+def EvaluateNasbench(theta, search_space, logger, NASbenchName):
+
+    # get result log
+    stdout_backup = sys.stdout
+    log_file = open("experiment/result.log", "w")
+    sys.stdout = log_file
+    if NASbenchName == "NASbench201":
+        geotype = search_space.genotype(theta)
+        index = api_nasben201.query_index_by_arch(geotype)
+        api_nasben201.show(index)
+    else:
+        raise NotImplementedError
+    log_file.close()
+    sys.stdout = stdout_backup
