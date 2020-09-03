@@ -108,7 +108,6 @@ def run(space = 1, optimizer_name = 'SNG', budget = 108, runing_times = 500, run
     test_accuracy = 0
     for i in tqdm.tqdm(range(runing_times)):
 
-
         for j in range(runing_epochs):
             start_time = time.time()
             if hasattr(distribution_optimizer, 'training_finish') or j == (runing_epochs - 1):
@@ -128,6 +127,7 @@ def run(space = 1, optimizer_name = 'SNG', budget = 108, runing_times = 500, run
             record['test_accuracy'][i, j] = test_accuracy
             end_time = time.time()
             running_time_interval[i, j] = end_time - start_time
+            result.append(test_accuracy)
         
         del distribution_optimizer
         distribution_optimizer = get_optimizer(optimizer_name, category, step=step, gamma=gamma,
@@ -141,7 +141,7 @@ def run(space = 1, optimizer_name = 'SNG', budget = 108, runing_times = 500, run
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--space", help = "search space name in [1,2,3]",type = int, default = 1)
-    parser.add_argument("--optimizer", help = "dicrete level", type = str, default = 'SNG')
+    parser.add_argument("--optimizer", help = "dicrete level", type = str, default = 'MIGO')
     parser.add_argument("--step", help = "pruning step", type = int, default = 4)
     parser.add_argument("--gamma", help = "gamma value", type = float, default = 0.9)
     parser.add_argument("--noise", help = "noise std", type = float, default = 0.0)
@@ -152,14 +152,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     #get nasbench
-    nasbench_path = '/PATH/TO/NASBENCH/nasbench_full.tfrecord'
+    nasbench_path = 'benchmark/nasbench_full.tfrecord'
     nasbench = api.NASBench(nasbench_path)
 
     #get args
     space = args.space
     step = args.step
     gamma = args.gamma
-    save_dir = '/PATH/TO/EXPERIMENT'
+    save_dir = 'experiment/'
     optimizer_name = args.optimizer
 
     print("space = {}, step = {}, gamma = {}, optimizer = {}, noise_std = {}, utility_function_hyper = {}, utility_function_type = {}, sample_with_prob = {}".format(

@@ -28,14 +28,15 @@ from xnas.core.config import cfg
 
 import sys
 from nas_201_api import NASBench201API as API
-# from nasbench import api
-# from xnas.search_space.cell_based_nasben1shot import *
+from nasbench import api
+
 
 logger = logging.get_logger(__name__)
 
-# nasbench1shot1_path = 'benchmark/nasbench_full.tfrecord'
+nasbench1shot1_path = 'benchmark/nasbench_full.tfrecord'
 nasbench201_path= 'benchmark/NAS-Bench-102-v1_0-e61699.pth'
 api_nasben201 = API(nasbench201_path, verbose = False)
+nasbench = api.NASBench(nasbench1shot1_path)
 
 
 def setup_env():
@@ -271,13 +272,23 @@ def EvaluateNasbench(theta, search_space, logger, NASbenchName):
 
     # get result log
     stdout_backup = sys.stdout
-    log_file = open("experiment/result.log", "w")
+    result_path=os.path.join(cfg.OUT_DIR,"result.log")
+    log_file = open(result_path, "w")
     sys.stdout = log_file
-    if NASbenchName == "NASbench201":
+    if NASbenchName == "nasbench201":
         geotype = search_space.genotype(theta)
         index = api_nasben201.query_index_by_arch(geotype)
         api_nasben201.show(index)
     else:
-        raise NotImplementedError
+        current_best = np.argmax(theta, axis=1)
+        config = ConfigSpace.Configuration(self.space.get_configuration_space(), vector = current_best)
+        adjacency_matrix, node_list = self.space.convert_config_to_nasbench_format(config)
+        node_list = [INPUT, *node_list, OUTPUT] if search_space.search_space.search_space_number == 3 else [INPUT, *node_list, CONV1X1, OUTPUT]
+        adjacency_list = adjacency_matrix.astype(np.int).tolist()
+        model_spec = api.ModelSpec(matrix = adjacency_list, ops = node_list)
+        nasbench_data = self.nasbench.query(model_spec, epochs = self.budget)
+        print("the test accuracy in {}".format(NASbenchName))
+        print(nasbench_data['test_accuracy'])
+    
     log_file.close()
     sys.stdout = stdout_backup

@@ -90,10 +90,6 @@ def random_sampling(search_space, distribution_optimizer, epoch=-1000, _random=T
 
 
 def main():
-    print("helloddddddddd")
-    print('******************************8************************')
-    print("helloddddddddd")
-    print('******************************8************************')
     setup_env()
     # loadiong search space
     search_space = build_space()
@@ -108,7 +104,17 @@ def main():
     [train_, val_] = _construct_loader(
         cfg.SEARCH.DATASET, cfg.SEARCH.SPLIT, cfg.SEARCH.BATCH_SIZE)
 
-    distribution_optimizer = sng_builder([search_space.num_ops]*search_space.all_edges)
+    # build distribution_optimizer
+    if cfg.SPACE.NAME in ["nasbench1shot1_1", "nasbench1shot1_2", "nasbench1shot1_3"]:
+        category=[]
+        cs = search_space.search_space.get_configuration_space()
+        for h in cs.get_hyperparameters():
+            if type(h) == ConfigSpace.hyperparameters.CategoricalHyperparameter:
+                category.append(len(h.choices))
+        distribution_optimizer=sng_builder(category)
+    else:
+        distribution_optimizer = sng_builder([search_space.num_ops]*search_space.all_edges)
+    
     lr_scheduler = lr_scheduler_builder(w_optim)
     # training loop
     logger.info("start warm up training")
@@ -191,10 +197,10 @@ def main():
     logger.info("Overall training time (hr) is:{}".format(str((end_time-start_time)/3600.)))
 
     # whether to evaluate through nasbench ;   
-    if cfg.SPACE.NASBENCH != "None":
-        logger.info("starting test using nasbench:{}".format(cfg.SPACE.NASBENCH))
+    if cfg.SPACE.NAME in ["nasbench201", "nasbench1shot1_1", "nasbench1shot1_2", "nasbench1shot1_3"]:
+        logger.info("starting test using nasbench:{}".format(cfg.SPACE.NAME))
         theta=distribution_optimizer.p_model.theta
-        EvaluateNasbench(theta, search_space, logger, cfg.SPACE.NASBENCH)
+        EvaluateNasbench(theta, search_space, logger, cfg.SPACE.NAME)
 
 def train(train_loader, valid_loader, model, w_optim, lr, epoch, sample, net_crit, train_meter):
 

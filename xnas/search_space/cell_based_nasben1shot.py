@@ -7,6 +7,11 @@ import ConfigSpace
 import numpy as np
 from nasbench import api
 from collections import namedtuple
+import torch.nn.functional as F
+from torch.autograd import Variable
+
+from xnas.core.utils import index_to_one_hot, one_hot_to_index
+
 
 INPUT = 'input'
 OUTPUT = 'output'
@@ -21,6 +26,63 @@ PRIMITIVES = [
     'conv1x1-bn-relu'
 ]
 
+OPS = {
+    # For nasbench
+    'maxpool3x3': lambda C, stride, affine: nn.MaxPool2d(3, stride=stride, padding=1),
+    'conv3x3-bn-relu': lambda C, stride, affine: Conv3x3BnRelu(C, stride),
+    'conv1x1-bn-relu': lambda C, stride, affine: Conv1x1BnRelu(C, stride),
+
+    # Normal DARTS
+    'none': lambda C, stride, affine: Zero(stride),
+    'avg_pool_3x3': lambda C, stride, affine: nn.AvgPool2d(3, stride=stride, padding=1, count_include_pad=False),
+    'skip_connect': lambda C, stride, affine: Identity() if stride == 1 else FactorizedReduce(C, C, affine=affine),
+    'sep_conv_3x3': lambda C, stride, affine: SepConv(C, C, 3, stride, 1, affine=affine),
+    'sep_conv_5x5': lambda C, stride, affine: SepConv(C, C, 5, stride, 2, affine=affine),
+    'sep_conv_7x7': lambda C, stride, affine: SepConv(C, C, 7, stride, 3, affine=affine),
+    'dil_conv_3x3': lambda C, stride, affine: DilConv(C, C, 3, stride, 2, 2, affine=affine),
+    'dil_conv_5x5': lambda C, stride, affine: DilConv(C, C, 5, stride, 4, 2, affine=affine),
+    'conv_7x1_1x7': lambda C, stride, affine: nn.Sequential(
+        nn.ReLU(inplace=False),
+        nn.Conv2d(C, C, (1, 7), stride=(1, stride), padding=(0, 3), bias=False),
+        nn.Conv2d(C, C, (7, 1), stride=(stride, 1), padding=(3, 0), bias=False),
+        nn.BatchNorm2d(C, affine=affine)
+    ),
+}
+
+def get_weights_from_arch(arch, model):
+    adjacency_matrix, node_list = arch
+    num_ops = len(PRIMITIVES)
+
+    # Assign the sampled ops to the mixed op weights.
+    # These are not optimized
+    alphas_mixed_op = Variable(torch.zeros(model._steps, num_ops).cuda(), requires_grad=False)
+    for idx, op in enumerate(node_list):
+        alphas_mixed_op[idx][PRIMITIVES.index(op)] = 1
+
+    # Set the output weights
+    alphas_output = Variable(torch.zeros(1, model._steps + 1).cuda(), requires_grad=False)
+    for idx, label in enumerate(list(adjacency_matrix[:, -1][:-1])):
+        alphas_output[0][idx] = label
+
+    # Initialize the weights for the inputs to each choice block.
+    if type(model.search_space) == SearchSpace1:
+        begin = 3
+    else:
+        begin = 2
+    alphas_inputs = [Variable(torch.zeros(1, n_inputs).cuda(), requires_grad=False) for n_inputs in
+                     range(begin, model._steps + 1)]
+    for alpha_input in alphas_inputs:
+        connectivity_pattern = list(adjacency_matrix[:alpha_input.shape[1], alpha_input.shape[1]])
+        for idx, label in enumerate(connectivity_pattern):
+            alpha_input[0][idx] = label
+
+    # Total architecture parameters
+    arch_parameters = [
+        alphas_mixed_op,
+        alphas_output,
+        *alphas_inputs
+    ]
+    return arch_parameters
 
 def upscale_to_nasbench_format(adjacency_matrix):
     """
@@ -57,9 +119,10 @@ def parent_combinations(node, num_parents):
 
 
 class SearchSpace:
+    # 通过adjacency_matrix和op_list来确定一个模型
     def __init__(self, search_space_number, num_intermediate_nodes):
         self.search_space_number = search_space_number
-        self.num_intermediate_nodes = num_intermediate_nodes
+        self.num_intermediate_nodes =  
         self.num_parents_per_node = {}
 
         self.run_history = []
@@ -188,7 +251,7 @@ class SearchSpace:
                         yield graph
 
     def _create_adjacency_matrix(self, parents, adjacency_matrix, node):
-        # 从node开始，根据parents生成邻接矩阵，这都不保证looseend
+        # 从node开始，根据parents生成邻接矩阵
         if self._check_validity_of_adjacency_matrix(adjacency_matrix):
             # If graph from search space then yield.
             return adjacency_matrix
@@ -249,10 +312,8 @@ class SearchSpace:
             return False
 
         return True
- 
- 
- Architecture = namedtuple('Architecture', ['adjacency_matrix', 'node_list'])
 
+Architecture = namedtuple('Architecture', ['adjacency_matrix', 'node_list'])
 
 class Model(object):
     """A class representing a model.
@@ -516,3 +577,161 @@ class SearchSpace3(SearchSpace):
         model_spec = api.ModelSpec(matrix=adjacency_list, ops=node_list)
         nasbench_data = nasbench.query(model_spec, epochs=budget)
         return nasbench_data['validation_accuracy'], nasbench_data['training_time']
+
+class MixedOp(nn.Module):
+
+    def __init__(self, C, stride):
+        super(MixedOp, self).__init__()
+        self._ops = nn.ModuleList()
+        for primitive in PRIMITIVES:
+            op = OPS[primitive](C, stride, False)
+            self._ops.append(op)
+
+    def forward(self, x, weights):
+        return sum(w * op(x) for w, op in zip(weights, self._ops))
+
+
+class ChoiceBlock(nn.Module):
+
+    def __init__(self, C_in):
+        super(ChoiceBlock, self).__init__()
+        self.mixed_op = MixedOp(C_in, stride=1)
+
+    def forward(self, inputs, input_weights, weights):
+        if input_weights is not None:
+            inputs = [w * t for w, t in zip(input_weights.squeeze(0), inputs)]
+
+        input_to_mixed_op = sum(inputs)
+
+        # Apply Mixed Op
+        output = self.mixed_op(input_to_mixed_op, weights=weights)
+        return output
+
+class Cell(nn.Module):
+
+    def __init__(self, steps, C_prev, C, layer, search_space):
+        super(Cell, self).__init__()
+        self._steps = steps
+
+        self._choice_blocks = nn.ModuleList()
+        self._bns = nn.ModuleList()
+        self.search_space = search_space
+
+        self._input_projections = nn.ModuleList()
+        C_in = C_prev if layer == 0 else C_prev * steps
+
+        for i in range(self._steps):
+            choice_block = ChoiceBlock(C_in=C)
+            self._choice_blocks.append(choice_block)
+            self._input_projections.append(ConvBnRelu(C_in=C_in, C_out=C, kernel_size=1, stride=1, padding=0))
+
+        self._input_projections.append(ConvBnRelu(C_in=C_in, C_out=C * self._steps, kernel_size=1, stride=1, padding=0))
+
+    def forward(self, s0, weights, output_weights, input_weights):
+
+        states = []
+
+        # Loop through the choice blocks of each cell
+        for choice_block_idx in range(self._steps):
+            if input_weights is not None:
+                if (choice_block_idx == 0) or (choice_block_idx == 1 and type(self.search_space) == SearchSpace1):
+                    input_weight = None
+                else:
+                    input_weight = input_weights.pop(0)
+
+            s = self._choice_blocks[choice_block_idx](inputs=[self._input_projections[choice_block_idx](s0), *states],
+                                                      input_weights=input_weight, weights=weights[choice_block_idx])
+            states.append(s)
+        input_to_output_edge = self._input_projections[-1](s0)
+        assert (len(input_weights) == 0, 'Something went wrong here.')
+
+        if output_weights is None:
+            tensor_list = states
+        else:
+            tensor_list = [w * t for w, t in zip(output_weights[0][1:], states)]
+
+        return output_weights[0][0] * input_to_output_edge + torch.cat(tensor_list, dim=1)
+
+class Network(nn.Module):
+
+    def __init__(self, C, num_classes, layers, search_space, steps=4):
+        super(Network, self).__init__()
+        self._C = C #初始通道，就是经过第一个convstem后的通道数
+        self._num_classes = num_classes #类别种类
+        self._layers = layers #cell的层数
+        self._steps = steps #cell中间节点的个数
+        self.search_space = search_space #直接传入search space
+
+        # In NASBench the stem has 128 output channels
+        C_curr = C
+        self.stem = ConvBnRelu(C_in=3, C_out=C_curr, kernel_size=3, stride=1)
+
+        self.cells = nn.ModuleList()
+        C_prev = C_curr
+        for i in range(layers):
+            if i in [layers // 3, 2 * layers // 3]:
+                # Double the number of channels after each down-sampling step
+                # Down-sample in forward method
+                C_curr *= 2
+            cell = Cell(steps=self._steps, C_prev=C_prev, C=C_curr, layer=i, search_space=search_space) #maxpool没有起到增加维度的作用，增加维度是在Cell里完成
+            self.cells += [cell]
+            C_prev = C_curr
+        self.postprocess = ReLUConvBN(C_in=C_prev * self._steps, C_out=C_curr, kernel_size=1, stride=1, padding=0,
+                                      affine=False)
+
+        self.classifier = nn.Linear(C_prev, num_classes)
+        self._initialize_alphas()
+
+    def forward(self, input, sample):
+        # get weights by sample
+        sample_index = one_hot_to_index(np.array(sample))
+        config = ConfigSpace.Configuration(self.search_space.get_configuration_space(), vector = sample_index)
+        adjacency_matrix, node_list = self.search_space.convert_config_to_nasbench_format(config)
+        arch_parameters = get_weights_from_arch((adjacency_matrix,node_list), self.search_space)
+        # NASBench only has one input to each cell
+        s0 = self.stem(input)
+        for i, cell in enumerate(self.cells):
+            if i in [self._layers // 3, 2 * self._layers // 3]:
+                # Perform down-sampling by factor 1/2
+                s0 = nn.MaxPool2d(kernel_size=2, stride=2, padding=1)(s0)
+
+            # get mixed_op_weights
+            mixed_op_weights = arch_parameters[0]
+
+            # get output_weights
+            output_weights = arch_parameters[1] 
+
+            # get input_weights
+            input_weights = [alpha for alpha in arch_parameters[2:]]
+
+            s0 = cell(s0, mixed_op_weights, output_weights, input_weights)
+
+        # Include one more preprocessing step here
+        s0 = self.postprocess(s0)  # [N, C_max * (steps + 1), w, h] -> [N, C_max, w, h]
+
+        # Global Average Pooling by averaging over last two remaining spatial dimensions
+        out = s0.view(*s0.shape[:2], -1).mean(-1)
+        logits = self.classifier(out.view(out.size(0), -1))
+        return logits
+
+#bulid API
+def _NASbench1shot1_1():
+    from xnas.core.config import cfg
+    return Network(C = cfg.SPACE.CHANNEL,
+                   num_classes = cfg.SPACE.NUM_CLASSES,
+                   layers = 9,
+                   search_space = SearchSpace1())
+
+def _NASbench1shot1_2():
+    from xnas.core.config import cfg
+    return Network(C = cfg.SPACE.CHANNEL,
+                   num_classes = cfg.SPACE.NUM_CLASSES,
+                   layers = 9,
+                   search_space = SearchSpace2())
+
+def _NASbench1shot1_3():
+    from xnas.core.config import cfg
+    return Network(C = cfg.SPACE.CHANNEL,
+                   num_classes = cfg.SPACE.NUM_CLASSES,
+                   layers = 9,
+                   search_space = SearchSpace3())
