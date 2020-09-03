@@ -22,8 +22,8 @@ from xnas.search_space.mb_v3_cnn import build_super_net
 from xnas.search_space.cell_based_nasben1shot import _NASbench1shot1_1, _NASbench1shot1_2, _NASbench1shot1_3
 # Supported models
 _spaces = {"darts": _DartsCNN, "nasbench201": _NASbench201, "ofa": build_super_net, "pcdarts": _PcdartsCNN,
-           "proxyless": build_super_net, "google": build_super_net, "pdarts": _PdartsCNN， 
-           "nasbench1shot1_1": _NASbench1shot1_1, "nasbench1shot1_2": _NASbench1shot1_2, "nasbench1shot1_3": _NASbench1shot1_3 }
+           "proxyless": build_super_net, "google": build_super_net, "pdarts": _PdartsCNN, 
+           "nasbench1shot1_1": _NASbench1shot1_1, "nasbench1shot1_2": _NASbench1shot1_2, "nasbench1shot1_3": _NASbench1shot1_3}
 
 # Supported loss functions
 _loss_funs = {"cross_entropy": torch.nn.CrossEntropyLoss}
