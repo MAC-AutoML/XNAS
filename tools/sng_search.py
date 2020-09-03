@@ -1,4 +1,6 @@
 """ Search cell """
+import sys
+sys.path.append(".")
 import gc
 import json
 import os
@@ -21,6 +23,8 @@ from xnas.core.trainer import setup_env, EvaluateNasbench
 from xnas.core.utils import index_to_one_hot, one_hot_to_index
 from xnas.datasets.loader import _construct_loader
 
+import ConfigSpace
+
 # config load and assert
 config.load_cfg_fom_args()
 config.assert_and_infer_cfg()
@@ -31,10 +35,10 @@ writer = SummaryWriter(log_dir=os.path.join(cfg.OUT_DIR, "tb"))
 logger = logging.get_logger(__name__)
 
 
-def random_sampling(search_space, distribution_optimizer, epoch=-1000, _random=True):
-    num_ops, total_edges = search_space.num_ops, search_space.all_edges
+def random_sampling(search_space, distribution_optimizer, epoch=-1000, _random=False):
     # 判断是否需要进行随机采样，random为true的时候，根据某些限制条件进行随机采样，否则为根据distribution samplar
     if _random:
+        num_ops, total_edges = search_space.num_ops, search_space.all_edges
         # edge importance
         non_edge_idx = []
         if cfg.SNG.EDGE_SAMPLING and epoch > cfg.SNG.EDGE_SAMPLING_EPOCH:

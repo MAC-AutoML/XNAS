@@ -10,6 +10,7 @@ from collections import namedtuple
 import torch.nn.functional as F
 from torch.autograd import Variable
 import torch.nn as nn
+import torch
 
 from xnas.core.utils import index_to_one_hot, one_hot_to_index
 
@@ -236,28 +237,28 @@ BN_MOMENTUM = 0.997
 BN_EPSILON = 1e-5
 
 # Some utils
-def get_weights_from_arch(arch, model):
+def get_weights_from_arch(arch, intermediate_nodes, search_space):
     adjacency_matrix, node_list = arch
     num_ops = len(PRIMITIVES)
 
     # Assign the sampled ops to the mixed op weights.
     # These are not optimized
-    alphas_mixed_op = Variable(torch.zeros(model._steps, num_ops).cuda(), requires_grad=False)
+    alphas_mixed_op = Variable(torch.zeros(intermediate_nodes, num_ops).cuda(), requires_grad=False)
     for idx, op in enumerate(node_list):
         alphas_mixed_op[idx][PRIMITIVES.index(op)] = 1
 
     # Set the output weights
-    alphas_output = Variable(torch.zeros(1, model._steps + 1).cuda(), requires_grad=False)
+    alphas_output = Variable(torch.zeros(1, intermediate_nodes + 1).cuda(), requires_grad=False)
     for idx, label in enumerate(list(adjacency_matrix[:, -1][:-1])):
         alphas_output[0][idx] = label
 
     # Initialize the weights for the inputs to each choice block.
-    if type(model.search_space) == SearchSpace1:
+    if search_space == 1:
         begin = 3
     else:
         begin = 2
     alphas_inputs = [Variable(torch.zeros(1, n_inputs).cuda(), requires_grad=False) for n_inputs in
-                     range(begin, model._steps + 1)]
+                     range(begin, intermediate_nodes + 1)]
     for alpha_input in alphas_inputs:
         connectivity_pattern = list(adjacency_matrix[:alpha_input.shape[1], alpha_input.shape[1]])
         for idx, label in enumerate(connectivity_pattern):
@@ -873,7 +874,7 @@ class Network(nn.Module):
         sample_index = one_hot_to_index(np.array(sample))
         config = ConfigSpace.Configuration(self.search_space.get_configuration_space(), vector = sample_index)
         adjacency_matrix, node_list = self.search_space.convert_config_to_nasbench_format(config)
-        arch_parameters = get_weights_from_arch((adjacency_matrix,node_list), self.search_space)
+        arch_parameters = get_weights_from_arch((adjacency_matrix, node_list), self._steps, self.search_space.search_space_number)
         # NASBench only has one input to each cell
         s0 = self.stem(input)
         for i, cell in enumerate(self.cells):
