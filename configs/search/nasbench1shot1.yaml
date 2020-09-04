@@ -15,5 +15,5 @@ OPTIM:
   MAX_EPOCH: 50
 OUT_DIR: 'experiment/nasbench1shot1'
 SNG:
-  NAME: 'SNG'
+  NAME: 'MIGO'
   RANDOM_SAMPLE: False
