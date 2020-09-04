@@ -30,6 +30,8 @@ import sys
 from nas_201_api import NASBench201API as API
 from nasbench import api
 
+import ConfigSpace
+
 
 logger = logging.get_logger(__name__)
 

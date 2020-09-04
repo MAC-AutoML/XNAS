@@ -39,8 +39,7 @@ def get_optimizer(name, category, step = 4, gamma = 0.9, sample_with_prob=True, 
         return Dynamic_SNG(categories = category, step = step,
                            pruning = True, sample_with_prob = sample_with_prob)
     elif name == 'MIGO':
-        return MIGO(categories = category, step = step,
-                    pruning = True, sample_with_prob = sample_with_prob,
+        return MIGO(categories = category, step = step, pruning= False, sample_with_prob = sample_with_prob,
                     utility_function = 'log', utility_function_hyper = utility_function_hyper,
                     momentum = True, gamma = gamma)
     elif name == 'GridSearch':
@@ -86,6 +85,7 @@ def run(space = 1, optimizer_name = 'SNG', budget = 108, runing_times = 500, run
 
     # get category using cat_variables
     category = cat_variables
+    print(category)
 
     # distribution_optimizer = Category_DDPNAS.CategoricalDDPNAS(category, 3)
     distribution_optimizer = get_optimizer(optimizer_name, category, step = step, gamma = gamma,
@@ -107,7 +107,7 @@ def run(space = 1, optimizer_name = 'SNG', budget = 108, runing_times = 500, run
     running_time_interval = np.zeros([runing_times, runing_epochs])
     test_accuracy = 0
     for i in tqdm.tqdm(range(runing_times)):
-
+        y=[]
         for j in range(runing_epochs):
             start_time = time.time()
             if hasattr(distribution_optimizer, 'training_finish') or j == (runing_epochs - 1):
@@ -127,8 +127,10 @@ def run(space = 1, optimizer_name = 'SNG', budget = 108, runing_times = 500, run
             record['test_accuracy'][i, j] = test_accuracy
             end_time = time.time()
             running_time_interval[i, j] = end_time - start_time
-            result.append(test_accuracy)
-        
+            y.append([test_accuracy])
+        x=len(y)
+        plt.plot(np.array(range(x)),y)
+        plt.show()
         del distribution_optimizer
         distribution_optimizer = get_optimizer(optimizer_name, category, step=step, gamma=gamma,
                                                sample_with_prob=sample_with_prob, utility_function=utility_function,
@@ -143,12 +145,12 @@ if __name__ == '__main__':
     parser.add_argument("--space", help = "search space name in [1,2,3]",type = int, default = 1)
     parser.add_argument("--optimizer", help = "dicrete level", type = str, default = 'MIGO')
     parser.add_argument("--step", help = "pruning step", type = int, default = 4)
-    parser.add_argument("--gamma", help = "gamma value", type = float, default = 0.9)
+    parser.add_argument("--gamma", help = "gamma value", type = float, default = 0.2)
     parser.add_argument("--noise", help = "noise std", type = float, default = 0.0)
     parser.add_argument("-uh", "--utility_function_hyper",
                         help = "the factor of utility_function", type = float, default = 0.4)
     parser.add_argument("-ut", "--utility_function_type", help = "the type of utility_function", type = str, default = 'log')
-    parser.add_argument("-sp", "--sample_with_prob",  action = 'store_true')
+    parser.add_argument("-sp", "--sample_with_prob",  action = 'store_true', default= True)
     args = parser.parse_args()
 
     #get nasbench
@@ -159,7 +161,7 @@ if __name__ == '__main__':
     space = args.space
     step = args.step
     gamma = args.gamma
-    save_dir = 'experiment/test1shot1'
+    save_dir = 'experiment/'
     optimizer_name = args.optimizer
 
     print("space = {}, step = {}, gamma = {}, optimizer = {}, noise_std = {}, utility_function_hyper = {}, utility_function_type = {}, sample_with_prob = {}".format(

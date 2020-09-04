@@ -1,3 +1,5 @@
+import sys
+sys.path.append('.')
 import argparse
 import os
 import time
@@ -76,6 +78,7 @@ def run(M=10, N=10, func='rastrigin', optimizer_name='SNG', runing_times=500, ru
                 if distribution_optimizer.training_finish:
                     break
             sample = distribution_optimizer.sampling()
+            print(sample)
             objective = test_function.objective_function(sample)
             distribution_optimizer.record_information(sample, objective)
             distribution_optimizer.update()
@@ -102,7 +105,7 @@ if __name__ == '__main__':
     parser.add_argument("--M", help="dicrete level", type=int, default=10)
     parser.add_argument(
         "--func", help="test functions in [rastrigin, index_sum, rosenbrock]", type=str, default='rastrigin')
-    parser.add_argument("--optimizer", help="dicrete level", type=str, default='MIGO')
+    parser.add_argument("--optimizer", help="dicrete level", type=str, default='SNG')
     parser.add_argument("--step", help="pruning step", type=int, default=4)
     parser.add_argument("--gamma", help="gamma value", type=float, default=0.9)
     parser.add_argument("--noise", help="noise std", type=float, default=0.0)

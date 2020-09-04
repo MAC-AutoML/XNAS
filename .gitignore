@@ -10,6 +10,7 @@ tmp/
 *hyper.md
 benchmark/
 test.py
+test.ipynb
 
 # C extensions
 *.so
