@@ -281,7 +281,7 @@ def EvaluateNasbench(theta, search_space, logger, NASbenchName):
         api_nasben201.show(index)
     else:
         current_best = np.argmax(theta, axis=1)
-        config = ConfigSpace.Configuration(self.space.get_configuration_space(), vector = current_best)
+        config = ConfigSpace.Configuration(search_space.search_space.get_configuration_space(), vector = current_best)
         adjacency_matrix, node_list = self.space.convert_config_to_nasbench_format(config)
         node_list = [INPUT, *node_list, OUTPUT] if search_space.search_space.search_space_number == 3 else [INPUT, *node_list, CONV1X1, OUTPUT]
         adjacency_list = adjacency_matrix.astype(np.int).tolist()

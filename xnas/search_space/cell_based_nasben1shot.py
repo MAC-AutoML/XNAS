@@ -909,6 +909,16 @@ class Network(nn.Module):
         out = s0.view(*s0.shape[:2], -1).mean(-1)
         logits = self.classifier(out.view(out.size(0), -1))
         return logits
+    def genotype(self, theta):
+        sample = np.argmax(theta, axis=1)
+        config = ConfigSpace.Configuration(self.search_space.get_configuration_space(), vector = sample)
+        adjacency_matrix, node_list = self.search_space.convert_config_to_nasbench_format(config)
+        if self.search_space.search_space_number == 3:
+            node_list = [INPUT, *node_list, OUTPUT]
+        else:
+            node_list = [INPUT, *node_list, CONV1X1, OUTPUT]
+        result = "adjacency_matrix:"+str(adjacency_matrix)+"node_list:"+str(node_list)
+        return result
 
 #bulid API
 def _NASbench1shot1_1():
