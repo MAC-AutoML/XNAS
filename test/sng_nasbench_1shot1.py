@@ -159,7 +159,7 @@ if __name__ == '__main__':
     space = args.space
     step = args.step
     gamma = args.gamma
-    save_dir = 'experiment/'
+    save_dir = 'experiment/test1shot1'
     optimizer_name = args.optimizer
 
     print("space = {}, step = {}, gamma = {}, optimizer = {}, noise_std = {}, utility_function_hyper = {}, utility_function_type = {}, sample_with_prob = {}".format(

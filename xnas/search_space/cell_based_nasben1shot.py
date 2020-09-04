@@ -237,8 +237,29 @@ BN_MOMENTUM = 0.997
 BN_EPSILON = 1e-5
 
 # Some utils
+def upscale_to_nasbench_format(adjacency_matrix):
+    """
+    The search space uses only 4 intermediate nodes, rather than 5 as used in nasbench
+    This method adds a dummy node to the graph which is never used to be compatible with nasbench.
+    :param adjacency_matrix:
+    :return:
+    """
+    # 先竖着加一行再横着加一行，变成7x7满足查表的格式
+    return np.insert(
+        np.insert(adjacency_matrix,
+                  5, [0, 0, 0, 0, 0, 0], axis=1),
+        5, [0, 0, 0, 0, 0, 0, 0], axis=0)
+
+def nasbench_forma_to_small(adjacency_matrix):
+    return np.delete(
+        np.delete(adjacency_matrix ,5, axis = 0), 5, axis=1)
+
 def get_weights_from_arch(arch, intermediate_nodes, search_space):
     adjacency_matrix, node_list = arch
+    
+    if search_space != 3:
+        adjacency_matrix=nasbench_forma_to_small(adjacency_matrix)
+
     num_ops = len(PRIMITIVES)
 
     # Assign the sampled ops to the mixed op weights.
@@ -272,18 +293,6 @@ def get_weights_from_arch(arch, intermediate_nodes, search_space):
     ]
     return arch_parameters
 
-def upscale_to_nasbench_format(adjacency_matrix):
-    """
-    The search space uses only 4 intermediate nodes, rather than 5 as used in nasbench
-    This method adds a dummy node to the graph which is never used to be compatible with nasbench.
-    :param adjacency_matrix:
-    :return:
-    """
-    # 先竖着加一行再横着加一行，变成7x7满足查表的格式
-    return np.insert(
-        np.insert(adjacency_matrix,
-                  5, [0, 0, 0, 0, 0, 0], axis=1),
-        5, [0, 0, 0, 0, 0, 0, 0], axis=0)
 
 
 def parent_combinations_old(adjacency_matrix, node, n_parents=2):
