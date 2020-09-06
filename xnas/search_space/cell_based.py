@@ -615,7 +615,7 @@ class NASBench201CNN(nn.Module):
         self.classifier = nn.Linear(C_prev, num_classes)
 
     def genotype(self, theta):
-        # theta只要是one-hot的维度形式都可以
+ 
         genotypes = ''
         for i in range(1, self.max_nodes):
             sub_geno = '|'
@@ -631,7 +631,7 @@ class NASBench201CNN(nn.Module):
         return genotypes
 
     def forward(self, inputs, weight):
-        #各个op的参数被训练，weight只有一组，所以各个cell的形状是不变的
+ 
         feature = self.stem(inputs)
         for i, cell in enumerate(self.cells):
             if isinstance(cell, ResNetBasicblock):
