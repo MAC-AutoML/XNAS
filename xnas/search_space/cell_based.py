@@ -615,6 +615,7 @@ class NASBench201CNN(nn.Module):
         self.classifier = nn.Linear(C_prev, num_classes)
 
     def genotype(self, theta):
+ 
         genotypes = ''
         for i in range(1, self.max_nodes):
             sub_geno = '|'
@@ -630,7 +631,7 @@ class NASBench201CNN(nn.Module):
         return genotypes
 
     def forward(self, inputs, weight):
-
+ 
         feature = self.stem(inputs)
         for i, cell in enumerate(self.cells):
             if isinstance(cell, ResNetBasicblock):

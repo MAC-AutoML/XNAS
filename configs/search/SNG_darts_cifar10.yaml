@@ -19,4 +19,5 @@ SNG:
   GAMMA: 0.9
 DATA_LOADER:
   BACKEND: 'custom'
-OUT_DIR: '/userhome/project/XNAS/experiment/MIGO_test'
+# OUT_DIR: '/userhome/project/XNAS/experiment/MIGO_test'
+OUT_DIR: '/experimentMIGO_test/MIGO_test'
