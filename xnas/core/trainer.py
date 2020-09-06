@@ -25,6 +25,7 @@ import xnas.core.net as net
 import xnas.core.optimizer as optim
 import xnas.datasets.loader as loader
 from xnas.core.config import cfg
+from xnas.search_space.cell_based_nasben1shot import INPUT, OUTPUT, CONV1X1, CONV3X3, MAXPOOL3X3, OUTPUT_NODE 
 
 import sys
 from nas_201_api import NASBench201API as API
@@ -284,7 +285,7 @@ def EvaluateNasbench(theta, search_space, logger, NASbenchName):
     else:
         current_best = np.argmax(theta, axis=1)
         config = ConfigSpace.Configuration(search_space.search_space.get_configuration_space(), vector = current_best)
-        adjacency_matrix, node_list = search_space.search_space.space.convert_config_to_nasbench_format(config)
+        adjacency_matrix, node_list = search_space.search_space.convert_config_to_nasbench_format(config)
         node_list = [INPUT, *node_list, OUTPUT] if search_space.search_space.search_space_number == 3 else [INPUT, *node_list, CONV1X1, OUTPUT]
         adjacency_list = adjacency_matrix.astype(np.int).tolist()
         model_spec = api.ModelSpec(matrix = adjacency_list, ops = node_list)
