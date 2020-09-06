@@ -8,6 +8,9 @@ tmp/
 *$py.class
 *.DS_Store
 *hyper.md
+benchmark/
+test.py
+test.ipynb
 
 # C extensions
 *.so

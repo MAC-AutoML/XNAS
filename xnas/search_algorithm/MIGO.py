@@ -14,7 +14,7 @@ class MIGO:
     """
 
     def __init__(self, categories, lam=-1,
-                 delta_init=1., step=3, pruning=True,
+                 delta_init=1., step=3, pruning= True,
                  init_theta=None, max_mize=True, sample_with_prob=False,
                  utility_function='picewise', utility_function_hyper=0.5,
                  momentum=True, gamma=0.9, sampling_number_per_edge=1):
@@ -185,21 +185,17 @@ class MIGO:
     def utility(self, f, rho=0.25, negative=True):
         """
         Ranking Based Utility Transformation
-
         w(f(x)) / lambda =
             1/mu  if rank(x) <= mu
             0     if mu < rank(x) < lambda - mu
             -1/mu if lambda - mu <= rank(x)
-
         where rank(x) is the number of at least equally good
         points, including it self.
-
         The number of good and bad points, mu, is ceil(lambda/4).
         That is,
             mu = 1 if lambda = 2
             mu = 1 if lambda = 4
             mu = 2 if lambda = 6, etc.
-
         If there exist tie points, the utility values are
         equally distributed for these points.a
         """
