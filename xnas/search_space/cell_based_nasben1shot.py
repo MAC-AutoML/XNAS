@@ -34,21 +34,6 @@ OPS = {
     'maxpool3x3': lambda C, stride, affine: nn.MaxPool2d(3, stride=stride, padding=1),
     'conv3x3-bn-relu': lambda C, stride, affine: Conv3x3BnRelu(C, stride),
     'conv1x1-bn-relu': lambda C, stride, affine: Conv1x1BnRelu(C, stride),
-    
-    # 'none': lambda C, stride, affine: Zero(stride),
-    # 'avg_pool_3x3': lambda C, stride, affine: nn.AvgPool2d(3, stride=stride, padding=1, count_include_pad=False),
-    # 'skip_connect': lambda C, stride, affine: Identity() if stride == 1 else FactorizedReduce(C, C, affine=affine),
-    # 'sep_conv_3x3': lambda C, stride, affine: SepConv(C, C, 3, stride, 1, affine=affine),
-    # 'sep_conv_5x5': lambda C, stride, affine: SepConv(C, C, 5, stride, 2, affine=affine),
-    # 'sep_conv_7x7': lambda C, stride, affine: SepConv(C, C, 7, stride, 3, affine=affine),
-    # 'dil_conv_3x3': lambda C, stride, affine: DilConv(C, C, 3, stride, 2, 2, affine=affine),
-    # 'dil_conv_5x5': lambda C, stride, affine: DilConv(C, C, 5, stride, 4, 2, affine=affine),
-    # 'conv_7x1_1x7': lambda C, stride, affine: nn.Sequential(
-    #     nn.ReLU(inplace=False),
-    #     nn.Conv2d(C, C, (1, 7), stride=(1, stride), padding=(0, 3), bias=False),
-    #     nn.Conv2d(C, C, (7, 1), stride=(stride, 1), padding=(3, 0), bias=False),
-    #     nn.BatchNorm2d(C, affine=affine)
-    # ),
 }
 
 # base operations
@@ -96,102 +81,6 @@ class ReLUConvBN(nn.Module):
 
     def forward(self, x):
         return self.op(x)
-
-
-# class Conv1x1BnRelu(nn.Module):
-
-#     def __init__(self, channels, stride):
-#         super(Conv1x1BnRelu, self).__init__()
-#         self.op = ConvBnRelu(C_in=channels, C_out=channels, kernel_size=1, stride=stride, padding=0)
-
-#     def forward(self, x):
-#         return self.op(x)
-
-    
-# Normal DARTS
-# class ConvBnRelu(nn.Module):
-
-#     def __init__(self, C_in, C_out, kernel_size, stride, padding=1):
-#         super(ConvBnRelu, self).__init__()
-#         self.op = nn.Sequential(
-#             nn.Conv2d(C_in, C_out, kernel_size, stride=stride, padding=padding, bias=False),
-#             nn.BatchNorm2d(C_out, affine=True, momentum=BN_MOMENTUM, eps=BN_EPSILON),
-#             nn.ReLU(inplace=False)
-#         )
-
-#     def forward(self, x):
-#         return self.op(x)
-
-
-# class Conv3x3BnRelu(nn.Module):
-
-#     def __init__(self, channels, stride):
-#         super(Conv3x3BnRelu, self).__init__()
-#         self.op = ConvBnRelu(C_in=channels, C_out=channels, kernel_size=3, stride=stride)
-
-#     def forward(self, x):
-#         return self.op(x)
-
-
-
-
-
-
-# class DilConv(nn.Module):
-
-#     def __init__(self, C_in, C_out, kernel_size, stride, padding, dilation, affine=True):
-#         super(DilConv, self).__init__()
-#         self.op = nn.Sequential(
-#             nn.ReLU(inplace=False),
-#             nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation,
-#                       groups=C_in, bias=False),
-#             nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
-#             nn.BatchNorm2d(C_out, affine=affine),
-#         )
-
-#     def forward(self, x):
-#         return self.op(x)
-
-
-# class SepConv(nn.Module):
-
-#     def __init__(self, C_in, C_out, kernel_size, stride, padding, affine=True):
-#         super(SepConv, self).__init__()
-#         self.op = nn.Sequential(
-#             nn.ReLU(inplace=False),
-#             nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, groups=C_in, bias=False),
-#             nn.Conv2d(C_in, C_in, kernel_size=1, padding=0, bias=False),
-#             nn.BatchNorm2d(C_in, affine=affine),
-#             nn.ReLU(inplace=False),
-#             nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=1, padding=padding, groups=C_in, bias=False),
-#             nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
-#             nn.BatchNorm2d(C_out, affine=affine),
-#         )
-
-#     def forward(self, x):
-#         return self.op(x)
-
-
-# class Identity(nn.Module):
-
-#     def __init__(self):
-#         super(Identity, self).__init__()
-
-#     def forward(self, x):
-#         return x
-
-
-# class Zero(nn.Module):
-
-#     def __init__(self, stride):
-#         super(Zero, self).__init__()
-#         self.stride = stride
-
-#     def forward(self, x):
-#         if self.stride == 1:
-#             return x.mul(0.)
-#         return x[:, :, ::self.stride, ::self.stride].mul(0.)
-
 
 class FactorizedReduce(nn.Module):
 
@@ -556,22 +445,6 @@ class SearchSpace1(SearchSpace):
         nasbench_data = nasbench.query(model_spec, epochs=budget)
         return nasbench_data['validation_accuracy'], nasbench_data['training_time']
 
-    # def generate_with_loose_ends(self):
-
-    #     for _, parent_node_3, parent_node_4, output_parents in itertools.product(
-    #             *[itertools.combinations(list(range(int(node))), num_parents) for node, num_parents in
-    #               self.num_parents_per_node.items()][2:]):
-    #         parents = {
-    #             '0': [],
-    #             '1': [0],
-    #             '2': [0, 1],
-    #             '3': parent_node_3,
-    #             '4': parent_node_4,
-    #             '5': output_parents
-    #         }
-    #         adjacency_matrix = self.create_nasbench_adjacency_matrix_with_loose_ends(parents)
-    #         yield adjacency_matrix
-
 class SearchSpace2(SearchSpace):
     def __init__(self):
         self.search_space_number = 2
@@ -626,20 +499,6 @@ class SearchSpace2(SearchSpace):
 
         return nasbench_data['validation_accuracy'], nasbench_data['training_time']
 
-    # def generate_with_loose_ends(self):
-    #     for parent_node_2, parent_node_3, parent_node_4, output_parents in itertools.product(
-    #             *[itertools.combinations(list(range(int(node))), num_parents) for node, num_parents in
-    #               self.num_parents_per_node.items()][2:]):
-    #         parents = {
-    #             '0': [],
-    #             '1': [0],
-    #             '2': parent_node_2,
-    #             '3': parent_node_3,
-    #             '4': parent_node_4,
-    #             '5': output_parents
-    #         }
-    #         adjacency_matrix = self.create_nasbench_adjacency_matrix_with_loose_ends(parents)
-    #         yield adjacency_matrix
 
 class SearchSpace3(SearchSpace):
     def __init__(self):
@@ -676,23 +535,7 @@ class SearchSpace3(SearchSpace):
     def generate_adjacency_matrix_without_loose_ends(self):
         for adjacency_matrix in self._generate_adjacency_matrix(adjacency_matrix=np.zeros([7, 7]), node=OUTPUT_NODE):
             yield adjacency_matrix
-
-    # def generate_with_loose_ends(self):
-    #     for parent_node_2, parent_node_3, parent_node_4, parent_node_5, output_parents in itertools.product(
-    #             *[itertools.combinations(list(range(int(node))), num_parents) for node, num_parents in
-    #               self.num_parents_per_node.items()][2:]):
-    #         parents = {
-    #             '0': [],
-    #             '1': [0],
-    #             '2': parent_node_2,
-    #             '3': parent_node_3,
-    #             '4': parent_node_4,
-    #             '5': parent_node_5,
-    #             '6': output_parents
-    #         }
-    #         adjacency_matrix = self.create_nasbench_adjacency_matrix_with_loose_ends(parents)
-    #         yield adjacency_matrix
-
+            
     def objective_function(self, nasbench, config, budget=108):
         adjacency_matrix, node_list = super(SearchSpace3, self).convert_config_to_nasbench_format(config)
         node_list = [INPUT, *node_list, OUTPUT]
