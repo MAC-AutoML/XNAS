@@ -84,7 +84,6 @@ def run(space = 1, optimizer_name = 'SNG', budget = 108, runing_times = 500, run
 
     # get category using cat_variables
     category = cat_variables
-    print(category)
 
     # distribution_optimizer = Category_DDPNAS.CategoricalDDPNAS(category, 3)
     distribution_optimizer = get_optimizer(optimizer_name, category, step = step, gamma = gamma,
@@ -106,7 +105,6 @@ def run(space = 1, optimizer_name = 'SNG', budget = 108, runing_times = 500, run
     running_time_interval = np.zeros([runing_times, runing_epochs])
     test_accuracy = 0
     for i in tqdm.tqdm(range(runing_times)):
-        y=[]
         for j in range(runing_epochs):
             start_time = time.time()
             if hasattr(distribution_optimizer, 'training_finish') or j == (runing_epochs - 1):
@@ -127,9 +125,6 @@ def run(space = 1, optimizer_name = 'SNG', budget = 108, runing_times = 500, run
             end_time = time.time()
             running_time_interval[i, j] = end_time - start_time
             y.append([test_accuracy])
-        x=len(y)
-        plt.plot(np.array(range(x)),y)
-        plt.show()
         del distribution_optimizer
         distribution_optimizer = get_optimizer(optimizer_name, category, step=step, gamma=gamma,
                                                sample_with_prob=sample_with_prob, utility_function=utility_function,
