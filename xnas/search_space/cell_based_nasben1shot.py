@@ -35,20 +35,20 @@ OPS = {
     'conv3x3-bn-relu': lambda C, stride, affine: Conv3x3BnRelu(C, stride),
     'conv1x1-bn-relu': lambda C, stride, affine: Conv1x1BnRelu(C, stride),
     
-    'none': lambda C, stride, affine: Zero(stride),
-    'avg_pool_3x3': lambda C, stride, affine: nn.AvgPool2d(3, stride=stride, padding=1, count_include_pad=False),
-    'skip_connect': lambda C, stride, affine: Identity() if stride == 1 else FactorizedReduce(C, C, affine=affine),
-    'sep_conv_3x3': lambda C, stride, affine: SepConv(C, C, 3, stride, 1, affine=affine),
-    'sep_conv_5x5': lambda C, stride, affine: SepConv(C, C, 5, stride, 2, affine=affine),
-    'sep_conv_7x7': lambda C, stride, affine: SepConv(C, C, 7, stride, 3, affine=affine),
-    'dil_conv_3x3': lambda C, stride, affine: DilConv(C, C, 3, stride, 2, 2, affine=affine),
-    'dil_conv_5x5': lambda C, stride, affine: DilConv(C, C, 5, stride, 4, 2, affine=affine),
-    'conv_7x1_1x7': lambda C, stride, affine: nn.Sequential(
-        nn.ReLU(inplace=False),
-        nn.Conv2d(C, C, (1, 7), stride=(1, stride), padding=(0, 3), bias=False),
-        nn.Conv2d(C, C, (7, 1), stride=(stride, 1), padding=(3, 0), bias=False),
-        nn.BatchNorm2d(C, affine=affine)
-    ),
+    # 'none': lambda C, stride, affine: Zero(stride),
+    # 'avg_pool_3x3': lambda C, stride, affine: nn.AvgPool2d(3, stride=stride, padding=1, count_include_pad=False),
+    # 'skip_connect': lambda C, stride, affine: Identity() if stride == 1 else FactorizedReduce(C, C, affine=affine),
+    # 'sep_conv_3x3': lambda C, stride, affine: SepConv(C, C, 3, stride, 1, affine=affine),
+    # 'sep_conv_5x5': lambda C, stride, affine: SepConv(C, C, 5, stride, 2, affine=affine),
+    # 'sep_conv_7x7': lambda C, stride, affine: SepConv(C, C, 7, stride, 3, affine=affine),
+    # 'dil_conv_3x3': lambda C, stride, affine: DilConv(C, C, 3, stride, 2, 2, affine=affine),
+    # 'dil_conv_5x5': lambda C, stride, affine: DilConv(C, C, 5, stride, 4, 2, affine=affine),
+    # 'conv_7x1_1x7': lambda C, stride, affine: nn.Sequential(
+    #     nn.ReLU(inplace=False),
+    #     nn.Conv2d(C, C, (1, 7), stride=(1, stride), padding=(0, 3), bias=False),
+    #     nn.Conv2d(C, C, (7, 1), stride=(stride, 1), padding=(3, 0), bias=False),
+    #     nn.BatchNorm2d(C, affine=affine)
+    # ),
 }
 
 # base operations
@@ -75,44 +75,6 @@ class Conv3x3BnRelu(nn.Module):
     def forward(self, x):
         return self.op(x)
 
-
-class Conv1x1BnRelu(nn.Module):
-
-    def __init__(self, channels, stride):
-        super(Conv1x1BnRelu, self).__init__()
-        self.op = ConvBnRelu(C_in=channels, C_out=channels, kernel_size=1, stride=stride, padding=0)
-
-    def forward(self, x):
-        return self.op(x)
-
-    
-# Normal DARTS
-class ConvBnRelu(nn.Module):
-
-    def __init__(self, C_in, C_out, kernel_size, stride, padding=1):
-        super(ConvBnRelu, self).__init__()
-        self.op = nn.Sequential(
-            # Padding = 1 is for a 3x3 kernel equivalent to tensorflow padding = same
-            nn.Conv2d(C_in, C_out, kernel_size, stride=stride, padding=padding, bias=False),
-            # affine is equivalent to scale in original tensorflow code
-            nn.BatchNorm2d(C_out, affine=True, momentum=BN_MOMENTUM, eps=BN_EPSILON),
-            nn.ReLU(inplace=False)
-        )
-
-    def forward(self, x):
-        return self.op(x)
-
-
-class Conv3x3BnRelu(nn.Module):
-
-    def __init__(self, channels, stride):
-        super(Conv3x3BnRelu, self).__init__()
-        self.op = ConvBnRelu(C_in=channels, C_out=channels, kernel_size=3, stride=stride)
-
-    def forward(self, x):
-        return self.op(x)
-
-
 class Conv1x1BnRelu(nn.Module):
 
     def __init__(self, channels, stride):
@@ -136,60 +98,99 @@ class ReLUConvBN(nn.Module):
         return self.op(x)
 
 
-class DilConv(nn.Module):
+# class Conv1x1BnRelu(nn.Module):
 
-    def __init__(self, C_in, C_out, kernel_size, stride, padding, dilation, affine=True):
-        super(DilConv, self).__init__()
-        self.op = nn.Sequential(
-            nn.ReLU(inplace=False),
-            nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation,
-                      groups=C_in, bias=False),
-            nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
-            nn.BatchNorm2d(C_out, affine=affine),
-        )
+#     def __init__(self, channels, stride):
+#         super(Conv1x1BnRelu, self).__init__()
+#         self.op = ConvBnRelu(C_in=channels, C_out=channels, kernel_size=1, stride=stride, padding=0)
 
-    def forward(self, x):
-        return self.op(x)
+#     def forward(self, x):
+#         return self.op(x)
 
+    
+# Normal DARTS
+# class ConvBnRelu(nn.Module):
 
-class SepConv(nn.Module):
+#     def __init__(self, C_in, C_out, kernel_size, stride, padding=1):
+#         super(ConvBnRelu, self).__init__()
+#         self.op = nn.Sequential(
+#             nn.Conv2d(C_in, C_out, kernel_size, stride=stride, padding=padding, bias=False),
+#             nn.BatchNorm2d(C_out, affine=True, momentum=BN_MOMENTUM, eps=BN_EPSILON),
+#             nn.ReLU(inplace=False)
+#         )
 
-    def __init__(self, C_in, C_out, kernel_size, stride, padding, affine=True):
-        super(SepConv, self).__init__()
-        self.op = nn.Sequential(
-            nn.ReLU(inplace=False),
-            nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, groups=C_in, bias=False),
-            nn.Conv2d(C_in, C_in, kernel_size=1, padding=0, bias=False),
-            nn.BatchNorm2d(C_in, affine=affine),
-            nn.ReLU(inplace=False),
-            nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=1, padding=padding, groups=C_in, bias=False),
-            nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
-            nn.BatchNorm2d(C_out, affine=affine),
-        )
-
-    def forward(self, x):
-        return self.op(x)
+#     def forward(self, x):
+#         return self.op(x)
 
 
-class Identity(nn.Module):
+# class Conv3x3BnRelu(nn.Module):
 
-    def __init__(self):
-        super(Identity, self).__init__()
+#     def __init__(self, channels, stride):
+#         super(Conv3x3BnRelu, self).__init__()
+#         self.op = ConvBnRelu(C_in=channels, C_out=channels, kernel_size=3, stride=stride)
 
-    def forward(self, x):
-        return x
+#     def forward(self, x):
+#         return self.op(x)
 
 
-class Zero(nn.Module):
 
-    def __init__(self, stride):
-        super(Zero, self).__init__()
-        self.stride = stride
 
-    def forward(self, x):
-        if self.stride == 1:
-            return x.mul(0.)
-        return x[:, :, ::self.stride, ::self.stride].mul(0.)
+
+
+# class DilConv(nn.Module):
+
+#     def __init__(self, C_in, C_out, kernel_size, stride, padding, dilation, affine=True):
+#         super(DilConv, self).__init__()
+#         self.op = nn.Sequential(
+#             nn.ReLU(inplace=False),
+#             nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation,
+#                       groups=C_in, bias=False),
+#             nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
+#             nn.BatchNorm2d(C_out, affine=affine),
+#         )
+
+#     def forward(self, x):
+#         return self.op(x)
+
+
+# class SepConv(nn.Module):
+
+#     def __init__(self, C_in, C_out, kernel_size, stride, padding, affine=True):
+#         super(SepConv, self).__init__()
+#         self.op = nn.Sequential(
+#             nn.ReLU(inplace=False),
+#             nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=stride, padding=padding, groups=C_in, bias=False),
+#             nn.Conv2d(C_in, C_in, kernel_size=1, padding=0, bias=False),
+#             nn.BatchNorm2d(C_in, affine=affine),
+#             nn.ReLU(inplace=False),
+#             nn.Conv2d(C_in, C_in, kernel_size=kernel_size, stride=1, padding=padding, groups=C_in, bias=False),
+#             nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
+#             nn.BatchNorm2d(C_out, affine=affine),
+#         )
+
+#     def forward(self, x):
+#         return self.op(x)
+
+
+# class Identity(nn.Module):
+
+#     def __init__(self):
+#         super(Identity, self).__init__()
+
+#     def forward(self, x):
+#         return x
+
+
+# class Zero(nn.Module):
+
+#     def __init__(self, stride):
+#         super(Zero, self).__init__()
+#         self.stride = stride
+
+#     def forward(self, x):
+#         if self.stride == 1:
+#             return x.mul(0.)
+#         return x[:, :, ::self.stride, ::self.stride].mul(0.)
 
 
 class FactorizedReduce(nn.Module):
@@ -316,10 +317,10 @@ class SearchSpace:
     def _sample_adjacency_matrix_with_loose_ends(self):
 
         parents_per_node = [random.sample(list(itertools.combinations(list(range(int(node))), num_parents)), 1) for
-                            node, num_parents in self.num_parents_per_node.items()][2:] # num_parents_per_node的前两个节点是输入节点和第一个节点，第一个节点父节点肯定是输入节点且只有一个
+                            node, num_parents in self.num_parents_per_node.items()][2:] 
         parents = {
-            '0': [],# 输入节点
-            '1': [0]# 第一个中间节点
+            '0': [],
+            '1': [0]
         }
         for node, node_parent in enumerate(parents_per_node, 2):
             parents[str(node)] = node_parent
@@ -327,7 +328,7 @@ class SearchSpace:
         return adjacency_matrix
 
     def _sample_adjacency_matrix_without_loose_ends(self, adjacency_matrix, node):
-        # 返回不带lose_ends的邻接矩阵
+       
         req_num_parents = self.num_parents_per_node[str(node)]
         current_num_parents = np.sum(adjacency_matrix[:, node], dtype=np.int)
         num_parents_left = req_num_parents - current_num_parents
@@ -344,12 +345,12 @@ class SearchSpace:
         pass
 
     def convert_config_to_nasbench_format(self, config):
-        # 从config读取结构信息，返回choiceBLock的邻接矩阵和操作
+  
         parents = {node: config["choice_block_{}_parents".format(node)] for node in
-                   list(self.num_parents_per_node.keys())[1:]} # 从第一个中间节点开始到输出节点
+                   list(self.num_parents_per_node.keys())[1:]} 
         parents['0'] = []
         adjacency_matrix = self.create_nasbench_adjacency_matrix_with_loose_ends(parents)
-        ops = [config["choice_block_{}_op".format(node)] for node in list(self.num_parents_per_node.keys())[1:-1]]# 所有的中间节点
+        ops = [config["choice_block_{}_op".format(node)] for node in list(self.num_parents_per_node.keys())[1:-1]]
         return adjacency_matrix, ops
 
     def get_configuration_space(self):
@@ -357,14 +358,14 @@ class SearchSpace:
 
         for node in list(self.num_parents_per_node.keys())[1:-1]:
             cs.add_hyperparameter(ConfigSpace.CategoricalHyperparameter("choice_block_{}_op".format(node),
-                                                                        [CONV1X1, CONV3X3, MAXPOOL3X3])) # 在cs这个设置空间内，加入了choice_block_i_op这个设置项，并将范围固定,只设置了所有的中间节点
+                                                                        [CONV1X1, CONV3X3, MAXPOOL3X3])) 
 
-        for choice_block_index, num_parents in list(self.num_parents_per_node.items())[1:]: # 字符串组成的列表
+        for choice_block_index, num_parents in list(self.num_parents_per_node.items())[1:]:
             cs.add_hyperparameter(
                 ConfigSpace.CategoricalHyperparameter(
                     "choice_block_{}_parents".format(choice_block_index),
-                    parent_combinations(node=choice_block_index, num_parents=num_parents))) # 在cs这个设置空间内，加入了choice_block_i_parents这个设置项，并将范围固定，通过parent_combinations方法，由于没有用到邻接矩阵，所以是所有的父节点的可能性组合，从节点1到输出节点
-        return cs # 元组组成的列别
+                    parent_combinations(node=choice_block_index, num_parents=num_parents))) 
+        return cs 
 
     def generate_search_space_without_loose_ends(self):
         # Create all possible connectivity patterns
@@ -372,8 +373,8 @@ class SearchSpace:
             print(iter)
             # Print graph
             # Evaluate every possible combination of node ops.
-            n_repeats = int(np.sum(np.sum(adjacency_matrix, axis=1)[1:-1] > 0)) # n_repeats=有父节点的节点的个数
-            for combination in itertools.product([CONV1X1, CONV3X3, MAXPOOL3X3], repeat=n_repeats): # combination是由n_repeats个操作组成的list
+            n_repeats = int(np.sum(np.sum(adjacency_matrix, axis=1)[1:-1] > 0)) # 
+            for combination in itertools.product([CONV1X1, CONV3X3, MAXPOOL3X3], repeat=n_repeats):
                 # Create node labels
                 # Add some op as node 6 which isn't used, here conv1x1
                 ops = [INPUT]
@@ -382,12 +383,12 @@ class SearchSpace:
                     if np.sum(adjacency_matrix, axis=1)[i + 1] > 0:
                         ops.append(combination.pop())
                     else:
-                        ops.append(CONV1X1) # 如果是空，就没有父节点，ops加个CONV1X1
+                        ops.append(CONV1X1) 
                 assert len(combination) == 0, 'Something is wrong'
                 ops.append(OUTPUT)
 
                 # Create nested list from numpy matrix
-                nasbench_adjacency_matrix = adjacency_matrix.astype(np.int).tolist()# 邻接矩阵转化为list类型
+                nasbench_adjacency_matrix = adjacency_matrix.astype(np.int).tolist()
 
                 # Assemble the model spec
                 model_spec = api.ModelSpec(
@@ -399,10 +400,10 @@ class SearchSpace:
                 yield adjacency_matrix, ops, model_spec
 
     def _generate_adjacency_matrix(self, adjacency_matrix, node):
-        # 从node开始生成邻接矩阵，根据num_parents_per_node产生邻接矩阵,不保证looseend
+     
         if self._check_validity_of_adjacency_matrix(adjacency_matrix):
             # If graph from search space then yield.
-            yield adjacency_matrix # 这是递归出口，合法了就输出，否则就继续递归
+            yield adjacency_matrix 
         else:
             req_num_parents = self.num_parents_per_node[str(node)]
             current_num_parents = np.sum(adjacency_matrix[:, node], dtype=np.int)
@@ -418,7 +419,7 @@ class SearchSpace:
                         yield graph
 
     def _create_adjacency_matrix(self, parents, adjacency_matrix, node):
-        # 从node开始，根据parents生成邻接矩阵
+
         if self._check_validity_of_adjacency_matrix(adjacency_matrix):
             # If graph from search space then yield.
             return adjacency_matrix
@@ -432,7 +433,7 @@ class SearchSpace:
 
     def _create_adjacency_matrix_with_loose_ends(self, parents):
         # Create the adjacency_matrix on a per node basis
-        # 根据parents矩阵产生邻接矩阵
+    
         adjacency_matrix = np.zeros([len(parents), len(parents)])
         for node, node_parents in parents.items():
             for parent in node_parents:
@@ -555,21 +556,21 @@ class SearchSpace1(SearchSpace):
         nasbench_data = nasbench.query(model_spec, epochs=budget)
         return nasbench_data['validation_accuracy'], nasbench_data['training_time']
 
-    def generate_with_loose_ends(self):
+    # def generate_with_loose_ends(self):
 
-        for _, parent_node_3, parent_node_4, output_parents in itertools.product(
-                *[itertools.combinations(list(range(int(node))), num_parents) for node, num_parents in
-                  self.num_parents_per_node.items()][2:]):
-            parents = {
-                '0': [],
-                '1': [0],
-                '2': [0, 1],
-                '3': parent_node_3,
-                '4': parent_node_4,
-                '5': output_parents
-            }
-            adjacency_matrix = self.create_nasbench_adjacency_matrix_with_loose_ends(parents)
-            yield adjacency_matrix
+    #     for _, parent_node_3, parent_node_4, output_parents in itertools.product(
+    #             *[itertools.combinations(list(range(int(node))), num_parents) for node, num_parents in
+    #               self.num_parents_per_node.items()][2:]):
+    #         parents = {
+    #             '0': [],
+    #             '1': [0],
+    #             '2': [0, 1],
+    #             '3': parent_node_3,
+    #             '4': parent_node_4,
+    #             '5': output_parents
+    #         }
+    #         adjacency_matrix = self.create_nasbench_adjacency_matrix_with_loose_ends(parents)
+    #         yield adjacency_matrix
 
 class SearchSpace2(SearchSpace):
     def __init__(self):
@@ -625,20 +626,20 @@ class SearchSpace2(SearchSpace):
 
         return nasbench_data['validation_accuracy'], nasbench_data['training_time']
 
-    def generate_with_loose_ends(self):
-        for parent_node_2, parent_node_3, parent_node_4, output_parents in itertools.product(
-                *[itertools.combinations(list(range(int(node))), num_parents) for node, num_parents in
-                  self.num_parents_per_node.items()][2:]):
-            parents = {
-                '0': [],
-                '1': [0],
-                '2': parent_node_2,
-                '3': parent_node_3,
-                '4': parent_node_4,
-                '5': output_parents
-            }
-            adjacency_matrix = self.create_nasbench_adjacency_matrix_with_loose_ends(parents)
-            yield adjacency_matrix
+    # def generate_with_loose_ends(self):
+    #     for parent_node_2, parent_node_3, parent_node_4, output_parents in itertools.product(
+    #             *[itertools.combinations(list(range(int(node))), num_parents) for node, num_parents in
+    #               self.num_parents_per_node.items()][2:]):
+    #         parents = {
+    #             '0': [],
+    #             '1': [0],
+    #             '2': parent_node_2,
+    #             '3': parent_node_3,
+    #             '4': parent_node_4,
+    #             '5': output_parents
+    #         }
+    #         adjacency_matrix = self.create_nasbench_adjacency_matrix_with_loose_ends(parents)
+    #         yield adjacency_matrix
 
 class SearchSpace3(SearchSpace):
     def __init__(self):
@@ -676,21 +677,21 @@ class SearchSpace3(SearchSpace):
         for adjacency_matrix in self._generate_adjacency_matrix(adjacency_matrix=np.zeros([7, 7]), node=OUTPUT_NODE):
             yield adjacency_matrix
 
-    def generate_with_loose_ends(self):
-        for parent_node_2, parent_node_3, parent_node_4, parent_node_5, output_parents in itertools.product(
-                *[itertools.combinations(list(range(int(node))), num_parents) for node, num_parents in
-                  self.num_parents_per_node.items()][2:]):
-            parents = {
-                '0': [],
-                '1': [0],
-                '2': parent_node_2,
-                '3': parent_node_3,
-                '4': parent_node_4,
-                '5': parent_node_5,
-                '6': output_parents
-            }
-            adjacency_matrix = self.create_nasbench_adjacency_matrix_with_loose_ends(parents)
-            yield adjacency_matrix
+    # def generate_with_loose_ends(self):
+    #     for parent_node_2, parent_node_3, parent_node_4, parent_node_5, output_parents in itertools.product(
+    #             *[itertools.combinations(list(range(int(node))), num_parents) for node, num_parents in
+    #               self.num_parents_per_node.items()][2:]):
+    #         parents = {
+    #             '0': [],
+    #             '1': [0],
+    #             '2': parent_node_2,
+    #             '3': parent_node_3,
+    #             '4': parent_node_4,
+    #             '5': parent_node_5,
+    #             '6': output_parents
+    #         }
+    #         adjacency_matrix = self.create_nasbench_adjacency_matrix_with_loose_ends(parents)
+    #         yield adjacency_matrix
 
     def objective_function(self, nasbench, config, budget=108):
         adjacency_matrix, node_list = super(SearchSpace3, self).convert_config_to_nasbench_format(config)
@@ -777,11 +778,11 @@ class Network(nn.Module):
 
     def __init__(self, C, num_classes, layers, search_space, steps=4):
         super(Network, self).__init__()
-        self._C = C #初始通道，就是经过第一个convstem后的通道数
-        self._num_classes = num_classes #类别种类
-        self._layers = layers #cell的层数
-        self._steps = steps #cell中间节点的个数
-        self.search_space = search_space #直接传入search space
+        self._C = C 
+        self._num_classes = num_classes 
+        self._layers = layers 
+        self._steps = steps 
+        self.search_space = search_space 
 
         # In NASBench the stem has 128 output channels
         C_curr = C
@@ -794,7 +795,7 @@ class Network(nn.Module):
                 # Double the number of channels after each down-sampling step
                 # Down-sample in forward method
                 C_curr *= 2
-            cell = Cell(steps=self._steps, C_prev=C_prev, C=C_curr, layer=i, search_space=search_space) #maxpool没有起到增加维度的作用，增加维度是在Cell里完成
+            cell = Cell(steps=self._steps, C_prev=C_prev, C=C_curr, layer=i, search_space=search_space) 
             self.cells += [cell]
             C_prev = C_curr
         self.postprocess = ReLUConvBN(C_in=C_prev * self._steps, C_out=C_curr, kernel_size=1, stride=1, padding=0,
