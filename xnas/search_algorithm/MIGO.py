@@ -14,7 +14,7 @@ class MIGO:
     """
 
     def __init__(self, categories, lam=-1,
-                 delta_init=1., step=3, pruning= True,
+                 delta_init=1., step=3, pruning=True,
                  init_theta=None, max_mize=True, sample_with_prob=False,
                  utility_function='picewise', utility_function_hyper=0.5,
                  momentum=True, gamma=0.9, sampling_number_per_edge=1):

@@ -36,6 +36,8 @@ OPS = {
 }
 
 # base operations
+
+
 class ConvBnRelu(nn.Module):
 
     def __init__(self, C_in, C_out, kernel_size, stride, padding=1):
@@ -59,6 +61,7 @@ class Conv3x3BnRelu(nn.Module):
     def forward(self, x):
         return self.op(x)
 
+
 class Conv1x1BnRelu(nn.Module):
 
     def __init__(self, channels, stride):
@@ -67,6 +70,7 @@ class Conv1x1BnRelu(nn.Module):
 
     def forward(self, x):
         return self.op(x)
+
 
 class ReLUConvBN(nn.Module):
 
@@ -80,6 +84,7 @@ class ReLUConvBN(nn.Module):
 
     def forward(self, x):
         return self.op(x)
+
 
 class FactorizedReduce(nn.Module):
 
@@ -97,11 +102,14 @@ class FactorizedReduce(nn.Module):
         out = self.bn(out)
         return out
 
-# Batch Normalization 
+
+# Batch Normalization
 BN_MOMENTUM = 0.997
 BN_EPSILON = 1e-5
 
 # Some utils
+
+
 def upscale_to_nasbench_format(adjacency_matrix):
 
     return np.insert(
@@ -109,15 +117,17 @@ def upscale_to_nasbench_format(adjacency_matrix):
                   5, [0, 0, 0, 0, 0, 0], axis=1),
         5, [0, 0, 0, 0, 0, 0, 0], axis=0)
 
+
 def nasbench_forma_to_small(adjacency_matrix):
     return np.delete(
-        np.delete(adjacency_matrix ,5, axis = 0), 5, axis=1)
+        np.delete(adjacency_matrix, 5, axis=0), 5, axis=1)
+
 
 def get_weights_from_arch(arch, intermediate_nodes, search_space):
     adjacency_matrix, node_list = arch
-    
+
     if search_space != 3:
-        adjacency_matrix=nasbench_forma_to_small(adjacency_matrix)
+        adjacency_matrix = nasbench_forma_to_small(adjacency_matrix)
 
     num_ops = len(PRIMITIVES)
 
@@ -151,7 +161,6 @@ def get_weights_from_arch(arch, intermediate_nodes, search_space):
         *alphas_inputs
     ]
     return arch_parameters
-
 
 
 def parent_combinations_old(adjacency_matrix, node, n_parents=2):
@@ -205,7 +214,7 @@ class SearchSpace:
     def _sample_adjacency_matrix_with_loose_ends(self):
 
         parents_per_node = [random.sample(list(itertools.combinations(list(range(int(node))), num_parents)), 1) for
-                            node, num_parents in self.num_parents_per_node.items()][2:] 
+                            node, num_parents in self.num_parents_per_node.items()][2:]
         parents = {
             '0': [],
             '1': [0]
@@ -216,7 +225,7 @@ class SearchSpace:
         return adjacency_matrix
 
     def _sample_adjacency_matrix_without_loose_ends(self, adjacency_matrix, node):
-       
+
         req_num_parents = self.num_parents_per_node[str(node)]
         current_num_parents = np.sum(adjacency_matrix[:, node], dtype=np.int)
         num_parents_left = req_num_parents - current_num_parents
@@ -233,9 +242,9 @@ class SearchSpace:
         pass
 
     def convert_config_to_nasbench_format(self, config):
-  
+
         parents = {node: config["choice_block_{}_parents".format(node)] for node in
-                   list(self.num_parents_per_node.keys())[1:]} 
+                   list(self.num_parents_per_node.keys())[1:]}
         parents['0'] = []
         adjacency_matrix = self.create_nasbench_adjacency_matrix_with_loose_ends(parents)
         ops = [config["choice_block_{}_op".format(node)] for node in list(self.num_parents_per_node.keys())[1:-1]]
@@ -246,14 +255,14 @@ class SearchSpace:
 
         for node in list(self.num_parents_per_node.keys())[1:-1]:
             cs.add_hyperparameter(ConfigSpace.CategoricalHyperparameter("choice_block_{}_op".format(node),
-                                                                        [CONV1X1, CONV3X3, MAXPOOL3X3])) 
+                                                                        [CONV1X1, CONV3X3, MAXPOOL3X3]))
 
         for choice_block_index, num_parents in list(self.num_parents_per_node.items())[1:]:
             cs.add_hyperparameter(
                 ConfigSpace.CategoricalHyperparameter(
                     "choice_block_{}_parents".format(choice_block_index),
-                    parent_combinations(node=choice_block_index, num_parents=num_parents))) 
-        return cs 
+                    parent_combinations(node=choice_block_index, num_parents=num_parents)))
+        return cs
 
     def generate_search_space_without_loose_ends(self):
         # Create all possible connectivity patterns
@@ -261,7 +270,7 @@ class SearchSpace:
             print(iter)
             # Print graph
             # Evaluate every possible combination of node ops.
-            n_repeats = int(np.sum(np.sum(adjacency_matrix, axis=1)[1:-1] > 0)) # 
+            n_repeats = int(np.sum(np.sum(adjacency_matrix, axis=1)[1:-1] > 0))
             for combination in itertools.product([CONV1X1, CONV3X3, MAXPOOL3X3], repeat=n_repeats):
                 # Create node labels
                 # Add some op as node 6 which isn't used, here conv1x1
@@ -271,7 +280,7 @@ class SearchSpace:
                     if np.sum(adjacency_matrix, axis=1)[i + 1] > 0:
                         ops.append(combination.pop())
                     else:
-                        ops.append(CONV1X1) 
+                        ops.append(CONV1X1)
                 assert len(combination) == 0, 'Something is wrong'
                 ops.append(OUTPUT)
 
@@ -288,10 +297,10 @@ class SearchSpace:
                 yield adjacency_matrix, ops, model_spec
 
     def _generate_adjacency_matrix(self, adjacency_matrix, node):
-     
+
         if self._check_validity_of_adjacency_matrix(adjacency_matrix):
             # If graph from search space then yield.
-            yield adjacency_matrix 
+            yield adjacency_matrix
         else:
             req_num_parents = self.num_parents_per_node[str(node)]
             current_num_parents = np.sum(adjacency_matrix[:, node], dtype=np.int)
@@ -321,7 +330,7 @@ class SearchSpace:
 
     def _create_adjacency_matrix_with_loose_ends(self, parents):
         # Create the adjacency_matrix on a per node basis
-    
+
         adjacency_matrix = np.zeros([len(parents), len(parents)])
         for node, node_parents in parents.items():
             for parent in node_parents:
@@ -360,7 +369,9 @@ class SearchSpace:
 
         return True
 
+
 Architecture = namedtuple('Architecture', ['adjacency_matrix', 'node_list'])
+
 
 class Model(object):
 
@@ -381,7 +392,7 @@ class Model(object):
     def query_nasbench(self, nasbench, sample, search_space=None):
         config = ConfigSpace.Configuration(
             search_space.get_configuration_space(), vector=sample
-        ) 
+        )
         adjacency_matrix, node_list = search_space.convert_config_to_nasbench_format(config)
         if type(search_space) == SearchSpace3:
             node_list = [INPUT, *node_list, OUTPUT]
@@ -396,6 +407,7 @@ class Model(object):
         self.validation_accuracy = nasbench_data['validation_accuracy']
         self.test_accuracy = nasbench_data['test_accuracy']
         self.training_time = nasbench_data['training_time']
+
 
 class SearchSpace1(SearchSpace):
     def __init__(self):
@@ -443,6 +455,7 @@ class SearchSpace1(SearchSpace):
         model_spec = api.ModelSpec(matrix=adjacency_list, ops=node_list)
         nasbench_data = nasbench.query(model_spec, epochs=budget)
         return nasbench_data['validation_accuracy'], nasbench_data['training_time']
+
 
 class SearchSpace2(SearchSpace):
     def __init__(self):
@@ -534,7 +547,7 @@ class SearchSpace3(SearchSpace):
     def generate_adjacency_matrix_without_loose_ends(self):
         for adjacency_matrix in self._generate_adjacency_matrix(adjacency_matrix=np.zeros([7, 7]), node=OUTPUT_NODE):
             yield adjacency_matrix
-            
+
     def objective_function(self, nasbench, config, budget=108):
         adjacency_matrix, node_list = super(SearchSpace3, self).convert_config_to_nasbench_format(config)
         node_list = [INPUT, *node_list, OUTPUT]
@@ -542,6 +555,7 @@ class SearchSpace3(SearchSpace):
         model_spec = api.ModelSpec(matrix=adjacency_list, ops=node_list)
         nasbench_data = nasbench.query(model_spec, epochs=budget)
         return nasbench_data['validation_accuracy'], nasbench_data['training_time']
+
 
 class MixedOp(nn.Module):
 
@@ -554,6 +568,7 @@ class MixedOp(nn.Module):
 
     def forward(self, x, weights):
         return sum(w * op(x) for w, op in zip(weights, self._ops))
+
 
 class ChoiceBlock(nn.Module):
 
@@ -570,6 +585,7 @@ class ChoiceBlock(nn.Module):
         # Apply Mixed Op
         output = self.mixed_op(input_to_mixed_op, weights=weights)
         return output
+
 
 class Cell(nn.Module):
 
@@ -607,7 +623,7 @@ class Cell(nn.Module):
                                                       input_weights=input_weight, weights=weights[choice_block_idx])
             states.append(s)
         input_to_output_edge = self._input_projections[-1](s0)
-        assert (len(input_weights) == 0, 'Something went wrong here.')
+        # assert (len(input_weights) == 0, 'Something went wrong here.')
 
         if output_weights is None:
             tensor_list = states
@@ -616,15 +632,16 @@ class Cell(nn.Module):
 
         return output_weights[0][0] * input_to_output_edge + torch.cat(tensor_list, dim=1)
 
+
 class Network(nn.Module):
 
     def __init__(self, C, num_classes, layers, search_space, steps=4):
         super(Network, self).__init__()
-        self._C = C 
-        self._num_classes = num_classes 
-        self._layers = layers 
-        self._steps = steps 
-        self.search_space = search_space 
+        self._C = C
+        self._num_classes = num_classes
+        self._layers = layers
+        self._steps = steps
+        self.search_space = search_space
 
         # In NASBench the stem has 128 output channels
         C_curr = C
@@ -637,7 +654,7 @@ class Network(nn.Module):
                 # Double the number of channels after each down-sampling step
                 # Down-sample in forward method
                 C_curr *= 2
-            cell = Cell(steps=self._steps, C_prev=C_prev, C=C_curr, layer=i, search_space=search_space) 
+            cell = Cell(steps=self._steps, C_prev=C_prev, C=C_curr, layer=i, search_space=search_space)
             self.cells += [cell]
             C_prev = C_curr
         self.postprocess = ReLUConvBN(C_in=C_prev * self._steps, C_out=C_curr, kernel_size=1, stride=1, padding=0,
@@ -648,9 +665,10 @@ class Network(nn.Module):
     def forward(self, input, sample):
         # get weights by sample
         sample_index = one_hot_to_index(np.array(sample))
-        config = ConfigSpace.Configuration(self.search_space.get_configuration_space(), vector = sample_index)
+        config = ConfigSpace.Configuration(self.search_space.get_configuration_space(), vector=sample_index)
         adjacency_matrix, node_list = self.search_space.convert_config_to_nasbench_format(config)
-        arch_parameters = get_weights_from_arch((adjacency_matrix, node_list), self._steps, self.search_space.search_space_number)
+        arch_parameters = get_weights_from_arch((adjacency_matrix, node_list),
+                                                self._steps, self.search_space.search_space_number)
         # NASBench only has one input to each cell
         s0 = self.stem(input)
         for i, cell in enumerate(self.cells):
@@ -662,7 +680,7 @@ class Network(nn.Module):
             mixed_op_weights = arch_parameters[0]
 
             # get output_weights
-            output_weights = arch_parameters[1] 
+            output_weights = arch_parameters[1]
 
             # get input_weights
             input_weights = [alpha for alpha in arch_parameters[2:]]
@@ -676,9 +694,10 @@ class Network(nn.Module):
         out = s0.view(*s0.shape[:2], -1).mean(-1)
         logits = self.classifier(out.view(out.size(0), -1))
         return logits
+
     def genotype(self, theta):
         sample = np.argmax(theta, axis=1)
-        config = ConfigSpace.Configuration(self.search_space.get_configuration_space(), vector = sample)
+        config = ConfigSpace.Configuration(self.search_space.get_configuration_space(), vector=sample)
         adjacency_matrix, node_list = self.search_space.convert_config_to_nasbench_format(config)
         if self.search_space.search_space_number == 3:
             node_list = [INPUT, *node_list, OUTPUT]
@@ -687,24 +706,28 @@ class Network(nn.Module):
         result = "adjacency_matrix:"+str(adjacency_matrix)+"node_list:"+str(node_list)
         return result
 
-#bulid API
+# bulid API
+
+
 def _NASbench1shot1_1():
     from xnas.core.config import cfg
-    return Network(C = cfg.SPACE.CHANNEL,
-                   num_classes = cfg.SPACE.NUM_CLASSES,
-                   layers = 9,
-                   search_space = SearchSpace1())
+    return Network(C=cfg.SPACE.CHANNEL,
+                   num_classes=cfg.SPACE.NUM_CLASSES,
+                   layers=9,
+                   search_space=SearchSpace1())
+
 
 def _NASbench1shot1_2():
     from xnas.core.config import cfg
-    return Network(C = cfg.SPACE.CHANNEL,
-                   num_classes = cfg.SPACE.NUM_CLASSES,
-                   layers = 9,
-                   search_space = SearchSpace2())
+    return Network(C=cfg.SPACE.CHANNEL,
+                   num_classes=cfg.SPACE.NUM_CLASSES,
+                   layers=9,
+                   search_space=SearchSpace2())
+
 
 def _NASbench1shot1_3():
     from xnas.core.config import cfg
-    return Network(C = cfg.SPACE.CHANNEL,
-                   num_classes = cfg.SPACE.NUM_CLASSES,
-                   layers = 9,
-                   search_space = SearchSpace3())
+    return Network(C=cfg.SPACE.CHANNEL,
+                   num_classes=cfg.SPACE.NUM_CLASSES,
+                   layers=9,
+                   search_space=SearchSpace3())
