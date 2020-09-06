@@ -1,5 +1,4 @@
 import sys
-sys.path.append(".")
 import argparse
 import copy
 import os

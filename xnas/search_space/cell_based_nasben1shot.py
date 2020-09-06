@@ -1,6 +1,5 @@
 import copy
 import sys
-sys.path.append('.')
 import itertools
 import random
 from abc import abstractmethod
