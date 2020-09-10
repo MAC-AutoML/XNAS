@@ -126,7 +126,7 @@ def run(space=1, optimizer_name='SNG', budget=108, runing_times=500, runing_epoc
             record['test_accuracy'][i, j] = test_accuracy
             end_time = time.time()
             running_time_interval[i, j] = end_time - start_time
-            y.append([test_accuracy])
+            # y.append([test_accuracy])
         del distribution_optimizer
         distribution_optimizer = get_optimizer(optimizer_name, category, step=step, gamma=gamma,
                                                sample_with_prob=sample_with_prob, utility_function=utility_function,
