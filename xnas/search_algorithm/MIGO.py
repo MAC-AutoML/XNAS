@@ -132,6 +132,13 @@ class MIGO:
         return x
 
     def update(self):
+        if not self.dynamic_sampling:
+            if len(self.objective) >= self.lam:
+                objective = np.array(self.objective)
+                sample_array = np.array(self.sample)
+                self.update_function(sample_array, objective)
+                self.sample = []
+                self.objective = []
         if len(self.sample_index[0]) < self.sampling_number_per_edge:
             if len(self.objective) > self.lam:
                 objective = np.array(self.objective)
