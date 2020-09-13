@@ -77,7 +77,6 @@ def run(M=10, N=10, func='rastrigin', optimizer_name='SNG', runing_times=500, ru
                 if distribution_optimizer.training_finish:
                     break
             sample = distribution_optimizer.sampling()
-            print(sample)
             objective = test_function.objective_function(sample)
             distribution_optimizer.record_information(sample, objective)
             distribution_optimizer.update()
@@ -89,6 +88,7 @@ def run(M=10, N=10, func='rastrigin', optimizer_name='SNG', runing_times=500, ru
             running_time_interval[i, j] = end_time - start_time
         test_function.re_new()
         del distribution_optimizer
+        print(distance)
         distribution_optimizer = get_optimizer(optimizer_name, category, step=step, gamma=gamma,
                                                sample_with_prob=sample_with_prob, utility_function=utility_function,
                                                utility_function_hyper=utility_function_hyper)

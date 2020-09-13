@@ -14,10 +14,11 @@ class MIGO:
     """
 
     def __init__(self, categories, lam=-1,
-                 delta_init=1., step=3, pruning= True,
+                 delta_init=1., step=3, pruning=True,
                  init_theta=None, max_mize=True, sample_with_prob=False,
                  utility_function='picewise', utility_function_hyper=0.5,
-                 momentum=True, gamma=0.9, sampling_number_per_edge=1):
+                 momentum=True, gamma=0.9, sampling_number_per_edge=1,
+                 dynamic_sampling=True):
         # Categorical distribution
         self.p_model = Categorical(categories)
         self.lam = lam
@@ -51,6 +52,7 @@ class MIGO:
         self.velocity = np.zeros(self.p_model.theta.shape)
         self.init_record()
         self.sampling_number_per_edge = sampling_number_per_edge
+        self.dynamic_sampling = dynamic_sampling
 
     def init_record(self):
         for i in range(self.p_model.d):
@@ -66,6 +68,13 @@ class MIGO:
         self.objective.append(objective*self.max_mize)
 
     def sampling(self):
+        if not self.dynamic_sampling:
+            rand = np.random.rand(self.p_model.d, 1)  # range of random number is [0, 1)
+            cum_theta = self.p_model.theta.cumsum(axis=1)  # (d, Cmax)
+
+            # x[i, j] becomes 1 if cum_theta[i, j] - theta[i, j] <= rand[i] < cum_theta[i, j]
+            c = (cum_theta - self.p_model.theta <= rand) & (rand < cum_theta)
+            return c
         if self.sampling_number_per_edge == 1:
             return index_to_one_hot(self.sampling_index(), self.p_model.Cmax)
         else:
@@ -89,6 +98,8 @@ class MIGO:
         return sample_one_hot_like
 
     def sampling_best(self):
+        if not self.dynamic_sampling:
+            return one_hot_to_index(np.array(self.sampling()))
         sample = []
         for i in range(self.p_model.d):
             sample.append(np.argmax(self.p_model.theta[i]))
@@ -121,6 +132,13 @@ class MIGO:
         return x
 
     def update(self):
+        if not self.dynamic_sampling:
+            if len(self.objective) >= self.lam:
+                objective = np.array(self.objective)
+                sample_array = np.array(self.sample)
+                self.update_function(sample_array, objective)
+                self.sample = []
+                self.objective = []
         if len(self.sample_index[0]) < self.sampling_number_per_edge:
             if len(self.objective) > self.lam:
                 objective = np.array(self.objective)

@@ -1,29 +1,27 @@
 """ Search cell """
+import ConfigSpace
+from xnas.datasets.loader import _construct_loader
+from xnas.core.utils import index_to_one_hot, one_hot_to_index
+from xnas.core.trainer import setup_env, EvaluateNasbench
+from xnas.core.config import cfg
+from xnas.core.builders import build_space, lr_scheduler_builder, sng_builder
+import xnas.core.meters as meters
+import xnas.core.logging as logging
+import xnas.core.config as config
+import xnas.core.checkpoint as checkpoint
+import time
+from torch.utils.tensorboard import SummaryWriter
+import torch.nn.functional as F
+import torch.nn as nn
+import torch
+import numpy as np
+import random
+import os
+import json
+import gc
 import sys
 sys.path.append(".")
-import gc
-import json
-import os
-import random
 
-import numpy as np
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.utils.tensorboard import SummaryWriter
-import time
-
-import xnas.core.checkpoint as checkpoint
-import xnas.core.config as config
-import xnas.core.logging as logging
-import xnas.core.meters as meters
-from xnas.core.builders import build_space, lr_scheduler_builder, sng_builder
-from xnas.core.config import cfg
-from xnas.core.trainer import setup_env, EvaluateNasbench
-from xnas.core.utils import index_to_one_hot, one_hot_to_index
-from xnas.datasets.loader import _construct_loader
-
-import ConfigSpace
 
 # config load and assert
 config.load_cfg_fom_args()
@@ -55,7 +53,7 @@ def random_sampling(search_space, distribution_optimizer, epoch=-1000, _random=F
                     non_edge_sampling_num = len(node)-2
                     non_edge_idx += list(np.random.choice(node, non_edge_sampling_num, p=edge_non_prob, replace=False))
         if random.random() < cfg.SNG.BIGMODEL_SAMPLE_PROB:
- 
+
             # sample the network with high complexity
             _num = 100
             while _num > cfg.SNG.BIGMODEL_NON_PARA:
@@ -110,15 +108,15 @@ def main():
 
     # build distribution_optimizer
     if cfg.SPACE.NAME in ["nasbench1shot1_1", "nasbench1shot1_2", "nasbench1shot1_3"]:
-        category=[]
+        category = []
         cs = search_space.search_space.get_configuration_space()
         for h in cs.get_hyperparameters():
             if type(h) == ConfigSpace.hyperparameters.CategoricalHyperparameter:
                 category.append(len(h.choices))
-        distribution_optimizer=sng_builder(category)
+        distribution_optimizer = sng_builder(category)
     else:
         distribution_optimizer = sng_builder([search_space.num_ops]*search_space.all_edges)
-    
+
     lr_scheduler = lr_scheduler_builder(w_optim)
     # training loop
     logger.info("start warm up training")
@@ -200,11 +198,12 @@ def main():
         test_epoch(val_, search_space, val_meter, _over_all_epoch, sample, writer)
     logger.info("Overall training time (hr) is:{}".format(str((end_time-start_time)/3600.)))
 
-    # whether to evaluate through nasbench ;   
+    # whether to evaluate through nasbench ;
     if cfg.SPACE.NAME in ["nasbench201", "nasbench1shot1_1", "nasbench1shot1_2", "nasbench1shot1_3"]:
         logger.info("starting test using nasbench:{}".format(cfg.SPACE.NAME))
-        theta=distribution_optimizer.p_model.theta
+        theta = distribution_optimizer.p_model.theta
         EvaluateNasbench(theta, search_space, logger, cfg.SPACE.NAME)
+
 
 def train(train_loader, valid_loader, model, w_optim, lr, epoch, sample, net_crit, train_meter):
 
