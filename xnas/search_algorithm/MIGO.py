@@ -139,6 +139,7 @@ class MIGO:
                 self.update_function(sample_array, objective)
                 self.sample = []
                 self.objective = []
+                return
         if len(self.sample_index[0]) < self.sampling_number_per_edge:
             if len(self.objective) > self.lam:
                 objective = np.array(self.objective)
@@ -158,6 +159,7 @@ class MIGO:
                         self.training_finish = True
                     self.current_step = 1
             self.update_sample_index()
+            return
 
     def update_sample_index(self):
         for i in range(self.p_model.d):
@@ -176,8 +178,10 @@ class MIGO:
         # more readable
         sl = []
         for i, K in enumerate(self.p_model.C):
-            theta_i = self.p_model.theta[i, :]
-            s_i = 1. / np.sqrt(theta_i) * ng[i, :]
+            theta_i = self.p_model.theta[i, :K - 1]
+            theta_K = self.p_model.theta[i, K - 1]
+            s_i = 1. / np.sqrt(theta_i) * ng[i, :K - 1]
+            s_i += np.sqrt(theta_i) * ng[i, :K - 1].sum() / (theta_K + np.sqrt(theta_K))
             sl += list(s_i)
         sl = np.array(sl)
 

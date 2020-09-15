@@ -8,6 +8,7 @@ tmp/
 *$py.class
 *.DS_Store
 *hyper.md
+*debug.py
 benchmark/
 test.py
 test.ipynb
