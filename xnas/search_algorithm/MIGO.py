@@ -178,8 +178,10 @@ class MIGO:
         # more readable
         sl = []
         for i, K in enumerate(self.p_model.C):
-            theta_i = self.p_model.theta[i, :]
-            s_i = 1. / np.sqrt(theta_i) * ng[i, :]
+            theta_i = self.p_model.theta[i, :K - 1]
+            theta_K = self.p_model.theta[i, K - 1]
+            s_i = 1. / np.sqrt(theta_i) * ng[i, :K - 1]
+            s_i += np.sqrt(theta_i) * ng[i, :K - 1].sum() / (theta_K + np.sqrt(theta_K))
             sl += list(s_i)
         sl = np.array(sl)
 
