@@ -33,7 +33,7 @@ def get_optimizer(name, category, step=4, gamma=0.9, sample_with_prob=True, util
         return MIGO(categories=category, step=step, lam=6,
                     pruning=True, sample_with_prob=sample_with_prob,
                     utility_function='log', utility_function_hyper=utility_function_hyper,
-                    momentum=True, gamma=gamma)
+                    momentum=True, gamma=gamma, dynamic_sampling=False)
     elif name == 'GridSearch':
         return GridSearch(category)
     else:
