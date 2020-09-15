@@ -139,6 +139,7 @@ class MIGO:
                 self.update_function(sample_array, objective)
                 self.sample = []
                 self.objective = []
+                return
         if len(self.sample_index[0]) < self.sampling_number_per_edge:
             if len(self.objective) > self.lam:
                 objective = np.array(self.objective)
@@ -158,6 +159,7 @@ class MIGO:
                         self.training_finish = True
                     self.current_step = 1
             self.update_sample_index()
+            return
 
     def update_sample_index(self):
         for i in range(self.p_model.d):
