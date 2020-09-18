@@ -714,7 +714,8 @@ def _NASbench1shot1_1():
     return Network(C=cfg.SPACE.CHANNEL,
                    num_classes=cfg.SPACE.NUM_CLASSES,
                    layers=9,
-                   search_space=SearchSpace1())
+                   search_space=SearchSpace1(),
+                   steps=4)
 
 
 def _NASbench1shot1_2():
@@ -722,7 +723,8 @@ def _NASbench1shot1_2():
     return Network(C=cfg.SPACE.CHANNEL,
                    num_classes=cfg.SPACE.NUM_CLASSES,
                    layers=9,
-                   search_space=SearchSpace2())
+                   search_space=SearchSpace2(),
+                   steps=4)
 
 
 def _NASbench1shot1_3():
@@ -730,4 +732,5 @@ def _NASbench1shot1_3():
     return Network(C=cfg.SPACE.CHANNEL,
                    num_classes=cfg.SPACE.NUM_CLASSES,
                    layers=9,
-                   search_space=SearchSpace3())
+                   search_space=SearchSpace3(),
+                   steps=5)
