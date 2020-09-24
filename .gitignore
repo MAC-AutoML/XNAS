@@ -5,6 +5,7 @@ tmp/
 .idea/
 .vscode/
 *.py[cod]
+*.pdf
 *$py.class
 *.DS_Store
 *hyper.md

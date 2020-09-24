@@ -134,7 +134,7 @@ def plot_error_curves_pyplot(log_files, names, filename=None, metric="top1_err")
         plt.show()
 
 
-def graph_plot(genotype, file_path, caption=None, search_space='darts'):
+def graph_plot(genotype, file_path, caption=None, search_space='darts', n_nodes=None):
     """ make DAG plot and save to file_path as .png """
     edge_attr = {
         'fontsize': '20',
@@ -186,7 +186,8 @@ def graph_plot(genotype, file_path, caption=None, search_space='darts'):
     elif search_space == 'nasbench_201':
         # input node
         g.node("0", fillcolor='darkseagreen2')
-        n_nodes = 3
+        if n_nodes is None:
+            n_nodes = 3
         for i in range(n_nodes):
             g.node(str(i+1), fillcolor='lightblue')
         genotype = genotype.split('+')
