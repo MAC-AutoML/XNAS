@@ -42,7 +42,9 @@ class CategoricalDDPNAS:
         return self.steps * sum(list(range(self.p_model.Cmax)))
 
     def sampling(self):
-        return index_to_one_hot(self.sampling_index(), self.p_model.Cmax)
+        # return self.sampling_index()
+        self.sample = self.sampling_index()
+        return index_to_one_hot(self.sample, self.p_model.Cmax)
 
     def sampling_index(self):
         sample = []
@@ -56,7 +58,7 @@ class CategoricalDDPNAS:
         pass
 
     def record_information(self, sample, performance):
-        self.sample = sample
+        # self.sample = sample
         for i in range(self.p_model.d):
             self.val_performance[-1][i, self.sample[i]] = performance
 
