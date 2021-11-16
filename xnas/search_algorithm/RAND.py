@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 import numpy as np
 from xnas.search_algorithm.utils import Categorical
 from xnas.core.utils import index_to_one_hot, one_hot_to_index
@@ -13,7 +10,6 @@ class RAND:
     """
 
     def __init__(self, categories, delta_init=1., opt_type="best", init_theta=None, max_mize=True):
-
         # Categorical distribution
         self.p_model = Categorical(categories)
         # valid dimension size
@@ -60,9 +56,9 @@ class RAND:
     def update(self):
         objective = np.array(self.obj_list[-1])
         sample = np.array(self.sample_list[-1])
-        if(self.select == 'best'):
-            if(objective > self.best_object):
-                self.best_obeject = objective
+        if (self.select == 'best'):
+            if (objective > self.best_object):
+                self.best_object = objective
                 # refresh theta to best one
                 self.p_model.theta = np.array(sample)
         else:

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright (c) Facebook, Inc. and its affiliates.
 #
 # This source code is licensed under the MIT license found in the
@@ -9,19 +7,22 @@
 
 import gc
 import importlib
+from logging import currentframe
 import math
 import os
 import re
-import time
 
 import cv2
 import numpy as np
+from numpy.testing._private.utils import assert_equal
 import torch
 import torch.utils.data
+from torch.utils.data.dataset import Dataset
 import torchvision.datasets as datasets
 import torchvision.transforms as torch_transforms
 from PIL import Image
 from torch.utils.data.distributed import DistributedSampler
+from xnas.core import utils
 
 import xnas.core.logging as logging
 import xnas.datasets.transforms as custom_transforms
@@ -41,23 +42,25 @@ logger = logging.get_logger(__name__)
 
 
 class XNAS_ImageFolder():
-    def __init__(self,
-                 data_path,
-                 split,
-                 backend,
-                 batch_size=None,
-                 dataset_name='imagenet',
-                 _rgb_normalized_mean=None,
-                 _rgb_normalized_std=None,
-                 transformers=None,
-                 num_workers=8,
-                 pin_memory=True,
-                 world_size=1,
-                 shuffle=True):
+    def __init__(
+            self,
+            data_path,
+            split,
+            backend,
+            batch_size=None,
+            dataset_name='imagenet',
+            _rgb_normalized_mean=None,
+            _rgb_normalized_std=None,
+            transformers=None,
+            num_workers=8,
+            pin_memory=True,
+            world_size=1,
+            shuffle=True):
         assert os.path.exists(
             data_path), "Data path '{}' not found".format(data_path)
-        assert sum(split) == 1, "The summation of split should be 1!"
-        assert backend in ['torch', 'custom', 'dali_cpu', 'dali_gpu'], "Corresponding backend {} is not supported!".format(backend)
+        assert sum(split) == 1, "Summation of split should be 1"
+        assert backend in ['torch', 'custom', 'dali_cpu',
+                           'dali_gpu'], "Corresponding backend {} is not supported!".format(backend)
         self._data_path, self._split, self.backend, self.dataset_name = data_path, split, backend, dataset_name
         self._rgb_normalized_mean, self._rgb_normalized_std = _rgb_normalized_mean, _rgb_normalized_std
         self.batch_size = [256, 200] if batch_size is None else batch_size
@@ -71,15 +74,15 @@ class XNAS_ImageFolder():
         else:
             self.transformers = transformers
         assert len(self.transformers) == len(
-            self._split), "The length of split and transformer must be consitent"
-        # read all dataset
-        logger.info("Constructing xnas_ImageFolder")
+            self._split), "Length of split and transformers should be equal"
+        # Read all dataset
+        logger.info("Constructing XNAS_ImageFolder")
         self._construct_imdb()
 
     def _construct_imdb(self):
         # Images are stored per class in subdirs (format: n<number>)
         split_files = os.listdir(self._data_path)
-        if self.dataset_name == 'imagenet':
+        if self.dataset_name == "imagenet":
             # imagenet format folder names
             self._class_ids = sorted(
                 f for f in split_files if re.match(r"^n[0-9]+$", f))
@@ -112,7 +115,7 @@ class XNAS_ImageFolder():
 
     def generate_data_loader(self):
         indices = list(range(len(self._imdb)))
-        # shuffle data
+        # Shuffle data
         np.random.shuffle(indices)
         data_loaders = []
         pre_partition = 0.
@@ -134,15 +137,13 @@ class XNAS_ImageFolder():
                                               _rgb_normalized_std=self._rgb_normalized_std, **self.transformers[i])
                 sampler = DistributedSampler(
                     dataset) if cfg.NUM_GPUS > 1 else None
-
                 loader = torch.utils.data.DataLoader(dataset,
                                                      batch_size=self.batch_size[i],
                                                      shuffle=(
                                                          False if sampler else True),
                                                      sampler=sampler,
                                                      num_workers=self.num_workers,
-                                                     pin_memory=self.pin_memory,
-                                                     )
+                                                     pin_memory=self.pin_memory)
             elif self.backend in ['dali_cpu', 'dali_gpu']:
                 dali_cpu = True if self.backend == 'dali_cpu' else False
                 loader = ImageList_DALI([self._imdb[j] for j in _current_indices], self.batch_size[i],
@@ -153,8 +154,7 @@ class XNAS_ImageFolder():
                                         world_size=self.world_size,
                                         dali_cpu=dali_cpu,
                                         temp_folder='/tmp',
-                                        **self.transformers[i]
-                                        )
+                                        **self.transformers[i])
                 loader = loader.get_data_iter()
             data_loaders.append(loader)
             pre_partition = _current_partition
@@ -163,41 +163,42 @@ class XNAS_ImageFolder():
 
 
 class ImageList_custom(torch.utils.data.Dataset):
-    """ImageNet dataset."""
+    """ImageNet dataset, custom backend."""
 
-    def __init__(self, _list, _rgb_normalized_mean=None,
-                 _rgb_normalized_std=None,
-                 crop='random',
-                 crop_size=224,
-                 min_crop_size=0.08,
-                 random_flip=False):
+    def __init__(
+            self,
+            _list,
+            _rgb_normalized_mean=None,
+            _rgb_normalized_std=None,
+            crop='random',
+            crop_size=224,
+            min_crop_size=0.08,
+            random_flip=False):
         logger.info("Using Custom (opencv2 and numpy array) as backend.")
         self._imdb = _list
-        _rgb_normalized_mean.reverse()
-        _rgb_normalized_std.reverse()
-        self._bgr_normalized_mean = _rgb_normalized_mean
-        self._bgr_normalized_std = _rgb_normalized_std
+        self._bgr_normalized_mean = _rgb_normalized_mean[::-1]
+        self._bgr_normalized_std = _rgb_normalized_std[::-1]
         self.crop = crop
         self.crop_size = crop_size
         self.min_crop_size = min_crop_size
         self.random_flip = random_flip
 
     def _prepare_im(self, im):
-        """Prepares the image for network input."""
+        """Prepare the image for network input."""
         # Train and test setups differ
         if self.crop == "random":
-            # Scale and aspect ratio then horizontal flip
+            # Scale -> aspect ratio -> crop
             im = custom_transforms.random_sized_crop(
                 im=im, size=self.crop_size, area_frac=self.min_crop_size)
-        elif self.crop == 'center':
-            # Scale and center crop
+        elif self.crop == "center":
+            # Scale -> center crop
             im = custom_transforms.scale(self.min_crop_size, im)
             im = custom_transforms.center_crop(self.crop_size, im)
         if self.random_flip:
             im = custom_transforms.horizontal_flip(im=im, p=0.5, order="HWC")
         # HWC -> CHW
         im = im.transpose([2, 0, 1])
-        # [0, 255] -> [0, 1]
+        # Normalize [0, 255] -> [0, 1]
         im = im / 255.0
         # Color normalization
         im = custom_transforms.color_norm(
@@ -205,7 +206,7 @@ class ImageList_custom(torch.utils.data.Dataset):
         return im
 
     def __getitem__(self, index):
-        # Load the image
+        # Load image
         im = cv2.imread(self._imdb[index]["im_path"])
         im = im.astype(np.float32, copy=False)
         # Prepare the image for training / testing
@@ -218,25 +219,25 @@ class ImageList_custom(torch.utils.data.Dataset):
         return len(self._imdb)
 
 
-'''
-From https://github.com/pytorch/vision/issues/81
-
-ImageList dataloader with torch backends
-'''
-
-
 class ImageList_torch(torch.utils.data.Dataset):
+    '''
+        ImageList dataloader with torch backends
+        From https://github.com/pytorch/vision/issues/81
+    '''
 
-    def __init__(self, _list, _rgb_normalized_mean=None,
-                 _rgb_normalized_std=None,
-                 crop='random',
-                 crop_size=224,
-                 min_crop_size=0.08,
-                 random_flip=False):
+    def __init__(
+            self,
+            _list,
+            _rgb_normalized_mean=None,
+            _rgb_normalized_std=None,
+            crop='random',
+            crop_size=224,
+            min_crop_size=0.08,
+            random_flip=False):
         logger.info("Using Torch (PIL and torchvison transformer) as backend.")
         self._imdb = _list
-        self._bgr_normalized_mean = _rgb_normalized_mean
-        self._bgr_normalized_std = _rgb_normalized_std
+        self._bgr_normalized_mean = _rgb_normalized_mean[::-1]
+        self._bgr_normalized_std = _rgb_normalized_std[::-1]
         self.crop = crop
         self.crop_size = crop_size
         self.min_crop_size = min_crop_size
@@ -246,11 +247,11 @@ class ImageList_torch(torch.utils.data.Dataset):
 
     def _construct_transformer(self):
         transformer = []
-        if self.crop == 'random':
+        if self.crop == "random":
             transformer.append(torch_transforms.RandomResizedCrop(
                 self.crop_size, scale=(self.min_crop_size, 1.0)))
-        elif self.crop == 'center':
-            # Scale and center crop
+        elif self.crop == "center":
+            # Scale -> center crop
             transformer.append(torch_transforms.Resize(self.min_crop_size))
             transformer.append(torch_transforms.CenterCrop(self.crop_size))
         transformer.append(torch_transforms.ToTensor())
@@ -264,29 +265,32 @@ class ImageList_torch(torch.utils.data.Dataset):
         img = self.loader(impath)
         if self.transform is not None:
             img = self.transform(img)
-
         return img, target
 
     def __len__(self):
         return len(self._imdb)
 
 
-# DALI pipeline
+"""DALI pipeline."""
+
+
 class ImageList_DALI():
 
-    def __init__(self, _list, batch_size,
-                 _rgb_normalized_mean=None,
-                 _rgb_normalized_std=None,
-                 crop='random',
-                 crop_size=224,
-                 min_crop_size=0.08,
-                 random_flip=False,
-                 num_workers=8,
-                 pin_memory=True,
-                 world_size=1,
-                 dali_cpu=True,
-                 temp_folder='/tmp'
-                 ):
+    def __init__(
+            self,
+            _list,
+            batch_size,
+            _rgb_normalized_mean=None,
+            _rgb_normalized_std=None,
+            crop='random',
+            crop_size=224,
+            min_crop_size=0.08,
+            random_flip=False,
+            num_workers=8,
+            pin_memory=True,
+            world_size=1,
+            dali_cpu=True,
+            temp_folder='/tmp'):
         logger.info("Using DALI as backend.")
         self._list = _list
         _rgb_mean = [i * 255. for i in _rgb_normalized_mean]
@@ -299,15 +303,14 @@ class ImageList_DALI():
         self.pin_memory = pin_memory
         self.world_size = world_size
         self.dali_cpu = dali_cpu
-        # save list to temp files
+        # Save list to temp file
         _temp_save_file = os.path.join(
             temp_folder, random_time_string(8) + '.txt')
-        logger.info("saveing the list to file")
+        logger.info("saving list to temp file")
         with open(_temp_save_file, "w") as f:
             for index, item in enumerate(self._list):
                 f.write(item['im_path'] + ' ' + str(item['class']))
-        f.close()
-        # construct pipeline
+        # Construct pipeline
         device_id = torch.cuda.current_device()
         local_rank = torch.cuda.current_device()
         self.pipeline = ListPipe(batch_size, _temp_save_file, _rgb_mean, _rgb_std,
@@ -325,6 +328,7 @@ class ImageList_DALI():
 
 
 class ListPipe(Pipeline):
+
     def __init__(self, batch_size, file_list, mean, std, data_dir='', crop='random', crop_size=224, min_crop_size=0.08,
                  random_flip=False, device_id=0, num_threads=8, local_rank=0, world_size=1, dali_cpu=False, shuffle=True):
         # As we're recreating the Pipeline at every epoch, the seed must be -1 (random seed)

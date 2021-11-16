@@ -7,7 +7,7 @@ from collections import OrderedDict
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from xnas.search_space.utils import make_divisible, get_same_padding
+from xnas.search_space.utils import make_divisible, get_same_padding, Hswish, Hsigmoid, build_activation
 
 
 class ShuffleLayer(nn.Module):
@@ -25,88 +25,6 @@ class ShuffleLayer(nn.Module):
         # flatten
         x = x.view(batchsize, -1, height, width)
         return x
-
-
-class Hswish(nn.Module):
-
-    def __init__(self, inplace=True):
-        super(Hswish, self).__init__()
-        self.inplace = inplace
-
-    def forward(self, x):
-        return x * F.relu6(x + 3., inplace=self.inplace) / 6.
-
-
-class Hsigmoid(nn.Module):
-
-    def __init__(self, inplace=True):
-        super(Hsigmoid, self).__init__()
-        self.inplace = inplace
-
-    def forward(self, x):
-        return F.relu6(x + 3., inplace=self.inplace) / 6.
-
-
-class SEModule(nn.Module):
-    REDUCTION = 4
-
-    def __init__(self, channel):
-        super(SEModule, self).__init__()
-
-        self.channel = channel
-        self.reduction = SEModule.REDUCTION
-
-        num_mid = make_divisible(self.channel // self.reduction, divisor=8)
-
-        self.fc = nn.Sequential(OrderedDict([
-            ('reduce', nn.Conv2d(self.channel, num_mid, 1, 1, 0, bias=True)),
-            ('relu', nn.ReLU(inplace=True)),
-            ('expand', nn.Conv2d(num_mid, self.channel, 1, 1, 0, bias=True)),
-            ('h_sigmoid', Hsigmoid(inplace=True)),
-        ]))
-
-    def forward(self, x):
-        y = x.mean(3, keepdim=True).mean(2, keepdim=True)
-        y = self.fc(y)
-        return x * y
-
-
-def build_activation(act_func, inplace=True):
-    if act_func == 'relu':
-        return nn.ReLU(inplace=inplace)
-    elif act_func == 'relu6':
-        return nn.ReLU6(inplace=inplace)
-    elif act_func == 'tanh':
-        return nn.Tanh()
-    elif act_func == 'sigmoid':
-        return nn.Sigmoid()
-    elif act_func == 'h_swish':
-        return Hswish(inplace=inplace)
-    elif act_func == 'h_sigmoid':
-        return Hsigmoid(inplace=inplace)
-    elif act_func is None:
-        return None
-    else:
-        raise ValueError('do not support: %s' % act_func)
-
-
-def set_layer_from_config(layer_config):
-    if layer_config is None:
-        return None
-
-    name2layer = {
-        ConvLayer.__name__: ConvLayer,
-        DepthConvLayer.__name__: DepthConvLayer,
-        PoolingLayer.__name__: PoolingLayer,
-        IdentityLayer.__name__: IdentityLayer,
-        LinearLayer.__name__: LinearLayer,
-        ZeroLayer.__name__: ZeroLayer,
-        MBInvertedConvLayer.__name__: MBInvertedConvLayer,
-    }
-
-    layer_name = layer_config.pop('name')
-    layer = name2layer[layer_name]
-    return layer.build_from_config(layer_config)
 
 
 class My2DLayer(MyModule):
@@ -179,25 +97,6 @@ class My2DLayer(MyModule):
             x = module(x)
         return x
 
-    @property
-    def module_str(self):
-        raise NotImplementedError
-
-    @property
-    def config(self):
-        return {
-            'in_channels': self.in_channels,
-            'out_channels': self.out_channels,
-            'use_bn': self.use_bn,
-            'act_func': self.act_func,
-            'dropout_rate': self.dropout_rate,
-            'ops_order': self.ops_order,
-        }
-
-    @staticmethod
-    def build_from_config(config):
-        raise NotImplementedError
-
     @staticmethod
     def is_zero_layer():
         return False
@@ -235,42 +134,6 @@ class ConvLayer(My2DLayer):
             weight_dict['shuffle'] = ShuffleLayer(self.groups)
 
         return weight_dict
-
-    @property
-    def module_str(self):
-        if isinstance(self.kernel_size, int):
-            kernel_size = (self.kernel_size, self.kernel_size)
-        else:
-            kernel_size = self.kernel_size
-        if self.groups == 1:
-            if self.dilation > 1:
-                conv_str = '%dx%d_DilatedConv' % (kernel_size[0], kernel_size[1])
-            else:
-                conv_str = '%dx%d_Conv' % (kernel_size[0], kernel_size[1])
-        else:
-            if self.dilation > 1:
-                conv_str = '%dx%d_DilatedGroupConv' % (kernel_size[0], kernel_size[1])
-            else:
-                conv_str = '%dx%d_GroupConv' % (kernel_size[0], kernel_size[1])
-        conv_str += '_O%d' % self.out_channels
-        return conv_str
-
-    @property
-    def config(self):
-        return {
-            'name': ConvLayer.__name__,
-            'kernel_size': self.kernel_size,
-            'stride': self.stride,
-            'dilation': self.dilation,
-            'groups': self.groups,
-            'bias': self.bias,
-            'has_shuffle': self.has_shuffle,
-            **super(ConvLayer, self).config,
-        }
-
-    @staticmethod
-    def build_from_config(config):
-        return ConvLayer(**config)
 
 
 class DepthConvLayer(My2DLayer):
@@ -310,36 +173,6 @@ class DepthConvLayer(My2DLayer):
             weight_dict['shuffle'] = ShuffleLayer(self.groups)
         return weight_dict
 
-    @property
-    def module_str(self):
-        if isinstance(self.kernel_size, int):
-            kernel_size = (self.kernel_size, self.kernel_size)
-        else:
-            kernel_size = self.kernel_size
-        if self.dilation > 1:
-            conv_str = '%dx%d_DilatedDepthConv' % (kernel_size[0], kernel_size[1])
-        else:
-            conv_str = '%dx%d_DepthConv' % (kernel_size[0], kernel_size[1])
-        conv_str += '_O%d' % self.out_channels
-        return conv_str
-
-    @property
-    def config(self):
-        return {
-            'name': DepthConvLayer.__name__,
-            'kernel_size': self.kernel_size,
-            'stride': self.stride,
-            'dilation': self.dilation,
-            'groups': self.groups,
-            'bias': self.bias,
-            'has_shuffle': self.has_shuffle,
-            **super(DepthConvLayer, self).config,
-        }
-
-    @staticmethod
-    def build_from_config(config):
-        return DepthConvLayer(**config)
-
 
 class PoolingLayer(My2DLayer):
 
@@ -370,28 +203,6 @@ class PoolingLayer(My2DLayer):
             raise NotImplementedError
         return weight_dict
 
-    @property
-    def module_str(self):
-        if isinstance(self.kernel_size, int):
-            kernel_size = (self.kernel_size, self.kernel_size)
-        else:
-            kernel_size = self.kernel_size
-        return '%dx%d_%sPool' % (kernel_size[0], kernel_size[1], self.pool_type.upper())
-
-    @property
-    def config(self):
-        return {
-            'name': PoolingLayer.__name__,
-            'pool_type': self.pool_type,
-            'kernel_size': self.kernel_size,
-            'stride': self.stride,
-            **super(PoolingLayer, self).config
-        }
-
-    @staticmethod
-    def build_from_config(config):
-        return PoolingLayer(**config)
-
 
 class IdentityLayer(My2DLayer):
 
@@ -401,21 +212,6 @@ class IdentityLayer(My2DLayer):
 
     def weight_op(self):
         return None
-
-    @property
-    def module_str(self):
-        return 'Identity'
-
-    @property
-    def config(self):
-        return {
-            'name': IdentityLayer.__name__,
-            **super(IdentityLayer, self).config,
-        }
-
-    @staticmethod
-    def build_from_config(config):
-        return IdentityLayer(**config)
 
 
 class LinearLayer(MyModule):
@@ -483,27 +279,6 @@ class LinearLayer(MyModule):
             x = module(x)
         return x
 
-    @property
-    def module_str(self):
-        return '%dx%d_Linear' % (self.in_features, self.out_features)
-
-    @property
-    def config(self):
-        return {
-            'name': LinearLayer.__name__,
-            'in_features': self.in_features,
-            'out_features': self.out_features,
-            'bias': self.bias,
-            'use_bn': self.use_bn,
-            'act_func': self.act_func,
-            'dropout_rate': self.dropout_rate,
-            'ops_order': self.ops_order,
-        }
-
-    @staticmethod
-    def build_from_config(config):
-        return LinearLayer(**config)
-
     @staticmethod
     def is_zero_layer():
         return False
@@ -518,24 +293,32 @@ class ZeroLayer(MyModule):
     def forward(self, x):
         return 0
 
-    @property
-    def module_str(self):
-        return 'Zero'
-
-    @property
-    def config(self):
-        return {
-            'name': ZeroLayer.__name__,
-            'stride': self.stride,
-        }
-
-    @staticmethod
-    def build_from_config(config):
-        return ZeroLayer(**config)
-
     @staticmethod
     def is_zero_layer():
         return True
+
+
+class SEModule(nn.Module):
+
+    def __init__(self, channel, reduction=0.25):
+        super(SEModule, self).__init__()
+
+        self.channel = channel
+        self.reduction = reduction
+
+        num_mid = make_divisible(int(self.channel * self.reduction), divisor=8)
+
+        self.fc = nn.Sequential(OrderedDict([
+            ('reduce', nn.Conv2d(self.channel, num_mid, 1, 1, 0, bias=True)),
+            ('relu', nn.ReLU(inplace=True)),
+            ('expand', nn.Conv2d(num_mid, self.channel, 1, 1, 0, bias=True)),
+            ('h_sigmoid', Hsigmoid(inplace=True)),
+        ]))
+
+    def forward(self, x):
+        y = x.mean(3, keepdim=True).mean(2, keepdim=True)
+        y = self.fc(y)
+        return x * y
 
 
 class MBInvertedConvLayer(MyModule):
@@ -575,7 +358,7 @@ class MBInvertedConvLayer(MyModule):
             ('act', build_activation(self.act_func, inplace=True))
         ]
         if self.use_se:
-            depth_conv_modules.append(('se', SEModule(feature_dim)))
+            depth_conv_modules.append(('se', SEModule(feature_dim, reduction=0.25)))
         self.depth_conv = nn.Sequential(OrderedDict(depth_conv_modules))
 
         self.point_linear = nn.Sequential(OrderedDict([
@@ -589,36 +372,6 @@ class MBInvertedConvLayer(MyModule):
         x = self.depth_conv(x)
         x = self.point_linear(x)
         return x
-
-    @property
-    def module_str(self):
-        if self.mid_channels is None:
-            expand_ratio = self.expand_ratio
-        else:
-            expand_ratio = self.mid_channels // self.in_channels
-        layer_str = '%dx%d_MBConv%d_%s' % (self.kernel_size, self.kernel_size, expand_ratio, self.act_func.upper())
-        if self.use_se:
-            layer_str = 'SE_' + layer_str
-        layer_str += '_O%d' % self.out_channels
-        return layer_str
-
-    @property
-    def config(self):
-        return {
-            'name': MBInvertedConvLayer.__name__,
-            'in_channels': self.in_channels,
-            'out_channels': self.out_channels,
-            'kernel_size': self.kernel_size,
-            'stride': self.stride,
-            'expand_ratio': self.expand_ratio,
-            'mid_channels': self.mid_channels,
-            'act_func': self.act_func,
-            'use_se': self.use_se,
-        }
-
-    @staticmethod
-    def build_from_config(config):
-        return MBInvertedConvLayer(**config)
 
     @staticmethod
     def is_zero_layer():

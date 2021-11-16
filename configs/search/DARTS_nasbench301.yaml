@@ -1,0 +1,17 @@
+SPACE:
+  NAME: 'nasbench301'
+  CHANNEL: 16
+  LAYERS: 8
+  NODES: 4
+DATA_LOADER:
+  BACKEND: 'custom'
+SEARCH:
+  DATASET: 'cifar10'
+  NUM_CLASSES: 10
+  SPLIT: [0.5, 0.5]
+  BATCH_SIZE: 64
+  IM_SIZE: 32
+OPTIM:
+  MAX_EPOCH: 50
+  LR_POLICY: 'cos'
+OUT_DIR: '/userhome/project/XNAS/experiment/darts'

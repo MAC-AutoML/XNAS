@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright (c) Facebook, Inc. and its affiliates.
 #
 # This source code is licensed under the MIT license found in the
@@ -22,8 +20,9 @@ def compute_time_eval(model):
     # Use eval mode
     model.eval()
     # Generate a dummy mini-batch and copy data to GPU
-    im_size, batch_size = cfg.TRAIN.IM_SIZE, int(
-        cfg.TEST.BATCH_SIZE / cfg.NUM_GPUS)
+    # NOTE: using cfg.SEARCH space instead
+    # im_size, batch_size = cfg.TRAIN.IM_SIZE, int(cfg.TEST.BATCH_SIZE / cfg.NUM_GPUS)
+    im_size, batch_size = cfg.SEARCH.IM_SIZE, int(cfg.TEST.BATCH_SIZE / cfg.NUM_GPUS)
     inputs = torch.zeros(batch_size, 3, im_size,
                          im_size).cuda(non_blocking=False)
     # Compute precise forward pass time
@@ -46,8 +45,9 @@ def compute_time_train(model, loss_fun):
     # Use train mode
     model.train()
     # Generate a dummy mini-batch and copy data to GPU
-    im_size, batch_size = cfg.TRAIN.IM_SIZE, int(
-        cfg.TRAIN.BATCH_SIZE / cfg.NUM_GPUS)
+    # NOTE: using cfg.SEARCH space instead
+    # im_size, batch_size = cfg.TRAIN.IM_SIZE, int(cfg.TRAIN.BATCH_SIZE / cfg.NUM_GPUS)
+    im_size, batch_size = cfg.SEARCH.IM_SIZE, int(cfg.SEARCH.BATCH_SIZE / cfg.NUM_GPUS)
     inputs = torch.rand(batch_size, 3, im_size,
                         im_size).cuda(non_blocking=False)
     labels = torch.zeros(batch_size, dtype=torch.int64).cuda(

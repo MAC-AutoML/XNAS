@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 import numpy as np
 from xnas.search_algorithm.utils import Categorical
 from xnas.core.utils import index_to_one_hot, one_hot_to_index
@@ -9,7 +6,7 @@ import copy
 
 class ASNG:
     """
-    Stochastic Natural Gradient for Categorical Distribution
+    Adaptive Stochastic Natural Gradient for Categorical Distribution
     """
 
     def __init__(self, categories,
@@ -203,7 +200,7 @@ class ASNG:
 # ASNG + DDPNAS
 class Dynamic_ASNG:
     """
-    Stochastic Natural Gradient for Categorical Distribution
+    Adaptive Stochastic Natural Gradient for Categorical Distribution
     """
 
     def __init__(self, categories,

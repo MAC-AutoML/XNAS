@@ -1,27 +1,23 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 import numpy as np
 from xnas.search_algorithm.utils import Categorical
 from xnas.core.utils import index_to_one_hot, one_hot_to_index
 import copy
 
-
 class GridSearch:
-    def __init__(self, category, fresh_size=4, init_theta=None, max_mize=True):
+    def __init__(self, categories, fresh_size=4, init_theta=None, max_mize=True):
 
-        self.p_model = Categorical(category)
+        self.p_model = Categorical(categories)
         self.p_model.C = np.array(self.p_model.C)
         self.valid_d = len(self.p_model.C[self.p_model.C > 1])
 
-        # refreash theta
+        # Refresh theta
         for k in range(self.p_model.d):
             self.p_model.theta[k, 0] = 1
             self.p_model.theta[k, 1:self.p_model.C[k]] = 0
-
+        
         if init_theta is not None:
             self.p_model.theta = init_theta
-
+        
         self.fresh_size = fresh_size
         self.sample = []
         self.objective = []
@@ -29,21 +25,28 @@ class GridSearch:
         self.obj_optim = float('inf')
         self.training_finish = False
 
-        # record point to move
+        # Record point to move
         self.sample_point = self.p_model.theta
         self.point = [self.p_model.d-1, 0]
 
     def sampling(self):
-
         return self.sample_point
-
+    
     def record_information(self, sample, objective):
-
         self.sample.append(sample)
         self.objective.append(objective * self.maxmize)
 
     def update(self):
-
+        """
+        Update sampling by grid search
+        e.g.
+            categories = [3, 2, 4] 
+            sample point as = [1, 1, 1]
+                              [0, 0, 0]
+                              [0,  , 0]
+                              [ ,  , 0]
+            point as now searching = [2, 0]
+        """
         if len(self.sample) == self.fresh_size:
             # update sample
             if self.point[1] == self.p_model.C[self.point[0]] - 1:
