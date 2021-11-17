@@ -7,14 +7,14 @@
 ```bash
 git clone https://github.com/MAC-AutoML/XNAS.git
 cd XNAS
+# set root path
+export PYTHONPATH=$PYTHONPATH:/Path/to/XNAS
 ```
 
 ## Usage
 
 ```bash
-# set root path
-export PYTHONPATH=$PYTHONPATH:/Path/to/XNAS
-# set gpu devices
+# [Optional] set gpu devices
 export CUDA_VISIBLE_DEVICES=0
 # unit test example
 python tools/test_func/sng_function_optimization.py
