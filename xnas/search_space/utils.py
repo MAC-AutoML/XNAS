@@ -85,6 +85,7 @@ def get_same_padding(kernel_size):
 
 
 def adjust_bn_according_to_idx(bn, idx):
+    """Adjust BN weight order"""
     bn.weight.data = torch.index_select(bn.weight.data, 0, idx)
     bn.bias.data = torch.index_select(bn.bias.data, 0, idx)
     bn.running_mean.data = torch.index_select(bn.running_mean.data, 0, idx)
@@ -98,32 +99,6 @@ def copy_bn(target_bn, src_bn):
     target_bn.bias.data.copy_(src_bn.bias.data[:feature_dim])
     target_bn.running_mean.data.copy_(src_bn.running_mean.data[:feature_dim])
     target_bn.running_var.data.copy_(src_bn.running_var.data[:feature_dim])
-
-
-class SEModule(nn.Module):
-
-    def __init__(self, channel, reduction=0.25):
-        super(SEModule, self).__init__()
-
-        self.channel = channel
-        self.reduction = reduction
-
-        num_mid = make_divisible(int(self.channel * self.reduction), divisor=8)
-
-        self.fc = nn.Sequential(OrderedDict([
-            ('reduce', nn.Conv2d(self.channel, num_mid, 1, 1, 0, bias=True)),
-            ('relu', nn.ReLU(inplace=True)),
-            ('expand', nn.Conv2d(num_mid, self.channel, 1, 1, 0, bias=True)),
-            ('h_sigmoid', Hsigmoid(inplace=True)),
-        ]))
-
-    def forward(self, x):
-        y = x.mean(3, keepdim=True).mean(2, keepdim=True)
-        y = self.fc(y)
-        return x * y
-
-
-multiply_adds = 1
 
 
 def count_convNd(m, _, y):
@@ -145,7 +120,6 @@ def count_linear(m, _, __):
 
 
 def profile(model, input_size, custom_ops=None):
-
     register_hooks = {
         nn.Conv1d: count_convNd,
         nn.Conv2d: count_convNd,

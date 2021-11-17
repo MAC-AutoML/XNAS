@@ -1,5 +1,3 @@
-
-
 # Copyright (c) Facebook, Inc. and its affiliates.
 #
 # This source code is licensed under the MIT license found in the
@@ -15,24 +13,114 @@ from yacs.config import CfgNode as CfgNode
 
 # Global config object
 _C = CfgNode()
+cfg = _C
 # Example usage:
 #   from core.config import cfg
-cfg = _C
 
-_C.SPACE = CfgNode()
+# ------------------------------------------------------------------------------------ #
+# Train indepandent model options
+# ------------------------------------------------------------------------------------ #
+_C.TRAIN = CfgNode()
+
+# Train epoch: use OPTIM.MAX_EPOCH instead.
+# _C.TRAIN.MAX_EPOCH = 600
+
+# Checkpoint period
+_C.TRAIN.CHECKPOINT_PERIOD = 1
+
+# Dataset
+_C.TRAIN.DATASET = "cifar10"
+
+# data path using in indepandent train
+_C.TRAIN.DATAPATH = "/gdata/cifar10/"
+
+# Split
+_C.TRAIN.SPLIT = [0.8, 0.2]
+
+# Total mini-batch size
+_C.TRAIN.BATCH_SIZE = 96
+
+_C.TRAIN.DROP_PATH_PROB = 0.2
+
+_C.TRAIN.LAYERS = 20
+
+_C.TRAIN.CHANNELS = 36
+
+_C.TRAIN.AUX_WEIGHT = 0.4
+
+_C.TRAIN.CUTOUT_LENGTH = 16
+
+_C.TRAIN.GENOTYPE = ""
+
+# ------------------------------------------------------------------------------------ #
+# Test options
+# using in trainer.py and only for metering,
+# may modify and extend more usage in the future.
+# ------------------------------------------------------------------------------------ #
+_C.TEST = CfgNode()
+
+# Test batch_size
+_C.TEST.BATCH_SIZE = 128
+
+# Test weight file location
+_C.TEST.WEIGHTS = ""
+
+# ------------------------------------------------------------------------------------ #
+# Searching options
+# ------------------------------------------------------------------------------------ #
+_C.SEARCH = CfgNode()
+
+# Dataset
+_C.SEARCH.DATASET = "cifar10"
+
+# num of classes
+_C.SEARCH.NUM_CLASSES = 10
+
+# Split
+_C.SEARCH.SPLIT = [0.8, 0.2]
+
+# Total mini-batch size
+_C.SEARCH.BATCH_SIZE = 256
+
+# Image size
+_C.SEARCH.IM_SIZE = 32
+
+# Image channel (rgb=3)
+_C.SEARCH.INPUT_CHANNEL = 3
+
+# Loss function
+_C.SEARCH.LOSS_FUN = 'cross_entropy'
+
+# Evaluate model on test data every eval period epochs
+_C.SEARCH.EVAL_PERIOD = 1
+
+# Save model checkpoint every checkpoint period epochs
+_C.SEARCH.CHECKPOINT_PERIOD = 1
+
+# Resume training from the latest checkpoint in the output directory
+_C.SEARCH.AUTO_RESUME = True
+
+# Weights to start training from
+_C.SEARCH.WEIGHTS = ""
+
+# using FP16
+_C.SEARCH.AMP = False
+
+# data path using in indepandent train
+_C.SEARCH.DATAPATH = "/gdata/cifar10/"
+
 
 # ------------------------------------------------------------------------------------ #
 # Search Space options
 # ------------------------------------------------------------------------------------ #
+_C.SPACE = CfgNode()
+
 _C.SPACE.NAME = 'darts'
 
 # Loss function
-_C.SPACE.LOSS_FUN = "cross_entropy"
+_C.SPACE.LOSS_FUN = 'cross_entropy'
 
-# num of classes
-_C.SPACE.NUM_CLASSES = 10
-
-# Init channel
+# channel after first layer (e.g. rgb=3 -> 16 here)
 _C.SPACE.CHANNEL = 16
 
 # number of layers
@@ -41,26 +129,25 @@ _C.SPACE.LAYERS = 8
 # number of nodes in a cell
 _C.SPACE.NODES = 4
 
-# number of  PRIMITIVE
+# number of PRIMITIVE
 _C.SPACE.PRIMITIVES = []
 
-# number of nodes in a cell
+# basic operations
 _C.SPACE.BASIC_OP = []
+
 
 # ------------------------------------------------------------------------------------ #
 # Mobilenet Search Space options
 # ------------------------------------------------------------------------------------ #
 _C.MB = CfgNode()
 
-_C.MB.NAME = 'ofa'
-
-# number of depth
+# depth
 _C.MB.DEPTH = 4
 
-# number of depth
+# width
 _C.MB.WIDTH_MULTI = 1.0
 
-# number of nodes in a cell
+# basic operations
 _C.MB.BASIC_OP = []
 
 # stage of strides
@@ -72,18 +159,18 @@ _C.MB.ACT_STAGES = []
 # stage of SE
 _C.MB.SE_STAGES = []
 
+
 # ------------------------------------------------------------------------------------ #
 # Stotiscas natural gradient algorithm options
 # ------------------------------------------------------------------------------------ #
 _C.SNG = CfgNode()
 
-# learning rate of the theta
 _C.SNG.NAME = 'MIGO'
 
 # learning rate of the theta
 _C.SNG.THETA_LR = 0.1
 
-# pruning step
+# pruning
 _C.SNG.PRUNING = True
 
 # pruning step
@@ -91,6 +178,7 @@ _C.SNG.PRUNING_STEP = 3
 
 # sampling process
 _C.SNG.PROB_SAMPLING = False
+
 
 # utility function
 _C.SNG.UTILITY = 'log'
@@ -101,6 +189,7 @@ _C.SNG.UTILITY_FACTOR = 0.4
 # utility function factor
 _C.SNG.LAMBDA = -1
 
+
 # nature gradient momentum
 _C.SNG.MOMENTUM = True
 
@@ -110,10 +199,11 @@ _C.SNG.GAMMA = 0.9
 # nature gradient momentum factor
 _C.SNG.SAMPLING_PER_EDGE = 1
 
+
 # random sampling
 _C.SNG.RANDOM_SAMPLE = True
 
-# random sampling
+# random sampling warmup
 _C.SNG.WARMUP_RANDOM_SAMPLE = True
 
 # the large model sampling prob in training process
@@ -128,10 +218,12 @@ _C.SNG.EDGE_SAMPLING = False
 # edge sampling epoch
 _C.SNG.EDGE_SAMPLING_EPOCH = -1
 
+
 # ------------------------------------------------------------------------------------ #
 # Optimizer options in network
 # ------------------------------------------------------------------------------------ #
 _C.OPTIM = CfgNode()
+
 
 # Base learning rate
 _C.OPTIM.BASE_LR = 0.1
@@ -147,6 +239,7 @@ _C.OPTIM.STEPS = [30, 60, 90]
 
 # Learning rate multiplier for 'steps' policy
 _C.OPTIM.LR_MULT = 0.1
+
 
 # Maximal number of epochs
 _C.OPTIM.MAX_EPOCH = 200
@@ -166,7 +259,7 @@ _C.OPTIM.DAMPENING = 0.0
 # Nesterov momentum
 _C.OPTIM.NESTEROV = True
 
-# L2 regularization
+# Weight decay
 _C.OPTIM.WEIGHT_DECAY = 5e-4
 
 # Start the warm up from OPTIM.BASE_LR * OPTIM.WARMUP_FACTOR
@@ -175,11 +268,12 @@ _C.OPTIM.WARMUP_FACTOR = 0.1
 # Gradually warm up the OPTIM.BASE_LR over this number of epochs
 _C.OPTIM.WARMUP_EPOCHS = 0
 
-# Momentum dampening
+# Gradient clip threshold
 _C.OPTIM.GRAD_CLIP = 5.0
 
 # Use one-step unrolled validation loss
 _C.OPTIM.UNROLLED = False
+
 
 # ------------------------------------------------------------------------------------ #
 # Common train/test data loader options
@@ -201,59 +295,9 @@ _C.DATA_LOADER.WORLD_SIZE = 1
 # Copy the whole dataset into memory
 _C.DATA_LOADER.MEMORY_DATA = False
 
-# transformers
+# data augmentation
 _C.DATA_LOADER.PCA_JITTER = False
 _C.DATA_LOADER.COLOR_JITTER = False
-
-# ------------------------------------------------------------------------------------ #
-# Searching options
-# ------------------------------------------------------------------------------------ #
-_C.SEARCH = CfgNode()
-
-# Dataset and split
-_C.SEARCH.DATASET = "cifar10"
-_C.SEARCH.SPLIT = [0.8, 0.2]
-
-# Total mini-batch size
-_C.SEARCH.BATCH_SIZE = 256
-
-# Image size
-_C.SEARCH.IM_SIZE = 32
-
-# Evaluate model on test data every eval period epochs
-_C.SEARCH.EVAL_PERIOD = 1
-
-# Save model checkpoint every checkpoint period epochs
-_C.SEARCH.CHECKPOINT_PERIOD = 1
-
-# Resume training from the latest checkpoint in the output directory
-_C.SEARCH.AUTO_RESUME = True
-
-# Weights to start training from
-_C.SEARCH.WEIGHTS = ""
-
-# using FP16
-_C.SEARCH.AMP = False
-
-# ------------------------------------------------------------------------------------ #
-# Darts options
-# ------------------------------------------------------------------------------------ #
-_C.SEARCH.DARTS = CfgNode()
-
-_C.SEARCH.DARTS.SECOND = True
-
-# ------------------------------------------------------------------------------------ #
-# Parts options
-# ------------------------------------------------------------------------------------ #
-_C.SEARCH.PDARTS = CfgNode()
-
-_C.SEARCH.PDARTS.SECOND = True
-
-_C.SEARCH.PDARTS.add_layers = 0
-
-_C.SEARCH.PDARTS.add_width = 0
-
-_C.SEARCH.PDARTS.dropout_rate = 0.0
 
 
 # ------------------------------------------------------------------------------------ #
@@ -286,6 +330,7 @@ _C.CUDNN = CfgNode()
 # Note that this may increase the memory usage and will likely not result
 # in overall speedups when variable size inputs are used (e.g. COCO training)
 _C.CUDNN.BENCHMARK = True
+
 
 # ------------------------------------------------------------------------------------ #
 # Misc options
@@ -323,12 +368,32 @@ _C.DOWNLOAD_CACHE = "/tmp/pycls-download-cache"
 # If we use a determinstic to stablize the search process
 _C.DETERMINSTIC = True
 
+
 # ------------------------------------------------------------------------------------ #
-#  keys in DARTS
+# DARTS search options
 # ------------------------------------------------------------------------------------ #
 _C.DARTS = CfgNode()
+
+_C.DARTS.SECOND = True
+
 _C.DARTS.ALPHA_LR = 3e-4
+
 _C.DARTS.ALPHA_WEIGHT_DECAY = 1e-3
+
+
+# ------------------------------------------------------------------------------------ #
+# PDARTS search options
+# ------------------------------------------------------------------------------------ #
+_C.PDARTS = CfgNode()
+
+_C.PDARTS.SECOND = True
+
+_C.PDARTS.add_layers = 0
+
+_C.PDARTS.add_width = 0
+
+_C.PDARTS.dropout_rate = 0.0
+
 
 # ------------------------------------------------------------------------------------ #
 # Batch norm options
@@ -340,13 +405,6 @@ _C.BN.EPS = 1e-5
 
 # BN momentum (BN momentum in PyTorch = 1 - BN momentum in Caffe2)
 _C.BN.MOM = 0.1
-
-# ------------------------------------------------------------------------------------ #
-# Deprecated keys
-# ------------------------------------------------------------------------------------ #
-
-_C.register_deprecated_key("PREC_TIME.BATCH_SIZE")
-_C.register_deprecated_key("PREC_TIME.ENABLED")
 
 
 def dump_cfg():

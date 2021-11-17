@@ -1,0 +1,37 @@
+SPACE:
+  NAME: 'pdarts'
+  CHANNEL: 16
+  LAYERS: 5
+  NODES: 4
+  PRIMITIVES: [
+    'none',
+    'max_pool_3x3',
+    'avg_pool_3x3',
+    'skip_connect',
+    'sep_conv_3x3',
+    'sep_conv_5x5',
+    'dil_conv_3x3',
+    'dil_conv_5x5'
+  ]
+  BASIC_OP: []
+DATA_LOADER:
+  BACKEND: 'custom'
+SEARCH:
+  DATASET: 'cifar10'
+  NUM_CLASSES: 10
+  SPLIT: [0.5, 0.5]
+  BATCH_SIZE: 64
+  IM_SIZE: 32
+  CHECKPOINT_PERIOD: 10
+OPTIM:
+  MAX_EPOCH: 25
+  MIN_LR: 0.0
+  BASE_LR: 0.025
+  WEIGHT_DECAY: 3e-4
+DARTS:
+  ALPHA_LR: 6e-4
+PDARTS:
+  add_layers: 0
+  add_width: 0
+  dropout_rate: 0.1
+OUT_DIR: '/userhome/project/XNAS/experiment/pdarts/'

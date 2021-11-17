@@ -2,15 +2,6 @@ from xnas.search_space.mb_layers import *
 import numpy as np
 
 
-def int2list(val, repeat_time=1):
-    if isinstance(val, list) or isinstance(val, np.ndarray):
-        return val
-    elif isinstance(val, tuple):
-        return list(val)
-    else:
-        return [val for _ in range(repeat_time)]
-
-
 def build_candidate_ops(candidate_ops, in_channels, out_channels, stride, ops_order,
                         act_func='relu6', use_se=False):
     if candidate_ops is None:
@@ -68,35 +59,6 @@ class MobileInvertedResidualBlock(MyNetwork):
             res = skip_x + conv_x
         return res
 
-    @property
-    def module_str(self):
-        return '(%s, %s)' % (
-            self.mobile_inverted_conv.module_str, self.shortcut.module_str if self.shortcut is not None else None
-        )
-
-    @property
-    def config(self):
-        return {
-            'name': MobileInvertedResidualBlock.__name__,
-            'mobile_inverted_conv': self.mobile_inverted_conv.config,
-            'shortcut': self.shortcut.config if self.shortcut is not None else None,
-        }
-
-    @staticmethod
-    def build_from_config(config):
-        mobile_inverted_conv = set_layer_from_config(config['mobile_inverted_conv'])
-        shortcut = set_layer_from_config(config['shortcut'])
-        return MobileInvertedResidualBlock(mobile_inverted_conv, shortcut)
-
-    def get_flops(self, x):
-        flops1, conv_x = self.mobile_inverted_conv.get_flops(x)
-        if self.shortcut:
-            flops2, _ = self.shortcut.get_flops(x)
-        else:
-            flops2 = 0
-
-        return flops1 + flops2, self.forward(x)
-
 
 class MixedEdge(MyModule):
     MODE = None  # full, two, None, full_v2
@@ -150,8 +112,6 @@ class MixedEdge(MyModule):
         self.inactive_index = [_i for _i in range(0, chosen_idx)] + \
                               [_i for _i in range(chosen_idx + 1, self.n_choices)]
 
-    """ """
-
     def forward(self, x):
         # output = 0
         # for i in self.active_index:
@@ -167,30 +127,6 @@ class MixedEdge(MyModule):
                 _x += value * self.candidate_ops[i](x)
         return _x
 
-    @property
-    def module_str(self):
-        chosen_index, probs = self.chosen_index
-        return 'Mix(%s, %.3f)' % (self.candidate_ops[chosen_index].module_str, probs)
-
     @staticmethod
     def name():
         return 'MixedEdge'
-
-    @property
-    def config(self):
-        return {
-            'name': MixedEdge.__name__,
-            'selection': [i.config for i in self.candidate_ops],
-        }
-
-    @staticmethod
-    def build_from_config(config):
-        raise ValueError('not needed')
-
-    def get_flops(self, x):
-        """ Only active paths taken into consideration when calculating FLOPs """
-        flops = 0
-        for i in self.active_index:
-            delta_flop, _ = self.candidate_ops[i].get_flops(x)
-            flops += delta_flop
-        return flops, self.forward(x)

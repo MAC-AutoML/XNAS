@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright (c) Facebook, Inc. and its affiliates.
 #
 # This source code is licensed under the MIT license found in the
@@ -83,54 +81,54 @@ def float_to_decimal(data, prec=4):
         return data
 
 
-def get_log_files(log_dir, name_filter=""):
-    """Get all log files in directory containing subdirs of trained models."""
-    names = [n for n in sorted(os.listdir(log_dir)) if name_filter in n]
-    files = [os.path.join(log_dir, n, _LOG_FILE) for n in names]
-    f_n_ps = [(f, n) for (f, n) in zip(files, names) if os.path.exists(f)]
-    files, names = zip(*f_n_ps) if f_n_ps else [], []
-    return files, names
+# def get_log_files(log_dir, name_filter=""):
+#     """Get all log files in directory containing subdirs of trained models."""
+#     names = [n for n in sorted(os.listdir(log_dir)) if name_filter in n]
+#     files = [os.path.join(log_dir, n, _LOG_FILE) for n in names]
+#     f_n_ps = [(f, n) for (f, n) in zip(files, names) if os.path.exists(f)]
+#     files, names = zip(*f_n_ps) if f_n_ps else [], []
+#     return files, names
 
 
-def load_log_data(log_file, data_types_to_skip=()):
-    """Loads log data into a dictionary of the form data[data_type][metric][index]."""
-    # Load log_file
-    assert os.path.exists(log_file), "Log file not found: {}".format(log_file)
-    with open(log_file, "r") as f:
-        lines = f.readlines()
-    # Extract and parse lines that start with _TAG and have a type specified
-    lines = [_l[_l.find(_TAG) + len(_TAG):] for _l in lines if _TAG in _l]
-    lines = [simplejson.loads(_l) for _l in lines]
-    lines = [_l for _l in lines if _TYPE in _l and not _l[_TYPE]
-             in data_types_to_skip]
-    # Generate data structure accessed by data[data_type][index][metric]
-    data_types = [_l[_TYPE] for _l in lines]
-    data = {t: [] for t in data_types}
-    for t, line in zip(data_types, lines):
-        del line[_TYPE]
-        data[t].append(line)
-    # Generate data structure accessed by data[data_type][metric][index]
-    for t in data:
-        metrics = sorted(data[t][0].keys())
-        err_str = "Inconsistent metrics in log for _type={}: {}".format(
-            t, metrics)
-        assert all(sorted(d.keys()) == metrics for d in data[t]), err_str
-        data[t] = {m: [d[m] for d in data[t]] for m in metrics}
-    return data
+# def load_log_data(log_file, data_types_to_skip=()):
+#     """Loads log data into a dictionary of the form data[data_type][metric][index]."""
+#     # Load log_file
+#     assert os.path.exists(log_file), "Log file not found: {}".format(log_file)
+#     with open(log_file, "r") as f:
+#         lines = f.readlines()
+#     # Extract and parse lines that start with _TAG and have a type specified
+#     lines = [_l[_l.find(_TAG) + len(_TAG):] for _l in lines if _TAG in _l]
+#     lines = [simplejson.loads(_l) for _l in lines]
+#     lines = [_l for _l in lines if _TYPE in _l and not _l[_TYPE]
+#              in data_types_to_skip]
+#     # Generate data structure accessed by data[data_type][index][metric]
+#     data_types = [_l[_TYPE] for _l in lines]
+#     data = {t: [] for t in data_types}
+#     for t, line in zip(data_types, lines):
+#         del line[_TYPE]
+#         data[t].append(line)
+#     # Generate data structure accessed by data[data_type][metric][index]
+#     for t in data:
+#         metrics = sorted(data[t][0].keys())
+#         err_str = "Inconsistent metrics in log for _type={}: {}".format(
+#             t, metrics)
+#         assert all(sorted(d.keys()) == metrics for d in data[t]), err_str
+#         data[t] = {m: [d[m] for d in data[t]] for m in metrics}
+#     return data
 
 
-def sort_log_data(data):
-    """Sort each data[data_type][metric] by epoch or keep only first instance."""
-    for t in data:
-        if "epoch" in data[t]:
-            epoch = [float(e.split("/")[0]) for e in data[t]["epoch"]]
-            if "iter" in data[t]:
-                i_cur = [float(i.split("/")[0]) for i in data[t]["iter"]]
-                i_max = [float(i.split("/")[1]) for i in data[t]["iter"]]
-                epoch = [e + (ic - 1.0) / im for e, ic,
-                         im in zip(epoch, i_cur, i_max)]
-            for m in data[t]:
-                data[t][m] = [v for _, v in sorted(zip(epoch, data[t][m]))]
-        else:
-            data[t] = {m: d[0] for m, d in data[t].items()}
-    return data
+# def sort_log_data(data):
+#     """Sort each data[data_type][metric] by epoch or keep only first instance."""
+#     for t in data:
+#         if "epoch" in data[t]:
+#             epoch = [float(e.split("/")[0]) for e in data[t]["epoch"]]
+#             if "iter" in data[t]:
+#                 i_cur = [float(i.split("/")[0]) for i in data[t]["iter"]]
+#                 i_max = [float(i.split("/")[1]) for i in data[t]["iter"]]
+#                 epoch = [e + (ic - 1.0) / im for e, ic,
+#                          im in zip(epoch, i_cur, i_max)]
+#             for m in data[t]:
+#                 data[t][m] = [v for _, v in sorted(zip(epoch, data[t][m]))]
+#         else:
+#             data[t] = {m: d[0] for m, d in data[t].items()}
+#     return data

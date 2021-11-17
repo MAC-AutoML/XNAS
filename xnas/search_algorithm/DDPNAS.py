@@ -7,7 +7,7 @@ import random
 
 
 class CategoricalDDPNAS:
-    def __init__(self, category, steps, gamma=0.8):
+    def __init__(self, category, steps, gamma=0.8, theta_lr=0.01):
         self.p_model = Categorical(categories=category)
         # how many steps to pruning the distribution
         self.steps = steps
@@ -28,7 +28,8 @@ class CategoricalDDPNAS:
         self.pruned_index_num = len(self.param_index)
         self.non_param_index_count = [0] * self.p_model.d
         self.param_index_count = [0] * self.p_model.d
-        self.gamma = 0.8
+        self.gamma = gamma
+        self.theta_lr = theta_lr
         self.velocity = np.zeros(self.p_model.theta.shape)
 
     def init_record(self):
@@ -55,7 +56,8 @@ class CategoricalDDPNAS:
         return np.array(sample)
 
     def sample_with_constrains(self):
-        pass
+        # pass
+        raise NotImplementedError
 
     def record_information(self, sample, performance):
         # self.sample = sample
@@ -83,8 +85,9 @@ class CategoricalDDPNAS:
                 expectation = expectation / float(self.steps)
                 # self.p_model.theta = expectation + self.score_decay * self.p_model.theta
                 self.velocity = self.gamma * self.velocity + (1 - self.gamma) * expectation
+                # NOTE: THETA_LR not applied.
                 self.p_model.theta += self.velocity
-                # self.p_model.theta = self.p_model.theta + self.learning_rate * expectation
+                # self.p_model.theta = self.p_model.theta + self.theta_lr * expectation
                 # prune the index
                 pruned_weight = copy.deepcopy(self.p_model.theta)
                 for index in range(self.p_model.d):

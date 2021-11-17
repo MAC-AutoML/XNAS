@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 import numpy as np
 from xnas.search_algorithm.utils import Categorical
 from xnas.core.utils import index_to_one_hot, one_hot_to_index

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright (c) Facebook, Inc. and its affiliates.
 #
 # This source code is licensed under the MIT license found in the
@@ -20,9 +18,9 @@ class Timer(object):
         self.diff = None
         self.average_time = None
         self.reset()
-
+    
     def tic(self):
-        # using time.time as time.clock does not normalize for multithreading
+        # using time.time as time.clock does not nomalize for multithreading
         self.start_time = time.time()
 
     def toc(self):

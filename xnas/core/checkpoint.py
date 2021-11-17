@@ -1,11 +1,9 @@
-#!/usr/bin/env python3
-
 # Copyright (c) Facebook, Inc. and its affiliates.
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-"""Functions that handle saving and loading of checkpoints."""
+"""Functions that handle saving and loading of checkpoints"""
 
 import os
 
@@ -13,10 +11,10 @@ import torch
 from xnas.core.config import cfg
 
 
-# Common prefix for checkpoint file names
-_NAME_PREFIX = "model_epoch_"
 # Checkpoints directory name
 _DIR_NAME = "checkpoints"
+# Common prefix for checkpoint file names
+_NAME_PREFIX = "model_epoch_"
 
 
 def get_checkpoint_dir():
