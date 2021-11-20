@@ -167,7 +167,7 @@ dependencies:
     - lightgbm==3.1.1
     - markupsafe==2.0.1
     - matplotlib==3.4.2
-    - nas-bench-201==2.0
+    - nas-bench-201==1.0
     - nasbench301==0.3
     - nats-bench==1.4
     - netifaces==0.10.9
