@@ -179,9 +179,11 @@ class AuxiliaryHead(nn.Module):
                 nn.BatchNorm2d(768),
                 nn.ReLU(inplace=True))
         else:
+            # input_size is 14*14 when used in ImageNet
             self.net = nn.Sequential(
                 nn.ReLU(inplace=True),
-                nn.AdaptiveAvgPool2d((2, 2)),
+                # nn.AdaptiveAvgPool2d((2, 2)),
+                nn.AvgPool2d(5, stride=2, padding=0, count_include_pad=False),
                 nn.Conv2d(C, 128, kernel_size=1, bias=False),
                 nn.BatchNorm2d(128),
                 nn.ReLU(inplace=True),
@@ -243,7 +245,7 @@ class AugmentCNN(nn.Module):
         """
         Args:
             input_size: size of height and width (assuming height = width)
-            C_in: # of input channels
+            C_in: # of input channels, typically 3 is used for RGB images.
             C: # of starting model channels
         """
         super().__init__()
