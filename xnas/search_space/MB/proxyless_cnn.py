@@ -1,4 +1,4 @@
-from xnas.search_space.mb_ops import *
+from xnas.search_space.MB.ops import *
 from xnas.search_space.utils import profile, make_divisible
 import torch
 import pdb

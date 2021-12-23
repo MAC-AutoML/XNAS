@@ -1,5 +1,5 @@
-from xnas.search_space.cellbased_basic_ops import *
-import xnas.search_space.cellbased_basic_genotypes as gt
+from xnas.search_space.DARTS.ops import *
+import xnas.search_space.DARTS.genos as gt
 
 
 class DartsCell(nn.Module):

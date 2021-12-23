@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import copy
-from xnas.search_space.cellbased_basic_ops import *
+from xnas.search_space.DARTS.ops import *
 from torch.autograd import Variable
 
 

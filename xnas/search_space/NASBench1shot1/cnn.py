@@ -1,4 +1,4 @@
-from xnas.search_space.cellbased_1shot1_ops import *
+from xnas.search_space.NASBench1shot1.ops import *
 from xnas.core.utils import index_to_one_hot, one_hot_to_index
 
 

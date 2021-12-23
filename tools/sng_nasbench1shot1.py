@@ -19,7 +19,7 @@ from xnas.search_algorithm.GridSearch import GridSearch
 from xnas.search_algorithm.MDENAS import CategoricalMDENAS
 from xnas.search_algorithm.MIGO import MIGO
 from xnas.search_algorithm.SNG import SNG, Dynamic_SNG
-from xnas.search_space.cellbased_1shot1_ops import *
+from xnas.search_space.NASBench1shot1.ops import *
 from sng_utils import EpochSumCategoryTestFunction, SumCategoryTestFunction
 
 from xnas.core.timer import Timer

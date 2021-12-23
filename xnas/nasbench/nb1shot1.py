@@ -1,7 +1,7 @@
 import ConfigSpace
 import numpy as np
 
-from xnas.search_space.cellbased_1shot1_ops import INPUT, OUTPUT, CONV1X1, CONV3X3, MAXPOOL3X3, OUTPUT_NODE
+from xnas.search_space.NASBench1shot1.ops import INPUT, OUTPUT, CONV1X1, CONV3X3, MAXPOOL3X3, OUTPUT_NODE
 
 from nasbench import api
 

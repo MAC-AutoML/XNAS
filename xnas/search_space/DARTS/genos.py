@@ -6,7 +6,7 @@
 from collections import namedtuple
 import torch
 import torch.nn as nn
-from xnas.search_space.cellbased_basic_ops import *
+from xnas.search_space.DARTS.ops import *
 
 
 Genotype = namedtuple('Genotype', 'normal normal_concat reduce reduce_concat')

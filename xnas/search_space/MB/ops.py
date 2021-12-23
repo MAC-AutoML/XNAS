@@ -1,4 +1,4 @@
-from xnas.search_space.mb_layers import *
+from xnas.search_space.MB.layers import *
 import numpy as np
 
 

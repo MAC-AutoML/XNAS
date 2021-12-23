@@ -1,4 +1,4 @@
-from xnas.search_space.cellbased_1shot1_ops import SearchSpace
+from xnas.search_space.NASBench1shot1.ops import SearchSpace
 import ConfigSpace
 import numpy as np
 import random
