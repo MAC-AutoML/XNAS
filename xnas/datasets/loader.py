@@ -16,17 +16,18 @@ from torch.utils.data.distributed import DistributedSampler
 
 # Supported datasets
 _DATASETS = {"cifar10": XNAS_Cifar10, "imagenet": XNAS_ImageFolder}
+# Relative data paths to default data directory
+_PATHS = {"cifar10": "cifar-10-batches-py",
+          "imagenet": "ImageNet2012"}
 
-
-def construct_loader(dataset_name, split_list, batch_size):
+def construct_loader(dataset_name, split_list, batch_size, datapath=None):
     # Default data directory (/path/pycls/pycls/datasets/data)
     if cfg.DATA_LOADER.MEMORY_DATA:
         _DATA_DIR = "/userhome/temp_data"
+    elif datapath is not None:
+        _DATA_DIR = datapath
     else:
         _DATA_DIR = "/gdata"
-    # Relative data paths to default data directory
-    _PATHS = {"cifar10": "cifar10/cifar-10-batches-py",
-              "imagenet": "ImageNet2012"}
     # Constructs the data loader for the given dataset
     assert dataset_name in _DATASETS and dataset_name in _PATHS, "Dataset '{}' not supported".format(
         dataset_name)

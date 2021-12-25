@@ -54,7 +54,7 @@ export PYTHONPATH=$PYTHONPATH:/Path/to/XNAS
 ## Usage
 
 ```bash
-# [Optional] set gpu devices
+# set gpu devices. Multiple GPUs are under test and may cause errors now.
 export CUDA_VISIBLE_DEVICES=0
 # unit test example
 python tools/test_func/sng_function_optimization.py

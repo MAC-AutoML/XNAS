@@ -1,6 +1,7 @@
 # Byte-compiled / optimized / DLL files
 data/
 experiment/
+exp/
 __pycache__/
 tmp/
 .idea/

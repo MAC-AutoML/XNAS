@@ -55,7 +55,7 @@ def main():
 
     # Get data loader
     [train_loader, valid_loader] = construct_loader(
-        cfg.TRAIN.DATASET, cfg.TRAIN.SPLIT, cfg.TRAIN.BATCH_SIZE)
+        cfg.TRAIN.DATASET, cfg.TRAIN.SPLIT, cfg.TRAIN.BATCH_SIZE, cfg.TRAIN.DATAPATH)
 
     lr_scheduler = lr_scheduler_builder(optimizer)
 

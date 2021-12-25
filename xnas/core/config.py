@@ -73,6 +73,9 @@ _C.SEARCH = CfgNode()
 # Dataset
 _C.SEARCH.DATASET = "cifar10"
 
+# data path using in indepandent train
+_C.SEARCH.DATAPATH = "/gdata/cifar10/"
+
 # num of classes
 _C.SEARCH.NUM_CLASSES = 10
 
@@ -105,9 +108,6 @@ _C.SEARCH.WEIGHTS = ""
 
 # using FP16
 _C.SEARCH.AMP = False
-
-# data path using in indepandent train
-_C.SEARCH.DATAPATH = "/gdata/cifar10/"
 
 
 # ------------------------------------------------------------------------------------ #
@@ -352,7 +352,7 @@ _C.RNG_SEED = 1
 # Log destination ('stdout' or 'file')
 _C.LOG_DEST = "file"
 
-# Log period in iters
+# Log period in iters, used in xnas.core.meters
 _C.LOG_PERIOD = 10
 
 # Distributed backend
@@ -374,7 +374,7 @@ _C.DETERMINSTIC = True
 # ------------------------------------------------------------------------------------ #
 _C.DARTS = CfgNode()
 
-_C.DARTS.SECOND = True
+_C.DARTS.UNROLLED = True
 
 _C.DARTS.ALPHA_LR = 3e-4
 
@@ -386,7 +386,7 @@ _C.DARTS.ALPHA_WEIGHT_DECAY = 1e-3
 # ------------------------------------------------------------------------------------ #
 _C.PDARTS = CfgNode()
 
-_C.PDARTS.SECOND = True
+_C.PDARTS.UNROLLED = True
 
 _C.PDARTS.add_layers = 0
 
@@ -405,6 +405,31 @@ _C.BN.EPS = 1e-5
 
 # BN momentum (BN momentum in PyTorch = 1 - BN momentum in Caffe2)
 _C.BN.MOM = 0.1
+
+
+# ------------------------------------------------------------------------------------ #
+# DrNAS options
+# ------------------------------------------------------------------------------------ #
+_C.DRNAS = CfgNode()
+
+# arch learning rate
+_C.DRNAS.ALPHA_LR = 3e-4
+
+# using unrolled in darts step
+_C.DRNAS.UNROLLED = False
+
+# init partial channel parameter
+_C.DRNAS.K = 6
+
+# regularization type, chosen in ["l2", "kl"]
+_C.DRNAS.REG_TYPE = "l2"
+
+# scaling factor of the regularization term, default value is proper for l2
+# for kl you might adjust reg_scale to match l2
+_C.DRNAS.REG_SCALE = 1e-3
+
+
+
 
 
 def dump_cfg():

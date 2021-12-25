@@ -157,7 +157,7 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
             else:
                 alpha_optimizer.zero_grad()
                 architect.unrolled_backward(
-                    trn_X, trn_y, val_X, val_y, lr, w_optimizer, unrolled=cfg.DARTS.SECOND)
+                    trn_X, trn_y, val_X, val_y, lr, w_optimizer, unrolled=cfg.DARTS.UNROLLED)
                 alpha_optimizer.step()
 
         # phase 1. child network step (w)

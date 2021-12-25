@@ -13,9 +13,10 @@ import torchvision.datasets as dset
 import torch.backends.cudnn as cudnn
 
 import xnas.search_space.DrNAS.utils as utils
-from xnas.search_space.DrNAS.nb201space.cnn import TinyNetwork, TinyNetworkGDAS
+from xnas.search_space.DrNAS.nb201space.cnn import TinyNetwork
 from xnas.search_space.DrNAS.nb201space.ops import NAS_BENCH_201
 from xnas.search_algorithm.DrNAS import Architect
+
 
 from torch.utils.tensorboard import SummaryWriter
 from nas_201_api import NASBench201API as API
@@ -32,7 +33,6 @@ parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float, default=3e-4, help='weight decay')
 parser.add_argument('--report_freq', type=float, default=50, help='report frequency')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
-parser.add_argument('--epochs', type=int, default=100, help='num of training epochs')
 parser.add_argument('--init_channels', type=int, default=16, help='num of init channels')
 parser.add_argument('--cutout', action='store_true', default=False, help='use cutout')
 parser.add_argument('--cutout_length', type=int, default=16, help='cutout length')
@@ -43,10 +43,9 @@ parser.add_argument('--grad_clip', type=float, default=5, help='gradient clippin
 parser.add_argument('--train_portion', type=float, default=0.5, help='portion of training data')
 parser.add_argument('--unrolled', action='store_true', default=False, help='use one-step unrolled validation loss')
 parser.add_argument('--arch_learning_rate', type=float, default=3e-4, help='learning rate for arch encoding')
-parser.add_argument('--arch_weight_decay', type=float, default=1e-3, help='weight decay for arch encoding')
 parser.add_argument('--tau_max', type=float, default=10, help='Max temperature (tau) for the gumbel softmax.')
 parser.add_argument('--tau_min', type=float, default=1, help='Min temperature (tau) for the gumbel softmax.')
-parser.add_argument('--k', type=int, default=1, help='partial channel parameter')
+parser.add_argument('--k', type=int, default=4, help='init partial channel parameter')
 #### regularization
 parser.add_argument('--reg_type', type=str, default='l2', choices=[
                     'l2', 'kl'], help='regularization type, kl is implemented for dirichlet only')
@@ -54,7 +53,7 @@ parser.add_argument('--reg_scale', type=float, default=1e-3,
                     help='scaling factor of the regularization term, default value is proper for l2, for kl you might adjust reg_scale to match l2')
 args = parser.parse_args()
 
-args.save = '../experiments/nasbench201/{}-search-{}-{}-{}'.format(
+args.save = '../experiments/nasbench201/{}-search-progressive-{}-{}-{}'.format(
     args.method, args.save, time.strftime("%Y%m%d-%H%M%S"), args.seed)
 if not args.dataset == 'cifar10':
     args.save += '-' + args.dataset
@@ -62,10 +61,7 @@ if args.unrolled:
     args.save += '-unrolled'
 if not args.weight_decay == 3e-4:
     args.save += '-weight_l2-' + str(args.weight_decay)
-if not args.arch_weight_decay == 1e-3:
-    args.save += '-alpha_l2-' + str(args.arch_weight_decay)
-if not args.method == 'gdas':
-    args.save += '-pc-' + str(args.k)
+args.save += '-pc-' + str(args.k)
 
 utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
 
@@ -125,18 +121,16 @@ def main():
     criterion = nn.CrossEntropyLoss()
     criterion = criterion.cuda()
 
-    if args.method == 'gdas' or args.method == 'snas':
+    if args.method == 'snas':
         # Create the decrease step for the gumbel softmax temperature
+        args.epochs = 100
         tau_step = (args.tau_min - args.tau_max) / args.epochs
         tau_epoch = args.tau_max
-        if args.method == 'gdas':
-            model = TinyNetworkGDAS(C=args.init_channels, N=5, max_nodes=4, num_classes=n_classes, criterion=criterion, search_space=NAS_BENCH_201)
-        else:
-            model = TinyNetwork(C=args.init_channels, N=5, max_nodes=4, num_classes=n_classes,
-                                criterion=criterion, search_space=NAS_BENCH_201, k=args.k, species='gumbel')
+        model = TinyNetwork(C=args.init_channels, N=5, max_nodes=4, num_classes=n_classes,
+                            criterion=criterion, search_space=NAS_BENCH_201, k=args.k, species='gumbel')
     elif args.method == 'dirichlet':
         model = TinyNetwork(C=args.init_channels, N=5, max_nodes=4, num_classes=n_classes,
-                            criterion=criterion, search_space=NAS_BENCH_201, k=args.k, species='dirichlet',
+                            criterion=criterion, search_space=NAS_BENCH_201, k=args.k, species='dirichlet', 
                             reg_type=args.reg_type, reg_scale=args.reg_scale)
     elif args.method == 'darts':
         model = TinyNetwork(C=args.init_channels, N=5, max_nodes=4, num_classes=n_classes,
@@ -183,58 +177,81 @@ def main():
         sampler=torch.utils.data.sampler.SubsetRandomSampler(indices[split:num_train]),
         pin_memory=True)
 
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, float(args.epochs), eta_min=args.learning_rate_min)
-
     architect = Architect(model, args)
+    
+    # configure progressive parameter
+    epoch = 0
+    ks = [4, 2]
+    num_keeps = [5, 3]
+    train_epochs = [2, 2] if 'debug' in args.save else [50, 50]
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, float(sum(train_epochs)), eta_min=args.learning_rate_min)
+    
+    for i, current_epochs in enumerate(train_epochs):
+        for e in range(current_epochs):
+            lr = scheduler.get_lr()[0]
+            logging.info('epoch %d lr %e', epoch, lr)
+            genotype = model.genotype()
+            logging.info('genotype = %s', genotype)
+            model.show_arch_parameters(logger)
 
-    for epoch in range(args.epochs):
-        lr = scheduler.get_lr()[0]
-        logging.info('epoch %d lr %e', epoch, lr)
+            # training
+            train_acc, train_obj = train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, e)
+            logging.info('train_acc %f', train_acc)
 
-        genotype = model.genotype()
-        logging.info('genotype = %s', genotype)
-        model.show_arch_parameters()
+            # validation
+            valid_acc, valid_obj = infer(valid_queue, model, criterion)
+            logging.info('valid_acc %f', valid_acc)
 
-        # training
-        train_acc, train_obj = train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, epoch)
-        logging.info('train_acc %f', train_acc)
+            if not 'debug' in args.save:
+                # nasbench201
+                result = api.query_by_arch(model.genotype())
+                logging.info('{:}'.format(result))
+                cifar10_train, cifar10_test, cifar100_train, cifar100_valid, \
+                    cifar100_test, imagenet16_train, imagenet16_valid, imagenet16_test = distill(result)
+                logging.info('cifar10 train %f test %f', cifar10_train, cifar10_test)
+                logging.info('cifar100 train %f valid %f test %f', cifar100_train, cifar100_valid, cifar100_test)
+                logging.info('imagenet16 train %f valid %f test %f', imagenet16_train, imagenet16_valid, imagenet16_test)
 
-        # validation
-        valid_acc, valid_obj = infer(valid_queue, model, criterion)
-        logging.info('valid_acc %f', valid_acc)
+                # tensorboard
+                writer.add_scalars('accuracy', {'train':train_acc,'valid':valid_acc}, epoch)
+                writer.add_scalars('loss', {'train':train_obj,'valid':valid_obj}, epoch)
+                writer.add_scalars('nasbench201/cifar10', {'train':cifar10_train,'test':cifar10_test}, epoch)
+                writer.add_scalars('nasbench201/cifar100', {'train':cifar100_train,'valid':cifar100_valid, 'test':cifar100_test}, epoch)
+                writer.add_scalars('nasbench201/imagenet16', {'train':imagenet16_train,'valid':imagenet16_valid, 'test':imagenet16_test}, epoch)
 
-        if not 'debug' in args.save:
-            # nasbench201
-            result = api.query_by_arch(model.genotype())
-            logging.info('{:}'.format(result))
-            cifar10_train, cifar10_test, cifar100_train, cifar100_valid, \
-                cifar100_test, imagenet16_train, imagenet16_valid, imagenet16_test = distill(result)
-            logging.info('cifar10 train %f test %f', cifar10_train, cifar10_test)
-            logging.info('cifar100 train %f valid %f test %f', cifar100_train, cifar100_valid, cifar100_test)
-            logging.info('imagenet16 train %f valid %f test %f', imagenet16_train, imagenet16_valid, imagenet16_test)
+                utils.save_checkpoint({
+                    'epoch': epoch + 1,
+                    'state_dict': model.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                    'alpha': model.arch_parameters()
+                }, False, args.save)
+                
+            epoch += 1
+            scheduler.step()
+            if args.method == 'snas':
+                # Decrease the temperature for the gumbel softmax linearly
+                tau_epoch += tau_step
+                logging.info('tau %f', tau_epoch)
+                model.set_tau(tau_epoch)
 
-            # tensorboard
-            writer.add_scalars('accuracy', {'train':train_acc,'valid':valid_acc}, epoch)
-            writer.add_scalars('loss', {'train':train_obj,'valid':valid_obj}, epoch)
-            writer.add_scalars('nasbench201/cifar10', {'train':cifar10_train,'test':cifar10_test}, epoch)
-            writer.add_scalars('nasbench201/cifar100', {'train':cifar100_train,'valid':cifar100_valid, 'test':cifar100_test}, epoch)
-            writer.add_scalars('nasbench201/imagenet16', {'train':imagenet16_train,'valid':imagenet16_valid, 'test':imagenet16_test}, epoch)
+        if not i == len(train_epochs) - 1:
+            model.pruning(num_keeps[i+1])
+            # architect.pruning([model._mask])
+            model.wider(ks[i+1])
+            optimizer = utils.configure_optimizer(optimizer, torch.optim.SGD(
+                model.get_weights(),
+                args.learning_rate,
+                momentum=args.momentum,
+                weight_decay=args.weight_decay))
+            scheduler = utils.configure_scheduler(scheduler, torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer, float(sum(train_epochs)), eta_min=args.learning_rate_min))
+            logging.info('pruning finish, %d ops left per edge', num_keeps[i+1])
+            logging.info('network wider finish, current pc parameter %d', ks[i+1])
 
-            utils.save_checkpoint({
-                'epoch': epoch + 1,
-                'state_dict': model.state_dict(),
-                'optimizer': optimizer.state_dict(),
-                'alpha': model.arch_parameters()
-            }, False, args.save)
-
-        scheduler.step()
-        if args.method == 'gdas' or args.method == 'snas':
-            # Decrease the temperature for the gumbel softmax linearly
-            tau_epoch += tau_step
-            logging.info('tau %f', tau_epoch)
-            model.set_tau(tau_epoch)
-
+    genotype = model.genotype()
+    logging.info('genotype = %s', genotype)
+    model.show_arch_parameters(logger)
     writer.close()
 
 
@@ -255,8 +272,8 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, 
         input_search = input_search.cuda()
         target_search = target_search.cuda(non_blocking=True)
         
-        # if epoch >= 15:
-        architect.step(input, target, input_search, target_search, lr, optimizer, unrolled=args.unrolled)
+        if epoch >= 10:
+            architect.step(input, target, input_search, target_search, lr, optimizer, unrolled=args.unrolled)
         optimizer.zero_grad()
         architect.optimizer.zero_grad()
 
@@ -306,6 +323,7 @@ def infer(valid_queue, model, criterion):
                 logging.info('valid %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
             if 'debug' in args.save:
                 break
+
     return top1.avg, objs.avg
 
 

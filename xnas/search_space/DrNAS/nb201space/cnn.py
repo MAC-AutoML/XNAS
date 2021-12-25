@@ -1,5 +1,4 @@
 import random
-import logging
 from copy import deepcopy
 
 import torch
@@ -9,7 +8,7 @@ from torch.distributions.dirichlet import Dirichlet
 from torch.distributions.kl import kl_divergence
 
 from xnas.search_space.DrNAS.nb201space.genos import Structure
-from xnas.search_space.DrNAS.nb201space.ops import OPS, ResNetBasicblock
+from xnas.search_space.DrNAS.nb201space.ops import OPS, ResNetBasicblock, NAS_BENCH_201
 from xnas.search_space.DrNAS.utils import process_step_matrix, prune
 
 
@@ -26,7 +25,6 @@ class NAS201SearchCell(nn.Module):
         track_running_stats=True,
     ):
         super(NAS201SearchCell, self).__init__()
-
         self.op_names = deepcopy(op_names)
         self.edges = nn.ModuleDict()
         self.max_nodes = max_nodes
@@ -248,9 +246,6 @@ class NAS201SearchCell_PartialChannel(NAS201SearchCell):
                 op.wider(self.in_dim // k, self.out_dim // k)
 
 
-SearchCell = NAS201SearchCell_PartialChannel
-
-
 class TinyNetwork(nn.Module):
     def __init__(
         self,
@@ -289,7 +284,7 @@ class TinyNetwork(nn.Module):
             if reduction:
                 cell = ResNetBasicblock(C_prev, C_curr, 2)
             else:
-                cell = SearchCell(
+                cell = NAS201SearchCell_PartialChannel(
                     C_prev,
                     C_curr,
                     1,
@@ -356,9 +351,9 @@ class TinyNetwork(nn.Module):
     def arch_parameters(self):
         return [self._arch_parameters]
 
-    def show_arch_parameters(self):
+    def show_arch_parameters(self, logger):
         with torch.no_grad():
-            logging.info(
+            logger.info(
                 "arch-parameters :\n{:}".format(
                     process_step_matrix(
                         self._arch_parameters, "softmax", self._mask
@@ -366,7 +361,7 @@ class TinyNetwork(nn.Module):
                 )
             )
             if self.species == "dirichlet":
-                logging.info(
+                logger.info(
                     "concentration :\n{:}".format(
                         (F.elu(self._arch_parameters) + 1).cpu()
                     )
@@ -409,7 +404,7 @@ class TinyNetwork(nn.Module):
 
         feature = self.stem(inputs)
         for i, cell in enumerate(self.cells):
-            if isinstance(cell, SearchCell):
+            if isinstance(cell, NAS201SearchCell_PartialChannel):
                 feature = cell(feature, alphas)
             else:
                 feature = cell(feature)
@@ -423,12 +418,11 @@ class TinyNetwork(nn.Module):
     def wider(self, k):
         self.k = k
         for cell in self.cells:
-            if isinstance(cell, SearchCell):
+            if isinstance(cell, NAS201SearchCell_PartialChannel):
                 cell.wider(k)
 
 
-SearchCellGDAS = NAS201SearchCell
-
+# inherited from the DrNAS code, will not be used here.
 class TinyNetworkGDAS(nn.Module):
     def __init__(
         self,
@@ -461,7 +455,7 @@ class TinyNetworkGDAS(nn.Module):
             if reduction:
                 cell = ResNetBasicblock(C_prev, C_curr, 2)
             else:
-                cell = SearchCellGDAS(
+                cell = NAS201SearchCell(
                     C_prev,
                     C_curr,
                     1,
@@ -510,9 +504,9 @@ class TinyNetworkGDAS(nn.Module):
     def arch_parameters(self):
         return [self._arch_parameters]
 
-    def show_arch_parameters(self):
+    def show_arch_parameters(self, logger):
         with torch.no_grad():
-            logging.info(
+            logger.info(
                 "arch-parameters :\n{:}".format(
                     process_step_matrix(self._arch_parameters, "softmax", None).cpu()
                 )
@@ -563,7 +557,7 @@ class TinyNetworkGDAS(nn.Module):
 
         feature = self.stem(inputs)
         for i, cell in enumerate(self.cells):
-            if isinstance(cell, SearchCellGDAS):
+            if isinstance(cell, NAS201SearchCell):
                 feature = cell.forward_gdas(feature, hardwts, index)
             else:
                 feature = cell(feature)
@@ -573,3 +567,20 @@ class TinyNetworkGDAS(nn.Module):
         logits = self.classifier(out)
 
         return logits
+
+
+# build API
+
+# def _DrNASCNN_nb201space():
+#     from xnas.core.config import cfg
+#     # if cfg.SEARCH.DATASET == 'cifar10':
+#     return TinyNetwork(
+#         C=cfg.SPACE.CHANNEL,
+#         N=cfg.SPACE.LAYERS,
+#         max_nodes=cfg.SPACE.NODES,
+#         num_classes=cfg.SEARCH.NUM_CLASSES,
+#         criterion=cfg.SEARCH.LOSS_FUN,
+#         search_space=NAS_BENCH_201,
+#         k=cfg.DRNAS.K,
+
+#     )
