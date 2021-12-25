@@ -1,4 +1,4 @@
-from xnas.search_space.cellbased_layers import *
+from xnas.search_space.DARTS.layers import *
 
 
 OPS_ = {
@@ -14,13 +14,16 @@ OPS_ = {
     # 9x9
     'dil_conv_5x5': lambda C_in, C_out, stride, affine: DilConv(C_in, C_out, 5, stride, 4, 2, affine=affine),
     'conv_7x1_1x7': lambda C_in, C_out, stride, affine: FacConv(C_in, C_out, 7, stride, 3, affine=affine),
-    'nor_conv_3x3': lambda C_in, C_out, stride, affine: StdConv(C_in, C_out, 3, stride, 1, affine=affine),
-    'nor_conv_1x1': lambda C_in, C_out, stride, affine: StdConv(C_in, C_out, 1, stride, 0, affine=affine),
+    'nor_conv_3x3': lambda C_in, C_out, stride, affine: ReluConvBn(C_in, C_out, 3, stride, 1, affine=affine),
+    'nor_conv_1x1': lambda C_in, C_out, stride, affine: ReluConvBn(C_in, C_out, 1, stride, 0, affine=affine),
 }
 
 NON_PARAMETER_OP = ['none', 'avg_pool_3x3', 'max_pool_3x3', 'skip_connect']
 PARAMETER_OP = ['sep_conv_3x3', 'sep_conv_5x5', 'sep_conv_7x7', 'dil_conv_3x3',
                 'dil_conv_5x5', 'conv_7x1_1x7', 'nor_conv_3x3', 'nor_conv_1x1']
+
+NAS_BENCH_201 = ['none', 'skip_connect', 'nor_conv_1x1', 'nor_conv_3x3', 'avg_pool_3x3']
+DARTS_SPACE = ['none', 'skip_connect', 'sep_conv_3x3', 'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5', 'avg_pool_3x3', 'max_pool_3x3']
 
 
 def get_op_index(op_list, parameter_list):
@@ -142,14 +145,14 @@ class ResNetBasicblock(nn.Module):
     def __init__(self, inplanes, planes, stride, affine=True):
         super(ResNetBasicblock, self).__init__()
         assert stride == 1 or stride == 2, 'invalid stride {:}'.format(stride)
-        self.conv_a = StdConv(inplanes, planes, 3, stride, 1)
-        self.conv_b = StdConv(planes, planes, 3, 1, 1)
+        self.conv_a = ReluConvBn(inplanes, planes, 3, stride, 1)
+        self.conv_b = ReluConvBn(planes, planes, 3, 1, 1)
         if stride == 2:
             self.downsample = nn.Sequential(
                 nn.AvgPool2d(kernel_size=2, stride=2, padding=0),
                 nn.Conv2d(inplanes, planes, kernel_size=1, stride=1, padding=0, bias=False))
         elif inplanes != planes:
-            self.downsample = StdConv(inplanes, planes, 1, 1, 0)
+            self.downsample = ReluConvBn(inplanes, planes, 1, 1, 0)
         else:
             self.downsample = None
         self.in_dim = inplanes

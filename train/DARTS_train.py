@@ -16,7 +16,7 @@ import xnas.core.meters as meters
 from xnas.core.config import cfg
 from xnas.core.builders import build_loss_fun, lr_scheduler_builder
 from xnas.core.trainer import setup_env
-from xnas.search_space.cellbased_DARTS_cnn import AugmentCNN
+from xnas.search_space.DARTS.cnn import AugmentCNN
 from xnas.datasets.loader import construct_loader
 
 device = torch.device("cuda")

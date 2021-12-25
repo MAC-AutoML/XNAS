@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import copy
-from xnas.search_space.cellbased_basic_ops import *
+from xnas.search_space.DARTS.ops import *
 from torch.autograd import Variable
 
 
@@ -94,8 +94,8 @@ class PcDartsCell(nn.Module):
         if reduction_p:
             self.preproc0 = FactorizedReduce(C_pp, C, affine=False)
         else:
-            self.preproc0 = StdConv(C_pp, C, 1, 1, 0, affine=False)
-        self.preproc1 = StdConv(C_p, C, 1, 1, 0, affine=False)
+            self.preproc0 = ReluConvBn(C_pp, C, 1, 1, 0, affine=False)
+        self.preproc1 = ReluConvBn(C_p, C, 1, 1, 0, affine=False)
 
         # generate dag
         self.dag = nn.ModuleList()

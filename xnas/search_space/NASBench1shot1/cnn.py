@@ -1,4 +1,4 @@
-from xnas.search_space.cellbased_1shot1_ops import *
+from xnas.search_space.NASBench1shot1.ops import *
 from xnas.core.utils import index_to_one_hot, one_hot_to_index
 
 
@@ -72,7 +72,7 @@ class NASBench1shot1CNN(nn.Module):
             cell = NASBench1shot1Cell(steps=self._steps, C_prev=C_prev, C=C_curr, layer=i, search_space=search_space)
             self.cells += [cell]
             C_prev = C_curr
-        self.postprocess = StdConv(C_in=C_prev * self._steps, C_out=C_curr, kernel_size=1, stride=1, padding=0,
+        self.postprocess = ReluConvBn(C_in=C_prev * self._steps, C_out=C_curr, kernel_size=1, stride=1, padding=0,
                                       affine=False)
 
         self.classifier = nn.Linear(C_prev, num_classes)

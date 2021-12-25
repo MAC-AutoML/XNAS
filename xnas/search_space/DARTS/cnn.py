@@ -1,5 +1,5 @@
-from xnas.search_space.cellbased_basic_ops import *
-import xnas.search_space.cellbased_basic_genotypes as gt
+from xnas.search_space.DARTS.ops import *
+import xnas.search_space.DARTS.genos as gt
 
 
 class DartsCell(nn.Module):
@@ -23,8 +23,8 @@ class DartsCell(nn.Module):
         if reduction_p:
             self.preproc0 = FactorizedReduce(C_pp, C, affine=False)
         else:
-            self.preproc0 = StdConv(C_pp, C, 1, 1, 0, affine=False)
-        self.preproc1 = StdConv(C_p, C, 1, 1, 0, affine=False)
+            self.preproc0 = ReluConvBn(C_pp, C, 1, 1, 0, affine=False)
+        self.preproc1 = ReluConvBn(C_p, C, 1, 1, 0, affine=False)
 
         # generate dag
         self.dag = nn.ModuleList()
@@ -179,9 +179,11 @@ class AuxiliaryHead(nn.Module):
                 nn.BatchNorm2d(768),
                 nn.ReLU(inplace=True))
         else:
+            # input_size is 14*14 when used in ImageNet
             self.net = nn.Sequential(
                 nn.ReLU(inplace=True),
-                nn.AdaptiveAvgPool2d((2, 2)),
+                # nn.AdaptiveAvgPool2d((2, 2)),
+                nn.AvgPool2d(5, stride=2, padding=0, count_include_pad=False),
                 nn.Conv2d(C, 128, kernel_size=1, bias=False),
                 nn.BatchNorm2d(128),
                 nn.ReLU(inplace=True),
@@ -209,8 +211,8 @@ class AugmentCell(nn.Module):
         if reduction_p:
             self.preproc0 = FactorizedReduce(C_pp, C)
         else:
-            self.preproc0 = StdConv(C_pp, C, 1, 1, 0)
-        self.preproc1 = StdConv(C_p, C, 1, 1, 0)
+            self.preproc0 = ReluConvBn(C_pp, C, 1, 1, 0)
+        self.preproc1 = ReluConvBn(C_p, C, 1, 1, 0)
 
         # generate dag
         if reduction:
@@ -243,7 +245,7 @@ class AugmentCNN(nn.Module):
         """
         Args:
             input_size: size of height and width (assuming height = width)
-            C_in: # of input channels
+            C_in: # of input channels, typically 3 is used for RGB images.
             C: # of starting model channels
         """
         super().__init__()

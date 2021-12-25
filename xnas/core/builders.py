@@ -15,14 +15,14 @@ from xnas.search_algorithm.DDPNAS import CategoricalDDPNAS
 from xnas.search_algorithm.MDENAS import CategoricalMDENAS
 from xnas.search_algorithm.MIGO import MIGO
 
-from xnas.search_space.cellbased_DARTS_cnn import _DartsCNN
-from xnas.search_space.cellbased_PDARTS_cnn import _PdartsCNN
-from xnas.search_space.cellbased_PCDARTS_cnn import _PcdartsCNN
-from xnas.search_space.cellbased_NASBench201_cnn import _NASBench201
-from xnas.search_space.cellbased_1shot1_cnn import _NASbench1shot1_1, _NASbench1shot1_2, _NASbench1shot1_3
+from xnas.search_space.DARTS.cnn import _DartsCNN
+from xnas.search_space.PDARTS.cnn import _PdartsCNN
+from xnas.search_space.PCDARTS.cnn import _PcdartsCNN
+from xnas.search_space.NASBench201.cnn import _NASBench201
+from xnas.search_space.NASBench1shot1.cnn import _NASbench1shot1_1, _NASbench1shot1_2, _NASbench1shot1_3
 
-from xnas.search_space.mb_v3_cnn import _MobileNetV3CNN
-from xnas.search_space.proxyless_cnn import _ProxylessCNN, _Proxyless_Google_CNN
+from xnas.search_space.MB.cnn import _MobileNetV3CNN
+from xnas.search_space.MB.proxyless_cnn import _ProxylessCNN, _Proxyless_Google_CNN
 
 # Supported models
 _spaces = {

@@ -2,7 +2,7 @@
 # Han Cai, Ligeng Zhu, Song Han
 # International Conference on Learning Representations (ICLR), 2019.
 
-from xnas.search_space.mb_base_module import MyModule, MyNetwork
+from xnas.search_space.MB.base_module import MyModule, MyNetwork
 from collections import OrderedDict
 import torch
 import torch.nn as nn

@@ -3,8 +3,8 @@ import torch
 import torch.nn.functional as F
 
 from xnas.core.timer import Timer
-from xnas.search_space.cellbased_DARTS_cnn import DartsCNN
-from xnas.search_space.cellbased_NASBench201_cnn import NASBench201CNN
+from xnas.search_space.DARTS.cnn import DartsCNN
+from xnas.search_space.NASBench201.cnn import NASBench201CNN
 
 
 def basic_darts_cnn_test():

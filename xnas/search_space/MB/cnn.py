@@ -1,5 +1,5 @@
-from xnas.search_space.mb_ops import *
-from xnas.search_space.proxyless_cnn import ProxylessNASNets
+from xnas.search_space.MB.ops import *
+from xnas.search_space.MB.proxyless_cnn import ProxylessNASNets
 from xnas.search_space.utils import profile, make_divisible
 import json
 import xnas.core.logging as logging

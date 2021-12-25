@@ -1,4 +1,4 @@
-from xnas.search_space.cellbased_basic_ops import *
+from xnas.search_space.DARTS.ops import *
 
 
 # This module is used for NAS-Bench-201, represents a small search space with a complete DAG
