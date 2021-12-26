@@ -11,14 +11,16 @@ import torch.utils
 import torch.nn.functional as F
 import torchvision.datasets as dset
 import torch.backends.cudnn as cudnn
+from xnas.core.builders import DrNAS_builder
 
 import xnas.search_space.DrNAS.utils as utils
-from xnas.search_space.DrNAS.nb201space.cnn import TinyNetwork, TinyNetworkGDAS
-from xnas.search_space.DrNAS.nb201space.ops import NAS_BENCH_201
 from xnas.search_algorithm.DrNAS import Architect
 
 from torch.utils.tensorboard import SummaryWriter
 from nas_201_api import NASBench201API as API
+
+from xnas.core.config import cfg
+
 
 
 parser = argparse.ArgumentParser("sota")
@@ -125,23 +127,31 @@ def main():
     criterion = nn.CrossEntropyLoss()
     criterion = criterion.cuda()
 
+    assert args.method in ['gdas', 'snas', 'dirichlet', 'darts'], "method not supported."
+
     if args.method == 'gdas' or args.method == 'snas':
         # Create the decrease step for the gumbel softmax temperature
         tau_step = (args.tau_min - args.tau_max) / args.epochs
         tau_epoch = args.tau_max
-        if args.method == 'gdas':
-            model = TinyNetworkGDAS(C=args.init_channels, N=5, max_nodes=4, num_classes=n_classes, criterion=criterion, search_space=NAS_BENCH_201)
-        else:
-            model = TinyNetwork(C=args.init_channels, N=5, max_nodes=4, num_classes=n_classes,
-                                criterion=criterion, search_space=NAS_BENCH_201, k=args.k, species='gumbel')
-    elif args.method == 'dirichlet':
-        model = TinyNetwork(C=args.init_channels, N=5, max_nodes=4, num_classes=n_classes,
-                            criterion=criterion, search_space=NAS_BENCH_201, k=args.k, species='dirichlet',
-                            reg_type=args.reg_type, reg_scale=args.reg_scale)
-    elif args.method == 'darts':
-        model = TinyNetwork(C=args.init_channels, N=5, max_nodes=4, num_classes=n_classes,
-                            criterion=criterion, search_space=NAS_BENCH_201, k=args.k, species='softmax')
-    model = model.cuda()
+
+    model = DrNAS_builder().cuda()
+
+    # if args.method == 'gdas':
+    #     model = TinyNetworkGDAS(C=cfg.SPACE.CHANNEL, N=cfg.SPACE.LAYERS, max_nodes=cfg.SPACE.NODES, num_classes=cfg.SEARCH.NUM_CLASSES, 
+    #                             criterion=criterion, search_space=NAS_BENCH_201)
+    # elif args.method == 'snas':
+    #     model = TinyNetwork(C=cfg.SPACE.CHANNEL, N=cfg.SPACE.LAYERS, max_nodes=cfg.SPACE.NODES, num_classes=cfg.SEARCH.NUM_CLASSES,
+    #                         criterion=criterion, search_space=NAS_BENCH_201, k=args.k, species='gumbel',
+    #                         reg_type="l2", reg_scale=1e-3)
+    # elif args.method == 'dirichlet':
+    #     model = TinyNetwork(C=cfg.SPACE.CHANNEL, N=cfg.SPACE.LAYERS, max_nodes=cfg.SPACE.NODES, num_classes=cfg.SEARCH.NUM_CLASSES,
+    #                         criterion=criterion, search_space=NAS_BENCH_201, k=args.k, species='dirichlet',
+    #                         reg_type=args.reg_type, reg_scale=args.reg_scale)
+    # elif args.method == 'darts':
+    #     model = TinyNetwork(C=cfg.SPACE.CHANNEL, N=cfg.SPACE.LAYERS, max_nodes=cfg.SPACE.NODES, num_classes=cfg.SEARCH.NUM_CLASSES,
+    #                         criterion=criterion, search_space=NAS_BENCH_201, k=args.k, species='softmax',
+    #                         reg_type="l2", reg_scale=1e-3)
+    # model = model.cuda()
     logging.info("param size = %fMB", utils.count_parameters_in_MB(model))
 
     optimizer = torch.optim.SGD(

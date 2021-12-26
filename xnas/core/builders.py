@@ -22,6 +22,7 @@ from xnas.search_space.MB.proxyless_cnn import _ProxylessCNN, _Proxyless_Google_
 
 # DrNAS series modified space
 from xnas.search_space.DrNAS.DARTSspace.cnn import _DrNASCNN_DARTSspace
+from xnas.search_space.DrNAS.nb201space.cnn import _DrNASCNN_nb201space, _DrNASCNN_GDAS_nb201space
 
 # MIGO series 
 from xnas.search_algorithm.SNG import SNG, Dynamic_SNG
@@ -92,6 +93,17 @@ def register_loss_fun(name, ctor):
 def DrNAS_builder():
     if cfg.SPACE.NAME == 'darts':
         return _DrNASCNN_DARTSspace()
+    elif cfg.SPACE.NAME == 'nasbench201':
+        if cfg.DRNAS.METHOD == 'gdas':
+            return _DrNASCNN_GDAS_nb201space()
+        elif cfg.DRNAS.METHOD == 'snas':
+            return _DrNASCNN_nb201space('gumbel')
+        elif cfg.DRNAS.METHOD == 'dirichlet':
+            return _DrNASCNN_nb201space('dirichlet')
+        elif cfg.DRNAS.METHOD == 'darts':
+            return _DrNASCNN_nb201space('softmax')
+        else:
+            raise NotImplementedError
 
 
 def sng_builder(category):

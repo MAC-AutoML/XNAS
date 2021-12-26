@@ -431,7 +431,8 @@ _C.DRNAS.REG_TYPE = "l2"
 # for kl you might adjust reg_scale to match l2
 _C.DRNAS.REG_SCALE = 1e-3
 
-
+# method for nb201 space
+_C.DRNAS.METHOD = 'dirichlet'
 
 
 

@@ -21,6 +21,8 @@ from xnas.search_algorithm.DrNAS import Architect
 from torch.utils.tensorboard import SummaryWriter
 from nas_201_api import NASBench201API as API
 
+from xnas.core.config import cfg
+
 
 parser = argparse.ArgumentParser("sota")
 parser.add_argument('--data', type=str, default='datapath', help='location of the data corpus')
@@ -121,20 +123,24 @@ def main():
     criterion = nn.CrossEntropyLoss()
     criterion = criterion.cuda()
 
+    assert args.method in ['snas', 'dirichlet', 'darts'], "method not supported."
+
     if args.method == 'snas':
         # Create the decrease step for the gumbel softmax temperature
         args.epochs = 100
         tau_step = (args.tau_min - args.tau_max) / args.epochs
         tau_epoch = args.tau_max
         model = TinyNetwork(C=args.init_channels, N=5, max_nodes=4, num_classes=n_classes,
-                            criterion=criterion, search_space=NAS_BENCH_201, k=args.k, species='gumbel')
+                            criterion=criterion, search_space=NAS_BENCH_201, k=args.k, species='gumbel',
+                            reg_type="l2", reg_scale=1e-3)
     elif args.method == 'dirichlet':
         model = TinyNetwork(C=args.init_channels, N=5, max_nodes=4, num_classes=n_classes,
                             criterion=criterion, search_space=NAS_BENCH_201, k=args.k, species='dirichlet', 
                             reg_type=args.reg_type, reg_scale=args.reg_scale)
     elif args.method == 'darts':
         model = TinyNetwork(C=args.init_channels, N=5, max_nodes=4, num_classes=n_classes,
-                            criterion=criterion, search_space=NAS_BENCH_201, k=args.k, species='softmax')
+                            criterion=criterion, search_space=NAS_BENCH_201, k=args.k, species='softmax',
+                            reg_type="l2", reg_scale=1e-3)
     model = model.cuda()
     logging.info("param size = %fMB", utils.count_parameters_in_MB(model))
 

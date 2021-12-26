@@ -422,7 +422,6 @@ class TinyNetwork(nn.Module):
                 cell.wider(k)
 
 
-# inherited from the DrNAS code, will not be used here.
 class TinyNetworkGDAS(nn.Module):
     def __init__(
         self,
@@ -571,16 +570,30 @@ class TinyNetworkGDAS(nn.Module):
 
 # build API
 
-# def _DrNASCNN_nb201space():
-#     from xnas.core.config import cfg
-#     # if cfg.SEARCH.DATASET == 'cifar10':
-#     return TinyNetwork(
-#         C=cfg.SPACE.CHANNEL,
-#         N=cfg.SPACE.LAYERS,
-#         max_nodes=cfg.SPACE.NODES,
-#         num_classes=cfg.SEARCH.NUM_CLASSES,
-#         criterion=cfg.SEARCH.LOSS_FUN,
-#         search_space=NAS_BENCH_201,
-#         k=cfg.DRNAS.K,
+def _DrNASCNN_nb201space(species):
+    from xnas.core.config import cfg
+    # if cfg.SEARCH.DATASET == 'cifar10':
+    return TinyNetwork(
+        C=cfg.SPACE.CHANNEL,
+        N=cfg.SPACE.LAYERS,
+        max_nodes=cfg.SPACE.NODES,
+        num_classes=cfg.SEARCH.NUM_CLASSES,
+        criterion=cfg.SEARCH.LOSS_FUN,
+        search_space=NAS_BENCH_201,
+        k=cfg.DRNAS.K,
+        species=species,
+        reg_type=cfg.DRNAS.REG_TYPE,
+        reg_scale=cfg.DRNAS.REG_SCALE
+    )
 
-#     )
+def _DrNASCNN_GDAS_nb201space():
+    from xnas.core.config import cfg
+    # if cfg.SEARCH.DATASET == 'cifar10':
+    return TinyNetworkGDAS(
+        C=cfg.SPACE.CHANNEL,
+        N=cfg.SPACE.LAYERS,
+        max_nodes=cfg.SPACE.NODES,
+        num_classes=cfg.SEARCH.NUM_CLASSES,
+        criterion=cfg.SEARCH.LOSS_FUN,
+        search_space=NAS_BENCH_201
+    )
