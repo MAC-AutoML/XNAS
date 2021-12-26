@@ -415,6 +415,9 @@ _C.DRNAS = CfgNode()
 # arch learning rate
 _C.DRNAS.ALPHA_LR = 3e-4
 
+# arch lr weight decay, used in imagenet
+_C.DRNAS.ALPHA_WEIGHT_DECAY = 1e-3
+
 # using unrolled in darts step
 _C.DRNAS.UNROLLED = False
 

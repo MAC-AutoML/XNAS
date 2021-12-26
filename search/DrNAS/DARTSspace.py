@@ -1,4 +1,3 @@
-from logging import critical
 import os
 import torch
 import torch.nn as nn
@@ -12,10 +11,10 @@ import xnas.core.logging as logging
 import xnas.search_space.DrNAS.utils as utils
 from xnas.search_algorithm.DrNAS import Architect
 
-from xnas.core.builders import build_loss_fun, DrNAS_builder, lr_scheduler_builder
+from xnas.core.builders import build_loss_fun, DrNAS_builder
 from xnas.core.config import cfg
-from xnas.core.trainer import setup_env, test_epoch
 from xnas.core.timer import Timer
+from xnas.core.trainer import setup_env, test_epoch
 from xnas.datasets.loader import construct_loader
 
 
@@ -126,7 +125,6 @@ def main():
     #     reg_type=cfg.DRNAS.REG_TYPE,
     #     reg_scale=cfg.DRNAS.REG_SCALE,
     # )
-    model = model.cuda()
     architect = Architect(model, cfg)
 
     logger.info("param size = %fMB", utils.count_parameters_in_MB(model))
@@ -148,7 +146,7 @@ def main():
     #         root=cfg.SEARCH.DATAPATH, train=True, download=True, transform=train_transform
     #     )
 
-    [train_queue, valid_queue] = construct_loader(
+    [train_loader, valid_loader] = construct_loader(
         cfg.SEARCH.DATASET, cfg.SEARCH.SPLIT, cfg.SEARCH.BATCH_SIZE, cfg.SEARCH.DATAPATH
     )
 
@@ -176,16 +174,15 @@ def main():
     num_keeps = [7, 4]
     train_epochs = [2, 2] if "debug" in cfg.OUT_DIR else [25, 25]
 
-    lr_scheduler = lr_scheduler_builder(optimizer)
-    # lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-    #     optimizer, float(sum(train_epochs)), eta_min=cfg.OPTIM.MIN_LR
-    # )
-    train_meter = meters.TrainMeter(len(train_queue))
-    val_meter = meters.TestMeter(len(valid_queue))
+    # lr_scheduler = lr_scheduler_builder(optimizer)
+    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, float(sum(train_epochs)), eta_min=cfg.OPTIM.MIN_LR
+    )
+    train_meter = meters.TrainMeter(len(train_loader))
+    val_meter = meters.TestMeter(len(valid_loader))
 
     train_timer = Timer()
     for i, current_epochs in enumerate(train_epochs):
-        train_timer.tic()
         logger.info("train period #{} total epochs {}".format(i, current_epochs))
         for e in range(current_epochs):
             lr = lr_scheduler.get_lr()[0]
@@ -195,10 +192,11 @@ def main():
             logger.info("genotype = %s", genotype)
             model.show_arch_parameters(logger)
 
+            train_timer.tic()
             # training
             train_acc = train_epoch(
-                train_queue,
-                valid_queue,
+                train_loader,
+                valid_loader,
                 model,
                 architect,
                 criterion,
@@ -209,16 +207,22 @@ def main():
             )
             logger.info("train_acc %f", train_acc)
 
+            train_timer.toc()
+            print("epoch time:{}".format(train_timer.diff))
+
             # validation
             # valid_acc, valid_obj = infer(valid_queue, model, criterion)
             # logger.info("valid_acc %f", valid_acc)
-            test_epoch(valid_queue, model, val_meter, current_epochs, writer)
+            test_epoch(valid_loader, model, val_meter, current_epochs, writer)
 
             epoch += 1
             lr_scheduler.step()
 
             if epoch % cfg.SEARCH.CHECKPOINT_PERIOD == 0:
-                save_ckpt(model, os.path.join(cfg.OUT_DIR, "weights.pt"))
+                save_ckpt(model, os.path.join(cfg.OUT_DIR, "weights_epo" + str(epoch) + ".pt"))
+
+        print("avg epoch time:{}".format(train_timer.average_time))
+        train_timer.reset()
 
         if not i == len(train_epochs) - 1:
             model.pruning(num_keeps[i + 1])

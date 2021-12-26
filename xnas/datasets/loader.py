@@ -36,7 +36,7 @@ def construct_loader(dataset_name, split_list, batch_size, datapath=None):
     print("reading data from {}".format(data_path))
     # Construct the dataset
     loader = _DATASETS[dataset_name](
-        data_path, split_list, backend=cfg.DATA_LOADER.BACKEND, batch_size=batch_size)
+        data_path, split_list, backend=cfg.DATA_LOADER.BACKEND, batch_size=batch_size, num_workers=cfg.DATA_LOADER.NUM_WORKERS)
     return loader
 
 
