@@ -7,7 +7,19 @@ SEARCH:
   DATASET: 'cifar10'
   NUM_CLASSES: 10
   LOSS_FUN: "cross_entropy"
+  BATCH_SIZE: 64
+OPTIM:
+  BASE_LR: 0.025
+  MIN_LR: 0.001
+  MOMENTUM: 0.9
+  WEIGHT_DECAY: 3e-4
+  GRAD_CLIP: 5.0
+  MAX_EPOCH: 100
 DRNAS:
-  K: 1
+  UNROLLED: False
+  METHOD: 'snas'
+  TAU: [1, 10]
+  K: 1  # k=4 for progressive
   REG_TYPE: "l2"
   REG_SCALE: 1e-3
+RNG_SEED: 2

@@ -5,7 +5,7 @@ import torchvision.datasets as dset
 import torchvision.transforms as transforms
 
 
-def getTorchDataset(name, root, cutout_length, batch_size, num_workers=8, download=True):
+def getTorchData(name, root, cutout_length, download=True):
     assert name in ['cifar10', 'cifar100', 'svhn'], "dataset not support."
     if name == 'cifar10':
         train_transform, valid_transform = _transforms_cifar10(cutout_length)
@@ -21,7 +21,11 @@ def getTorchDataset(name, root, cutout_length, batch_size, num_workers=8, downlo
         test_data = dset.SVHN(root=root, split='test', download=download, transform=train_transform)
     else:
         exit(0)
+    return train_data, test_data
 
+
+def getTorchDataLoader(name, root, cutout_length, batch_size, num_workers=8, download=True):
+    train_data, test_data = getTorchData(name, root, cutout_length, download)
     train_loader = data.DataLoader(
         dataset=train_data, 
         batch_size=batch_size, 
@@ -35,6 +39,10 @@ def getTorchDataset(name, root, cutout_length, batch_size, num_workers=8, downlo
         pin_memory=True
     )
     return train_loader, test_loader
+
+
+def splitTorchDataLoader(dataloader, split):
+    pass
 
 
 class Cutout(object):

@@ -434,6 +434,9 @@ _C.DRNAS.REG_SCALE = 1e-3
 # method for nb201 space
 _C.DRNAS.METHOD = 'dirichlet'
 
+# temperature (tau) range for gumbel softmax
+_C.DRNAS.TAU = [1, 10]
+
 
 
 def dump_cfg():
