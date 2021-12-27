@@ -47,7 +47,7 @@ def pdarts_train_model():
     loss_fun = build_loss_fun().cuda()
     # Load dataset
     [train_, val_] = construct_loader(
-        cfg.SEARCH.DATASET, cfg.SEARCH.SPLIT, cfg.SEARCH.BATCH_SIZE)
+        cfg.SEARCH.DATASET, cfg.SEARCH.SPLIT, cfg.SEARCH.BATCH_SIZE, cfg.SEARCH.DATAPATH)
 
     for sp in range(len(num_to_keep)):
         # Update info of supernet config
@@ -195,7 +195,7 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
             val_X, val_y = val_X.cuda(), val_y.cuda(non_blocking=True)
             alpha_optimizer.zero_grad()
             # architect.unrolled_backward(
-            #     trn_X, trn_y, val_X, val_y, lr, w_optimizer, unrolled=cfg.DARTS.SECOND)
+            #     trn_X, trn_y, val_X, val_y, lr, w_optimizer, unrolled=cfg.DARTS.UNROLLED)
             logits = model(val_X)
             loss_a = loss_fun(logits, val_y)
             loss_a.backward()

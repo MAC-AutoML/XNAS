@@ -1,0 +1,9 @@
+SPACE:
+  NAME: 'nasbench201'
+  CHANNEL: 16
+  LAYERS: 5
+  NODES: 4
+SEARCH:
+  DATASET: 'cifar10'
+  NUM_CLASSES: 10
+  LOSS_FUN: "cross_entropy"

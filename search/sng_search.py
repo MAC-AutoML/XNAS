@@ -124,7 +124,7 @@ def train_model():
 
     # Load dataset
     [train_, val_] = construct_loader(
-        cfg.SEARCH.DATASET, cfg.SEARCH.SPLIT, cfg.SEARCH.BATCH_SIZE)
+        cfg.SEARCH.DATASET, cfg.SEARCH.SPLIT, cfg.SEARCH.BATCH_SIZE, cfg.SEARCH.DATAPATH)
 
     lr_scheduler = lr_scheduler_builder(w_optim)
     all_timer = Timer()

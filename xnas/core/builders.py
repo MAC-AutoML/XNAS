@@ -9,20 +9,28 @@ import torch
 
 from xnas.core.config import cfg
 
+# DARTS series space
+from xnas.search_space.DARTS.cnn import _DartsCNN
+from xnas.search_space.PDARTS.cnn import _PdartsCNN
+from xnas.search_space.PCDARTS.cnn import _PcdartsCNN
+# NAS-Bench series space
+from xnas.search_space.NASBench201.cnn import _NASBench201
+from xnas.search_space.NASBench1shot1.cnn import _NASbench1shot1_1, _NASbench1shot1_2, _NASbench1shot1_3
+# MB series space
+from xnas.search_space.MB.cnn import _MobileNetV3CNN
+from xnas.search_space.MB.proxyless_cnn import _ProxylessCNN, _Proxyless_Google_CNN
+
+# DrNAS series modified space
+from xnas.search_space.DrNAS.DARTSspace.cnn import _DrNASCNN_DARTSspace
+from xnas.search_space.DrNAS.nb201space.cnn import _DrNASCNN_nb201space, _DrNASCNN_GDAS_nb201space
+
+# MIGO series 
 from xnas.search_algorithm.SNG import SNG, Dynamic_SNG
 from xnas.search_algorithm.ASNG import ASNG, Dynamic_ASNG
 from xnas.search_algorithm.DDPNAS import CategoricalDDPNAS
 from xnas.search_algorithm.MDENAS import CategoricalMDENAS
 from xnas.search_algorithm.MIGO import MIGO
 
-from xnas.search_space.DARTS.cnn import _DartsCNN
-from xnas.search_space.PDARTS.cnn import _PdartsCNN
-from xnas.search_space.PCDARTS.cnn import _PcdartsCNN
-from xnas.search_space.NASBench201.cnn import _NASBench201
-from xnas.search_space.NASBench1shot1.cnn import _NASbench1shot1_1, _NASbench1shot1_2, _NASbench1shot1_3
-
-from xnas.search_space.MB.cnn import _MobileNetV3CNN
-from xnas.search_space.MB.proxyless_cnn import _ProxylessCNN, _Proxyless_Google_CNN
 
 # Supported models
 _spaces = {
@@ -64,7 +72,7 @@ def get_loss_fun():
 
 def build_space():
     """Build the model."""
-    return get_space()()
+    return get_space()()  # TODO: add **kwargs for it.
 
 
 def build_loss_fun():
@@ -80,6 +88,22 @@ def register_space(name, ctor):
 def register_loss_fun(name, ctor):
     """Registers a loss function dynamically."""
     _loss_funs[name] = ctor
+
+
+def DrNAS_builder():
+    if cfg.SPACE.NAME == 'darts':
+        return _DrNASCNN_DARTSspace()
+    elif cfg.SPACE.NAME == 'nasbench201':
+        if cfg.DRNAS.METHOD == 'gdas':
+            return _DrNASCNN_GDAS_nb201space()
+        elif cfg.DRNAS.METHOD == 'snas':
+            return _DrNASCNN_nb201space('gumbel')
+        elif cfg.DRNAS.METHOD == 'dirichlet':
+            return _DrNASCNN_nb201space('dirichlet')
+        elif cfg.DRNAS.METHOD == 'darts':
+            return _DrNASCNN_nb201space('softmax')
+        else:
+            raise NotImplementedError
 
 
 def sng_builder(category):

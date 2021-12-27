@@ -9,17 +9,17 @@ def _concat(xs):
 
 
 class Architect(object):
-    def __init__(self, model, args):
-        self.network_momentum = args.momentum
-        self.network_weight_decay = args.weight_decay
+    def __init__(self, model, cfg):
+        self.network_momentum = cfg.OPTIM.MOMENTUM
+        self.network_weight_decay = cfg.OPTIM.WEIGHT_DECAY
         self.model = model
-        if args.reg_type == "l2":
-            weight_decay = args.reg_scale
-        elif args.reg_type == "kl":
+        if cfg.DRNAS.REG_TYPE == "l2":
+            weight_decay = cfg.DRNAS.REG_SCALE
+        elif cfg.DRNAS.REG_TYPE == "kl":
             weight_decay = 0
         self.optimizer = torch.optim.Adam(
             self.model.arch_parameters(),
-            lr=args.arch_learning_rate,
+            lr=cfg.DRNAS.ALPHA_LR,
             betas=(0.5, 0.999),
             weight_decay=weight_decay,
         )

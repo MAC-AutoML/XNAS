@@ -24,7 +24,7 @@ def test_full_time():
     logger.info(logging.dump_log_data(cfg, "cfg"))
 
     [train_loader, test_loader] = loader.construct_loader(
-        cfg.SEARCH.DATASET, cfg.SEARCH.SPLIT, cfg.SEARCH.BATCH_SIZE)
+        cfg.SEARCH.DATASET, cfg.SEARCH.SPLIT, cfg.SEARCH.BATCH_SIZE, cfg.SEARCH.DATAPATH)
     
     avg_time = benchmark.compute_full_loader(test_loader, epoch=3)
 

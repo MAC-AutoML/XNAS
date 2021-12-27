@@ -43,7 +43,7 @@ def darts_train_model():
         darts_controller, cfg.OPTIM.MOMENTUM, cfg.OPTIM.WEIGHT_DECAY)
     # Load dataset
     [train_, val_] = construct_loader(
-        cfg.SEARCH.DATASET, cfg.SEARCH.SPLIT, cfg.SEARCH.BATCH_SIZE)
+        cfg.SEARCH.DATASET, cfg.SEARCH.SPLIT, cfg.SEARCH.BATCH_SIZE, cfg.SEARCH.DATAPATH)
     # weights optimizer
     w_optim = torch.optim.SGD(darts_controller.weights(),
                               cfg.OPTIM.BASE_LR,
@@ -114,8 +114,7 @@ def darts_train_model():
         str(train_timer.total_time)))
 
 
-def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimizer, alpha_optimizer, lr, train_meter, cur_epoch):
-    model.train()
+def train_epoch(train_loader, valid_loader, model, architect, criterion, w_optimizer, alpha_optimizer, lr, train_meter, cur_epoch):
     train_meter.iter_tic()
     cur_step = cur_epoch*len(train_loader)
     writer.add_scalar('train/lr', lr, cur_step)
@@ -124,6 +123,7 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         torch.cuda.amp, 'autocast') else None
     valid_loader_iter = iter(valid_loader)
     for cur_iter, (trn_X, trn_y) in enumerate(train_loader):
+        model.train()
         try:
             (val_X, val_y) = next(valid_loader_iter)
         except StopIteration:
@@ -135,7 +135,7 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         # phase 2. architect step (alpha)
         alpha_optimizer.zero_grad()
         architect.unrolled_backward(
-            trn_X, trn_y, val_X, val_y, lr, w_optimizer, unrolled=cfg.DARTS.SECOND)
+            trn_X, trn_y, val_X, val_y, lr, w_optimizer, unrolled=cfg.DARTS.UNROLLED)
         alpha_optimizer.step()
 
         # phase 1. child network step (w)
@@ -144,7 +144,7 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
                 # Perform the forward pass in AMP
                 preds = model(trn_X)
                 # Compute the loss in AMP
-                loss = loss_fun(preds, trn_y)
+                loss = criterion(preds, trn_y)
                 # Perform the backward pass in AMP
                 w_optimizer.zero_grad()
                 scaler.scale(loss).backward()
@@ -154,7 +154,7 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         else:
             preds = model(trn_X)
             # Compute the loss
-            loss = loss_fun(preds, trn_y)
+            loss = criterion(preds, trn_y)
             # Perform the backward pass
             w_optimizer.zero_grad()
             loss.backward()
@@ -168,7 +168,9 @@ def train_epoch(train_loader, valid_loader, model, architect, loss_fun, w_optimi
         loss, top1_err, top5_err = loss.item(), top1_err.item(), top5_err.item()
         train_meter.iter_toc()
         # Update and log stats
-        mb_size = trn_X.size(0) * cfg.NUM_GPUS
+        # TODO: multiply with NUM_GPUS are disabled before appling parallel
+        # mb_size = trn_X.size(0) * cfg.NUM_GPUS
+        mb_size = trn_X.size(0)
         train_meter.update_stats(top1_err, top5_err, loss, lr, mb_size)
         train_meter.log_iter_stats(cur_epoch, cur_iter)
         train_meter.iter_tic()

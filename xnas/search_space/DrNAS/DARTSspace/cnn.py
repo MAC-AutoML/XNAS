@@ -1,4 +1,3 @@
-import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -127,28 +126,28 @@ class NetworkCIFAR(nn.Module):
             x.data.copy_(y.data)
         return model_new
 
-    def show_arch_parameters(self):
+    def show_arch_parameters(self, logger):
         with torch.no_grad():
-            logging.info(
+            logger.info(
                 "alphas normal :\n{:}".format(
                     process_step_matrix(
                         self.alphas_normal, "softmax", self.mask_normal
                     ).cpu()
                 )
             )
-            logging.info(
+            logger.info(
                 "alphas reduce :\n{:}".format(
                     process_step_matrix(
                         self.alphas_reduce, "softmax", self.mask_reduce
                     ).cpu()
                 )
             )
-            logging.info(
+            logger.info(
                 "concentration normal:\n{:}".format(
                     (F.elu(self.alphas_normal) + 1).cpu()
                 )
             )
-            logging.info(
+            logger.info(
                 "concentration reduce:\n{:}".format(
                     (F.elu(self.alphas_reduce) + 1).cpu()
                 )
@@ -346,28 +345,28 @@ class NetworkImageNet(nn.Module):
             x.data.copy_(y.data)
         return model_new
 
-    def show_arch_parameters(self):
+    def show_arch_parameters(self, logger):
         with torch.no_grad():
-            logging.info(
+            logger.info(
                 "alphas normal :\n{:}".format(
                     process_step_matrix(
                         self.alphas_normal, "softmax", self.mask_normal
                     ).cpu()
                 )
             )
-            logging.info(
+            logger.info(
                 "alphas reduce :\n{:}".format(
                     process_step_matrix(
                         self.alphas_reduce, "softmax", self.mask_reduce
                     ).cpu()
                 )
             )
-            logging.info(
+            logger.info(
                 "concentration normal:\n{:}".format(
                     (F.elu(self.alphas_normal) + 1).cpu()
                 )
             )
-            logging.info(
+            logger.info(
                 "concentration reduce:\n{:}".format(
                     (F.elu(self.alphas_reduce) + 1).cpu()
                 )
@@ -479,23 +478,25 @@ class NetworkImageNet(nn.Module):
 
 # build API
 
-def _DrNASCNN():
+def _DrNASCNN_DARTSspace():
     from xnas.core.config import cfg
     if cfg.SEARCH.DATASET == 'cifar10':
         return NetworkCIFAR(
             C=cfg.SPACE.CHANNEL,
             num_classes=cfg.SEARCH.NUM_CLASSES,
             layers=cfg.SPACE.LAYERS,
-            auxiliary=cfg.TRAIN.AUX_WEIGHT,
-            genotype=cfg.TRAIN.GENOTYPE
+            criterion=cfg.SEARCH.LOSS_FUN,
+            k=cfg.DRNAS.K,
+            reg_type=cfg.DRNAS.REG_TYPE,
+            reg_scale=cfg.DRNAS.REG_SCALE
         )
     elif cfg.SEARCH.DATASET == 'imagenet':
         return NetworkImageNet(
             C=cfg.SPACE.CHANNEL,
             num_classes=cfg.SEARCH.NUM_CLASSES,
             layers=cfg.SPACE.LAYERS,
-            auxiliary=cfg.TRAIN.AUX_WEIGHT,
-            genotype=cfg.TRAIN.GENOTYPE
+            criterion=cfg.SEARCH.LOSS_FUN,
+            k=cfg.DRNAS.K
         )
     else:
         print("dataset not support (cifar10 / imagenet)")
