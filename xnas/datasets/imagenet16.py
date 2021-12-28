@@ -1,9 +1,17 @@
-import os, sys, hashlib, torch
+import os, sys, hashlib
 import numpy as np
 from PIL import Image
 import torch.utils.data as data
 import pickle
 
+
+# def ImageNet16Loader():
+#     mean = [x / 255 for x in [122.68, 116.66, 104.01]]
+#     std = [x / 255 for x in [63.22,  61.26, 65.09]]
+#     lists = [transforms.RandomHorizontalFlip(), transforms.RandomCrop(16, padding=2), transforms.ToTensor(), transforms.Normalize(mean, std)]
+#     train_transform = transforms.Compose(lists)
+#     train_data = ImageNet16(root=os.path.join(args.data,'imagenet16'), train=True, transform=train_transform, use_num_of_class_only=120)
+#     assert len(train_data) == 151700
 
 def calculate_md5(fpath, chunk_size=1024 * 1024):
     md5 = hashlib.md5()
