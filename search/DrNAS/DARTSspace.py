@@ -178,13 +178,14 @@ def main():
     lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, float(sum(train_epochs)), eta_min=cfg.OPTIM.MIN_LR
     )
+    
     train_meter = meters.TrainMeter(len(train_loader))
     val_meter = meters.TestMeter(len(valid_loader))
 
-    train_timer = Timer()
-    for i, current_epochs in enumerate(train_epochs):
-        logger.info("train period #{} total epochs {}".format(i, current_epochs))
-        for e in range(current_epochs):
+    # train_timer = Timer()
+    for i, current_epoch in enumerate(train_epochs):
+        logger.info("train period #{} total epochs {}".format(i, current_epoch))
+        for e in range(current_epoch):
             lr = lr_scheduler.get_lr()[0]
             logger.info("epoch %d lr %e", epoch, lr)
 
@@ -192,9 +193,9 @@ def main():
             logger.info("genotype = %s", genotype)
             model.show_arch_parameters(logger)
 
-            train_timer.tic()
+            # train_timer.tic()
             # training
-            train_acc = train_epoch(
+            top1err = train_epoch(
                 train_loader,
                 valid_loader,
                 model,
@@ -205,15 +206,14 @@ def main():
                 train_meter,
                 e,
             )
-            logger.info("train_acc %f", train_acc)
-
-            train_timer.toc()
-            print("epoch time:{}".format(train_timer.diff))
+            logger.info("Top1 err:%f", top1err)
+            # train_timer.toc()
+            # print("epoch time:{}".format(train_timer.diff))
 
             # validation
             # valid_acc, valid_obj = infer(valid_queue, model, criterion)
             # logger.info("valid_acc %f", valid_acc)
-            test_epoch(valid_loader, model, val_meter, current_epochs, writer)
+            test_epoch(valid_loader, model, val_meter, epoch, writer)
 
             epoch += 1
             lr_scheduler.step()
@@ -221,8 +221,8 @@ def main():
             if epoch % cfg.SEARCH.CHECKPOINT_PERIOD == 0:
                 save_ckpt(model, os.path.join(cfg.OUT_DIR, "weights_epo" + str(epoch) + ".pt"))
 
-        print("avg epoch time:{}".format(train_timer.average_time))
-        train_timer.reset()
+        # print("avg epoch time:{}".format(train_timer.average_time))
+        # train_timer.reset()
 
         if not i == len(train_epochs) - 1:
             model.pruning(num_keeps[i + 1])

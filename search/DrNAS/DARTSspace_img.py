@@ -231,7 +231,7 @@ def main():
 
             train_timer.tic()
             # training
-            train_acc = train_epoch(
+            top1err = train_epoch(
                 train_loader,
                 valid_loader,
                 model,
@@ -242,7 +242,7 @@ def main():
                 train_meter,
                 e,
             )
-            logger.info("Train_acc %f", train_acc)
+            logger.info("Top1 err:%f", top1err)
 
             train_timer.toc()
             print("epoch time:{}".format(train_timer.diff))
@@ -253,7 +253,7 @@ def main():
                 # logger.info("Valid_acc %f", valid_acc)
                 # test_acc, test_obj = infer(test_queue, model, criterion)
                 # logger.info('Test_acc %f', test_acc)
-                test_epoch(valid_loader, model, val_meter, current_epochs, writer)
+                test_epoch(valid_loader, model, val_meter, epoch, writer)
 
             epoch += 1
             scheduler.step()

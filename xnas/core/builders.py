@@ -91,17 +91,18 @@ def register_loss_fun(name, ctor):
 
 
 def DrNAS_builder():
+    criterion = build_loss_fun()
     if cfg.SPACE.NAME == 'darts':
-        return _DrNASCNN_DARTSspace()
+        return _DrNASCNN_DARTSspace(criterion)
     elif cfg.SPACE.NAME == 'nasbench201':
         if cfg.DRNAS.METHOD == 'gdas':
-            return _DrNASCNN_GDAS_nb201space()
+            return _DrNASCNN_GDAS_nb201space(criterion)
         elif cfg.DRNAS.METHOD == 'snas':
-            return _DrNASCNN_nb201space('gumbel')
+            return _DrNASCNN_nb201space('gumbel', criterion)
         elif cfg.DRNAS.METHOD == 'dirichlet':
-            return _DrNASCNN_nb201space('dirichlet')
+            return _DrNASCNN_nb201space('dirichlet', criterion)
         elif cfg.DRNAS.METHOD == 'darts':
-            return _DrNASCNN_nb201space('softmax')
+            return _DrNASCNN_nb201space('softmax', criterion)
         else:
             raise NotImplementedError
 

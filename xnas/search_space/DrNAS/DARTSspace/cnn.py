@@ -478,14 +478,14 @@ class NetworkImageNet(nn.Module):
 
 # build API
 
-def _DrNASCNN_DARTSspace():
+def _DrNASCNN_DARTSspace(criterion):
     from xnas.core.config import cfg
     if cfg.SEARCH.DATASET == 'cifar10':
         return NetworkCIFAR(
             C=cfg.SPACE.CHANNEL,
             num_classes=cfg.SEARCH.NUM_CLASSES,
             layers=cfg.SPACE.LAYERS,
-            criterion=cfg.SEARCH.LOSS_FUN,
+            criterion=criterion,
             k=cfg.DRNAS.K,
             reg_type=cfg.DRNAS.REG_TYPE,
             reg_scale=cfg.DRNAS.REG_SCALE
@@ -495,7 +495,7 @@ def _DrNASCNN_DARTSspace():
             C=cfg.SPACE.CHANNEL,
             num_classes=cfg.SEARCH.NUM_CLASSES,
             layers=cfg.SPACE.LAYERS,
-            criterion=cfg.SEARCH.LOSS_FUN,
+            criterion=criterion,
             k=cfg.DRNAS.K
         )
     else:
