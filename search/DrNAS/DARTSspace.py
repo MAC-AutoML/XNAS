@@ -28,103 +28,14 @@ writer = SummaryWriter(log_dir=os.path.join(cfg.OUT_DIR, "tb"))
 logger = logging.get_logger(__name__)
 
 
-# parser = argparse.ArgumentParser("cifar")
-# parser.add_argument(
-#     "--data", type=str, default="datapath", help="location of the data corpus"
-# )
-# parser.add_argument(
-#     "--dataset", type=str, default="cifar10", help="location of the data corpus"
-# )
-# parser.add_argument("--batch_size", type=int, default=64, help="batch size")
-# parser.add_argument(
-#     "--learning_rate", type=float, default=0.1, help="init learning rate"
-# )
-# parser.add_argument(
-#     "--learning_rate_min", type=float, default=0.0, help="min learning rate"
-# )
-# parser.add_argument("--momentum", type=float, default=0.9, help="momentum")
-# parser.add_argument("--weight_decay", type=float, default=3e-4, help="weight decay")
-# parser.add_argument("--report_freq", type=float, default=50, help="report frequency")
-# parser.add_argument("--gpu", type=int, default=0, help="gpu device id")
-# parser.add_argument(
-#     "--init_channels", type=int, default=36, help="num of init channels"
-# )
-# parser.add_argument("--layers", type=int, default=20, help="total number of layers")
-# parser.add_argument("--save", type=str, default="exp", help="experiment name")
-# parser.add_argument("--seed", type=int, default=2, help="random seed")
-# parser.add_argument("--grad_clip", type=float, default=5, help="gradient clipping")
-# parser.add_argument(
-#     "--train_portion", type=float, default=0.5, help="portion of training data"
-# )
-# parser.add_argument(
-#     "--unrolled",
-#     action="store_true",
-#     default=False,
-#     help="use one-step unrolled validation loss",
-# )
-# parser.add_argument(
-#     "--arch_learning_rate",
-#     type=float,
-#     default=6e-4,
-#     help="learning rate for arch encoding",
-# )
-# parser.add_argument("--k", type=int, default=6, help="init partial channel parameter")
-#### regularization
-# parser.add_argument(
-#     "--reg_type",
-#     type=str,
-#     default="l2",
-#     choices=["l2", "kl"],
-#     help="regularization type",
-# )
-# parser.add_argument(
-#     "--reg_scale",
-#     type=float,
-#     default=1e-3,
-#     help="scaling factor of the regularization term, default value is proper for l2, for kl you might adjust reg_scale to match l2",
-# )
-# args = parser.parse_args()
-
-
-# cfg.OUT_DIR = "../experiments/{}/search-progressive-{}-{}-{}".format(
-#     cfg.SEARCH.DATASET, cfg.OUT_DIR, time.strftime("%Y%m%d-%H%M%S"), cfg.RNG_SEED
-# )
-# cfg.OUT_DIR += "-init_channels-" + str(cfg.SPACE.CHANNEL)
-# cfg.OUT_DIR += "-layers-" + str(cfg.SPACE.LAYERS)
-# cfg.OUT_DIR += "-init_pc-" + str(cfg.DRNAS.K)
-# utils.create_exp_dir(cfg.OUT_DIR, scripts_to_save=glob.glob("*.py"))
-
-# log_format = "%(asctime)s %(message)s"
-# logging.basicConfig(
-#     stream=sys.stdout,
-#     level=logging.INFO,
-#     format=log_format,
-#     datefmt="%m/%d %I:%M:%S %p",
-# )
-# fh = logging.FileHandler(os.path.join(cfg.OUT_DIR, "log.txt"))
-# fh.setFormatter(logging.Formatter(log_format))
-# logging.getLogger().addHandler(fh)
-
-
 def main():
 
     setup_env()
     cudnn.benchmark = True  # DrNAS code sets this term to True.
 
     criterion = build_loss_fun().cuda()
-    # criterion = nn.CrossEntropyLoss()
-    # criterion = criterion.cuda()
 
     model = DrNAS_builder().cuda()
-    # model = Network(
-    #     cfg.SPACE.CHANNEL,
-    #     cfg.SEARCH.NUM_CLASSES,
-    #     cfg.SPACE.LAYERS,
-    #     criterion,
-    #     k=cfg.DRNAS.K,
-    #     reg_type=cfg.DRNAS.REG_TYPE,
-    #     reg_scale=cfg.DRNAS.REG_SCALE,
-    # )
     architect = Architect(model, cfg)
 
     logger.info("param size = %fMB", utils.count_parameters_in_MB(model))
@@ -136,37 +47,9 @@ def main():
         weight_decay=cfg.OPTIM.WEIGHT_DECAY,
     )
 
-    # train_transform, valid_transform = utils._data_transforms_cifar10(args)
-    # if cfg.SEARCH.DATASET == "cifar100":
-    #     train_data = dset.CIFAR100(
-    #         root=cfg.SEARCH.DATAPATH, train=True, download=True, transform=train_transform
-    #     )
-    # else:
-    #     train_data = dset.CIFAR10(
-    #         root=cfg.SEARCH.DATAPATH, train=True, download=True, transform=train_transform
-    #     )
-
     [train_loader, valid_loader] = construct_loader(
         cfg.SEARCH.DATASET, cfg.SEARCH.SPLIT, cfg.SEARCH.BATCH_SIZE, cfg.SEARCH.DATAPATH
     )
-
-    # num_train = len(train_data)
-    # indices = list(range(num_train))
-    # split = int(np.floor(args.train_portion * num_train))
-
-    # train_queue = torch.utils.data.DataLoader(
-    #     train_data,
-    #     batch_size=cfg.SEARCH.BATCH_SIZE,
-    #     sampler=torch.utils.data.sampler.SubsetRandomSampler(indices[:split]),
-    #     pin_memory=True,
-    # )
-
-    # valid_queue = torch.utils.data.DataLoader(
-    #     train_data,
-    #     batch_size=cfg.SEARCH.BATCH_SIZE,
-    #     sampler=torch.utils.data.sampler.SubsetRandomSampler(indices[split:num_train]),
-    #     pin_memory=True,
-    # )
 
     # configure progressive parameter
     epoch = 0
@@ -178,7 +61,7 @@ def main():
     lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, float(sum(train_epochs)), eta_min=cfg.OPTIM.MIN_LR
     )
-    
+
     train_meter = meters.TrainMeter(len(train_loader))
     val_meter = meters.TestMeter(len(valid_loader))
 
@@ -211,15 +94,15 @@ def main():
             # print("epoch time:{}".format(train_timer.diff))
 
             # validation
-            # valid_acc, valid_obj = infer(valid_queue, model, criterion)
-            # logger.info("valid_acc %f", valid_acc)
             test_epoch(valid_loader, model, val_meter, epoch, writer)
 
             epoch += 1
             lr_scheduler.step()
 
             if epoch % cfg.SEARCH.CHECKPOINT_PERIOD == 0:
-                save_ckpt(model, os.path.join(cfg.OUT_DIR, "weights_epo" + str(epoch) + ".pt"))
+                utils.save(
+                    model, os.path.join(cfg.OUT_DIR, "weights_epo" + str(epoch) + ".pt")
+                )
 
         # print("avg epoch time:{}".format(train_timer.average_time))
         # train_timer.reset()
@@ -268,9 +151,6 @@ def train_epoch(
 
     valid_loader_iter = iter(valid_loader)
 
-    # objs = utils.AvgrageMeter()
-    # top1 = utils.AvgrageMeter()
-    # top5 = utils.AvgrageMeter()
     for cur_iter, (trn_X, trn_y) in enumerate(train_loader):
         model.train()
         try:
@@ -318,54 +198,6 @@ def train_epoch(
     train_meter.log_epoch_stats(cur_epoch)
     train_meter.reset()
     return top1_err
-
-    # prec1, prec5 = utils.accuracy(logits, trn_y, topk=(1, 5))
-    # objs.update(loss.data, n)
-    # top1.update(prec1.data, n)
-    # top5.update(prec5.data, n)
-
-    # if step % cfg.SEARCH.EVAL_PERIOD == 0:
-    #     logger.info("train %03d %e %f %f", step, objs.avg, top1.avg, top5.avg)
-    # if "debug" in cfg.OUT_DIR:
-    #     break
-
-    # return top1.avg, objs.avg
-
-
-# def infer(valid_queue, model, criterion):
-#     objs = utils.AvgrageMeter()
-#     top1 = utils.AvgrageMeter()
-#     top5 = utils.AvgrageMeter()
-#     model.eval()
-
-#     with torch.no_grad():
-#         for step, (input, target) in enumerate(valid_queue):
-#             input = input.cuda()
-#             target = target.cuda(non_blocking=True)
-
-#             logits = model(input)
-#             loss = criterion(logits, target)
-
-#             prec1, prec5 = utils.accuracy(logits, target, topk=(1, 5))
-#             n = input.size(0)
-#             objs.update(loss.data, n)
-#             top1.update(prec1.data, n)
-#             top5.update(prec5.data, n)
-
-#             if step % cfg.SEARCH.EVAL_PERIOD == 0:
-#                 logger.info("valid %03d %e %f %f", step, objs.avg, top1.avg, top5.avg)
-#             if "debug" in cfg.OUT_DIR:
-#                 break
-
-#     return top1.avg, objs.avg
-
-
-def save_ckpt(model, model_path):
-    torch.save(model.state_dict(), model_path)
-
-
-def load_ckpt(model, model_path):
-    model.load_state_dict(torch.load(model_path))
 
 
 if __name__ == "__main__":
