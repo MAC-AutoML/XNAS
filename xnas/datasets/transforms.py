@@ -5,11 +5,11 @@
 
 """Image transformations."""
 
-import math
-
 import cv2
+import math
 import numpy as np
 import torch
+import torchvision.transforms as transforms
 
 
 def color_norm(im, mean, std):
@@ -128,3 +128,118 @@ def torch_lighting(im, alpha_std):
     for i in range(im.shape[1]):
         im[:, i, :, :] = im[:, i, :, :] + rgb[i]
     return im
+
+
+def transforms_svhn(cutout_length):
+    SVHN_MEAN = [0.4377, 0.4438, 0.4728]
+    SVHN_STD = [0.1980, 0.2010, 0.1970]
+
+    train_transform = transforms.Compose(
+        [
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(SVHN_MEAN, SVHN_STD),
+        ]
+    )
+    if cutout_length:
+        train_transform.transforms.append(Cutout(cutout_length))
+
+    valid_transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(SVHN_MEAN, SVHN_STD),
+        ]
+    )
+    return train_transform, valid_transform
+
+
+def transforms_cifar100(cutout_length):
+    CIFAR_MEAN = [0.5071, 0.4865, 0.4409]
+    CIFAR_STD = [0.2673, 0.2564, 0.2762]
+
+    train_transform = transforms.Compose(
+        [
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
+        ]
+    )
+    if cutout_length:
+        train_transform.transforms.append(Cutout(cutout_length))
+
+    valid_transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
+        ]
+    )
+    return train_transform, valid_transform
+
+
+def transforms_cifar10(cutout_length):
+    CIFAR_MEAN = [0.49139968, 0.48215827, 0.44653124]
+    CIFAR_STD = [0.24703233, 0.24348505, 0.26158768]
+
+    train_transform = transforms.Compose(
+        [
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
+        ]
+    )
+    if cutout_length:
+        train_transform.transforms.append(Cutout(cutout_length))
+
+    valid_transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
+        ]
+    )
+    return train_transform, valid_transform
+
+
+def transforms_imagenet16():
+    IMAGENET16_MEAN = [0.48109804, 0.45749020, 0.40788235]
+    IMAGENET16_STD = [0.24792157, 0.24023529, 0.25525490]
+
+    train_transform = transforms.Compose(
+        [
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomCrop(16, padding=2),
+            transforms.ToTensor(),
+            transforms.Normalize(IMAGENET16_MEAN, IMAGENET16_STD),
+        ]
+    )
+
+    # Cutout is not used here.
+
+    valid_transform = transforms.Compose(
+        [transforms.ToTensor(), transforms.Normalize(IMAGENET16_MEAN, IMAGENET16_STD)]
+    )
+    return train_transform, valid_transform
+
+
+class Cutout(object):
+    def __init__(self, length):
+        self.length = length
+
+    def __call__(self, img):
+        h, w = img.size(1), img.size(2)
+        mask = np.ones((h, w), np.float32)
+        y = np.random.randint(h)
+        x = np.random.randint(w)
+
+        y1 = np.clip(y - self.length // 2, 0, h)
+        y2 = np.clip(y + self.length // 2, 0, h)
+        x1 = np.clip(x - self.length // 2, 0, w)
+        x2 = np.clip(x + self.length // 2, 0, w)
+
+        mask[y1:y2, x1:x2] = 0.0
+        mask = torch.from_numpy(mask)
+        mask = mask.expand_as(img)
+        img *= mask
+        return img

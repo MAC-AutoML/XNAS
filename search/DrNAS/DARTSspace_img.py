@@ -30,84 +30,6 @@ writer = SummaryWriter(log_dir=os.path.join(cfg.OUT_DIR, "tb"))
 
 logger = logging.get_logger(__name__)
 
-# parser = argparse.ArgumentParser("imagenet")
-# parser.add_argument(
-#     "--workers", type=int, default=16, help="number of workers to load dataset"
-# )
-# parser.add_argument(
-#     "--data", type=str, default="datapath", help="location of the data corpus"
-# )
-# parser.add_argument("--batch_size", type=int, default=512, help="batch size")
-# parser.add_argument(
-#     "--learning_rate", type=float, default=0.5, help="init learning rate"
-# )
-# parser.add_argument(
-#     "--learning_rate_min", type=float, default=0.0, help="min learning rate"
-# )
-# parser.add_argument("--momentum", type=float, default=0.9, help="momentum")
-# parser.add_argument("--weight_decay", type=float, default=3e-4, help="weight decay")
-# parser.add_argument("--report_freq", type=float, default=50, help="report frequency")
-# parser.add_argument(
-#     "--init_channels", type=int, default=48, help="num of init channels"
-# )
-# parser.add_argument("--layers", type=int, default=14, help="total number of layers")
-
-# NOTE: cutout and drop_path_prob are never used.
-
-# parser.add_argument("--cutout", action="store_true", default=False, help="use cutout")
-# parser.add_argument("--cutout_length", type=int, default=16, help="cutout length")
-# parser.add_argument(
-#     "--drop_path_prob", type=float, default=0.3, help="drop path probability"
-# )
-
-# parser.add_argument("--save", type=str, default="exp", help="experiment name")
-# parser.add_argument("--seed", type=int, default=0, help="random seed")
-# parser.add_argument("--grad_clip", type=float, default=5, help="gradient clipping")
-# parser.add_argument(
-#     "--unrolled",
-#     action="store_true",
-#     default=False,
-#     help="use one-step unrolled validation loss",
-# )
-# parser.add_argument(
-#     "--arch_learning_rate",
-#     type=float,
-#     default=6e-3,
-#     help="learning rate for arch encoding",
-# )
-# parser.add_argument(
-#     "--arch_weight_decay",
-#     type=float,
-#     default=1e-3,
-#     help="weight decay for arch encoding",
-# )
-# parser.add_argument("--k", type=int, default=6, help="init partial channel parameter")
-# parser.add_argument("--begin", type=int, default=10, help="warm start")
-
-# args = parser.parse_args()
-
-# args.save = "../experiments/imagenet/search-progressive-{}-{}-{}".format(
-#     args.save, time.strftime("%Y%m%d-%H%M%S"), args.seed
-# )
-# args.save += "-init_channels-" + str(args.init_channels)
-# args.save += "-layers-" + str(args.layers)
-# args.save += "-init_pc-" + str(args.k)
-# utils.create_exp_dir(args.save, scripts_to_save=glob.glob("*.py"))
-
-# log_format = "%(asctime)s %(message)s"
-# logging.basicConfig(
-#     stream=sys.stdout,
-#     level=logger.info,
-#     format=log_format,
-#     datefmt="%m/%d %I:%M:%S %p",
-# )
-# fh = logging.FileHandler(os.path.join(args.save, "log.txt"))
-# fh.setFormatter(logging.Formatter(log_format))
-# logging.getLogger().addHandler(fh)
-
-# data preparation, we random sample 10% and 2.5% from training set(each class) as train and val, respectively.
-# Note that the data sampling can not use torch.utils.data.sampler.SubsetRandomSampler as imagenet is too large
-
 
 def data_preparation():
     traindir = os.path.join(cfg.SEAECH.DATAPATH, "train")
@@ -170,11 +92,9 @@ def main():
     cudnn.benchmark = True  # DrNAS code sets this term to True.
 
     criterion = build_loss_fun().cuda()
-    # criterion = nn.CrossEntropyLoss()
-    # criterion = criterion.cuda()
 
     model = DrNAS_builder()
-    # model = Network(cfg.SPACE.CHANNEL, cfg.SEARCH.NUM_CLASSES, cfg.SPACE.LAYERS, criterion, k=cfg.DRNAS.K)
+
     model = nn.DataParallel(model)  # TODO: parallel not tested
     model = model.cuda()
 
@@ -231,7 +151,7 @@ def main():
 
             train_timer.tic()
             # training
-            train_acc = train_epoch(
+            top1err = train_epoch(
                 train_loader,
                 valid_loader,
                 model,
@@ -242,7 +162,7 @@ def main():
                 train_meter,
                 e,
             )
-            logger.info("Train_acc %f", train_acc)
+            logger.info("Top1 err:%f", top1err)
 
             train_timer.toc()
             print("epoch time:{}".format(train_timer.diff))
@@ -253,13 +173,13 @@ def main():
                 # logger.info("Valid_acc %f", valid_acc)
                 # test_acc, test_obj = infer(test_queue, model, criterion)
                 # logger.info('Test_acc %f', test_acc)
-                test_epoch(valid_loader, model, val_meter, current_epochs, writer)
+                test_epoch(valid_loader, model, val_meter, epoch, writer)
 
             epoch += 1
             scheduler.step()
 
             if epoch % cfg.SEARCH.CHECKPOINT_PERIOD == 0:
-                save_ckpt(
+                utils.save(
                     model, os.path.join(cfg.OUT_DIR, "weights_epo" + str(epoch) + ".pt")
                 )
 
@@ -308,10 +228,6 @@ def train_epoch(
     writer.add_scalar("train/lr", lr, cur_step)
 
     valid_loader_iter = iter(valid_loader)
-
-    # objs = utils.AvgrageMeter()
-    # top1 = utils.AvgrageMeter()
-    # top5 = utils.AvgrageMeter()
 
     for cur_iter, (trn_X, trn_y) in enumerate(train_loader):
         model.train()
@@ -363,62 +279,6 @@ def train_epoch(
     train_meter.log_epoch_stats(cur_epoch)
     train_meter.reset()
     return top1_err
-
-    # if step % args.report_freq == 0:
-    #     end_time = time.time()
-    #     if step == 0:
-    #         duration = 0
-    #         start_time = time.time()
-    #     else:
-    #         duration = end_time - start_time
-    #         start_time = time.time()
-    #     logger.info(
-    #         "TRAIN Step: %03d Objs: %e R1: %f R5: %f Duration: %ds",
-    #         step,
-    #         objs.avg,
-    #         top1.avg,
-    #         top5.avg,
-    #         duration,
-    #     )
-    # if "debug" in args.save:
-    # break
-    # return top1.avg, objs.avg
-
-
-# def infer(valid_queue, model, criterion):
-#     objs = utils.AvgrageMeter()
-#     top1 = utils.AvgrageMeter()
-#     top5 = utils.AvgrageMeter()
-#     model.eval()
-
-#     with torch.no_grad():
-#         for step, (input, target) in enumerate(valid_queue):
-#             input = input.cuda()
-#             target = target.cuda(non_blocking=True)
-
-#             logits = model(input)
-#             loss = criterion(logits, target)
-
-#             prec1, prec5 = utils.accuracy(logits, target, topk=(1, 5))
-#             n = input.size(0)
-#             objs.update(loss.data, n)
-#             top1.update(prec1.data, n)
-#             top5.update(prec5.data, n)
-
-#             if step % args.report_freq == 0:
-#                 logger.info("valid %03d %e %f %f", step, objs.avg, top1.avg, top5.avg)
-#             if "debug" in args.save:
-#                 break
-
-#     return top1.avg, objs.avg
-
-
-def save_ckpt(model, model_path):
-    torch.save(model.state_dict(), model_path)
-
-
-def load_ckpt(model, model_path):
-    model.load_state_dict(torch.load(model_path))
 
 
 if __name__ == "__main__":

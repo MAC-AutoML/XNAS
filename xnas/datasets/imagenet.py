@@ -112,6 +112,7 @@ class XNAS_ImageFolder():
                     self._imdb.append({"im_path": im_path, "class": cont_id})
         print("Number of images: {}".format(len(self._imdb)))
         print("Number of classes: {}".format(len(self._class_ids)))
+        return self._imdb
 
     def generate_data_loader(self):
         indices = list(range(len(self._imdb)))
@@ -254,8 +255,8 @@ class ImageList_torch(torch.utils.data.Dataset):
             # Scale -> center crop
             transformer.append(torch_transforms.Resize(self.min_crop_size))
             transformer.append(torch_transforms.CenterCrop(self.crop_size))
-        transformer.append(torch_transforms.ToTensor())
-        transformer.append(torch_transforms.Normalize(
+            transformer.append(torch_transforms.ToTensor())
+            transformer.append(torch_transforms.Normalize(
             mean=self._bgr_normalized_mean, std=self._bgr_normalized_std))
         self.transform = torch_transforms.Compose(transformer)
 

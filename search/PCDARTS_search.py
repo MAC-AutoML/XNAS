@@ -15,7 +15,8 @@ from xnas.core.timer import Timer
 from xnas.core.builders import build_space, build_loss_fun, lr_scheduler_builder
 from xnas.core.config import cfg
 from xnas.core.trainer import setup_env, test_epoch
-from xnas.datasets.cifar10 import data_transforms_cifar10
+from xnas.datasets.loader import construct_loader
+# from xnas.datasets.old.cifar10 import data_transforms_cifar10
 from xnas.search_algorithm.PCDARTS import *
 from DARTS_search import darts_load_checkpoint, darts_save_checkpoint
 
@@ -45,25 +46,29 @@ def pcdarts_train_model():
     architect = Architect(
         pcdarts_controller, cfg.OPTIM.MOMENTUM, cfg.OPTIM.WEIGHT_DECAY)
 
+    # # Load dataset
+    # train_transform, valid_transform = data_transforms_cifar10(cutout_length=0)
+
+    # train_data = dset.CIFAR10(
+    #     root=cfg.SEARCH.DATASET, train=True, download=True, transform=train_transform)
+
+    # num_train = len(train_data)
+    # indices = list(range(num_train))
+    # split = int(np.floor(cfg.SEARCH.SPLIT[0] * num_train))
+
+    # train_ = torch.utils.data.DataLoader(
+    #     train_data, batch_size=cfg.SEARCH.BATCH_SIZE,
+    #     sampler=torch.utils.data.sampler.SubsetRandomSampler(indices[:split]),
+    #     pin_memory=True, num_workers=2)
+    # val_ = torch.utils.data.DataLoader(
+    #     train_data, batch_size=cfg.SEARCH.BATCH_SIZE,
+    #     sampler=torch.utils.data.sampler.SubsetRandomSampler(
+    #         indices[split:num_train]),
+    #     pin_memory=True, num_workers=2)
+
     # Load dataset
-    train_transform, valid_transform = data_transforms_cifar10(cutout_length=0)
-
-    train_data = dset.CIFAR10(
-        root=cfg.SEARCH.DATASET, train=True, download=True, transform=train_transform)
-
-    num_train = len(train_data)
-    indices = list(range(num_train))
-    split = int(np.floor(cfg.SEARCH.SPLIT[0] * num_train))
-
-    train_ = torch.utils.data.DataLoader(
-        train_data, batch_size=cfg.SEARCH.BATCH_SIZE,
-        sampler=torch.utils.data.sampler.SubsetRandomSampler(indices[:split]),
-        pin_memory=True, num_workers=2)
-    val_ = torch.utils.data.DataLoader(
-        train_data, batch_size=cfg.SEARCH.BATCH_SIZE,
-        sampler=torch.utils.data.sampler.SubsetRandomSampler(
-            indices[split:num_train]),
-        pin_memory=True, num_workers=2)
+    [train_, val_] = construct_loader(
+        cfg.SEARCH.DATASET, cfg.SEARCH.SPLIT, cfg.SEARCH.BATCH_SIZE, cfg.SEARCH.DATAPATH)
 
     # weights optimizer
     w_optim = torch.optim.SGD(pcdarts_controller.weights(),

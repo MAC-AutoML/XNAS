@@ -570,7 +570,7 @@ class TinyNetworkGDAS(nn.Module):
 
 # build API
 
-def _DrNASCNN_nb201space(species):
+def _DrNASCNN_nb201space(species, criterion):
     from xnas.core.config import cfg
     # if cfg.SEARCH.DATASET == 'cifar10':
     return TinyNetwork(
@@ -578,7 +578,7 @@ def _DrNASCNN_nb201space(species):
         N=cfg.SPACE.LAYERS,
         max_nodes=cfg.SPACE.NODES,
         num_classes=cfg.SEARCH.NUM_CLASSES,
-        criterion=cfg.SEARCH.LOSS_FUN,
+        criterion=criterion,
         search_space=NAS_BENCH_201,
         k=cfg.DRNAS.K,
         species=species,
@@ -586,7 +586,7 @@ def _DrNASCNN_nb201space(species):
         reg_scale=cfg.DRNAS.REG_SCALE
     )
 
-def _DrNASCNN_GDAS_nb201space():
+def _DrNASCNN_GDAS_nb201space(criterion):
     from xnas.core.config import cfg
     # if cfg.SEARCH.DATASET == 'cifar10':
     return TinyNetworkGDAS(
@@ -594,6 +594,6 @@ def _DrNASCNN_GDAS_nb201space():
         N=cfg.SPACE.LAYERS,
         max_nodes=cfg.SPACE.NODES,
         num_classes=cfg.SEARCH.NUM_CLASSES,
-        criterion=cfg.SEARCH.LOSS_FUN,
+        criterion=criterion,
         search_space=NAS_BENCH_201
     )
