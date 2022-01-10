@@ -19,6 +19,8 @@ This project is now supported by PengCheng Lab
 - DDPNAS
 - MIGONAS
 - GridSearch
+- DrNAS
+  <br>NB201: `python search/DrNAS/nb201space.py --cfg configs/search/DrNAS/nb201_cifar10_Dirichlet.yaml`
 
 ## Supported Search Spaces
 
@@ -51,7 +53,7 @@ export PYTHONPATH=$PYTHONPATH:/Path/to/XNAS
 
 ---
 
-## Usage
+## Usage Examples
 
 ```bash
 # set gpu devices. Multiple GPUs are under test and may cause errors now.
