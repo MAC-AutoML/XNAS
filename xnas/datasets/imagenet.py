@@ -91,12 +91,7 @@ class XNAS_ImageFolder():
         elif self.dataset_name == 'custom':
             self._class_ids = sorted(
                 f for f in split_files if not f[0] == '.')
-            if self._rgb_normalized_mean is None:
-                logger.warning("image mean is None using imagenet mean value!")
-                self._rgb_normalized_mean = [0.485, 0.456, 0.406]
-            if self._rgb_normalized_std is None:
-                logger.warning("image std is None using imagenet std value!")
-                self._rgb_normalized_std = [0.229, 0.224, 0.225]
+
         else:
             raise NotImplementedError
         # Map class ids to contiguous ids
@@ -253,7 +248,7 @@ class ImageList_torch(torch.utils.data.Dataset):
                 self.crop_size, scale=(self.min_crop_size, 1.0)))
         elif self.crop == "center":
             # Scale -> center crop
-            transformer.append(torch_transforms.Resize(self.min_crop_size))
+            transformer.append(torch_transforms.Resize(self.min_crop_size)) # TODO: this function seems to be wrong?
             transformer.append(torch_transforms.CenterCrop(self.crop_size))
             transformer.append(torch_transforms.ToTensor())
             transformer.append(torch_transforms.Normalize(

@@ -1,0 +1,18 @@
+SPACE:
+  NAME: 'darts'
+  NODES: 4
+SEARCH:
+  DATASET: 'imagenet'
+  DATAPATH: "data/imagenet"
+  NUM_CLASSES: 1000
+  BATCH_SIZE: 24
+DATA_LOADER:
+  NUM_WORKERS: 0
+TENAS:
+  SUPER_TYPE: "nasnet-super"
+  TRACK: True
+  PRICISION: 3
+  INIT: "kaiming_normal"
+  REPEAT: 3
+  PRUNE_NUMBER: 2
+RNG_SEED: 0

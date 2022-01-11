@@ -11,14 +11,23 @@ This project is now supported by PengCheng Lab
 ### Beta
 
 - DARTS
+  `python search/DARTS.py --cfg configs/search/DARTS.yaml`
 - PCDARTS
+  `python search/PDARTS.py --cfg configs/search/PDARTS.yaml`
 - PDARTS
+  `python search/PCDARTS.py --cfg configs/search/PCDARTS.yaml`
 - SNG
 - ASNG
 - MDENAS
 - DDPNAS
 - MIGONAS
 - GridSearch
+- DrNAS
+  `python search/DrNAS/nb201space.py --cfg configs/search/DrNAS/nb201_cifar10_Dirichlet.yaml`
+  `python search/DrNAS/nb201space.py --cfg configs/search/DrNAS/nb201_cifar100_Dirichlet.yaml`
+  `python search/DrNAS/DARTSspace.py --cfg configs/search/DrNAS/DARTS_cifar10.yaml`
+- TENAS
+  `python search/TENAS.py --cfg configs/search/TENAS/nb201_cifar10.yaml`
 
 ## Supported Search Spaces
 
@@ -28,8 +37,8 @@ This project is now supported by PengCheng Lab
 
 #### Cell-based Search Space
 
-- NAS-Bench-1shot1
-- darts
+- NAS-Bench-1Shot1
+- DARTS
 - NAS-Bench-201
 
 #### Chain-structured Search Space
@@ -51,7 +60,7 @@ export PYTHONPATH=$PYTHONPATH:/Path/to/XNAS
 
 ---
 
-## Usage
+## Usage Examples
 
 ```bash
 # set gpu devices. Multiple GPUs are under test and may cause errors now.

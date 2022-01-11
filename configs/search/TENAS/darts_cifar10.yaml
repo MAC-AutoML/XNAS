@@ -1,0 +1,18 @@
+SPACE:
+  NAME: 'darts'
+  NODES: 4
+SEARCH:
+  DATASET: 'cifar10'
+  DATAPATH: "data/cifar10"
+  NUM_CLASSES: 10
+  BATCH_SIZE: 14
+DATA_LOADER:
+  NUM_WORKERS: 0
+TENAS:
+  SUPER_TYPE: "nasnet-super"
+  TRACK: True
+  PRICISION: 3
+  INIT: "kaiming_normal"
+  REPEAT: 3
+  PRUNE_NUMBER: 3
+RNG_SEED: 0

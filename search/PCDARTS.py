@@ -18,7 +18,7 @@ from xnas.core.trainer import setup_env, test_epoch
 from xnas.datasets.loader import construct_loader
 # from xnas.datasets.old.cifar10 import data_transforms_cifar10
 from xnas.search_algorithm.PCDARTS import *
-from DARTS_search import darts_load_checkpoint, darts_save_checkpoint
+from search.DARTS import darts_load_checkpoint, darts_save_checkpoint
 
 
 # Load config and check

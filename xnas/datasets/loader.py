@@ -19,7 +19,7 @@ def construct_loader(
     cutout_length=0,
     num_workers=8,
     use_classes=None,
-    backend="torch",
+    backend="custom",
 ):
     assert (name in SUPPORT_DATASETS) or (
         name in IMAGEFOLDER_FORMAT
@@ -29,11 +29,14 @@ def construct_loader(
     if name in SUPPORT_DATASETS:
         train_data, _ = getData(name, datapath, cutout_length, use_classes)
         return splitDataLoader(train_data, batch_size, split, num_workers)
-    else:
+    elif name in IMAGEFOLDER_FORMAT:
         data_ = XNAS_ImageFolder(
             datapath, split, backend, batch_size=batch_size, num_workers=num_workers
         )
         return data_.generate_data_loader()
+    else:
+        print("dataset not supported.")
+        exit(0) 
 
 
 def getData(name, root, cutout_length, download=True, use_classes=None):
@@ -79,7 +82,13 @@ def getData(name, root, cutout_length, download=True, use_classes=None):
             use_num_of_class_only=use_classes,
         )
         if use_classes == 120:
-            assert len(train_data) == 151700
+            assert len(train_data) == 151700 and len(test_data) == 6000
+        elif use_classes == 150:
+            assert len(train_data) == 190272 and len(test_data) == 7500
+        elif use_classes == 200:
+            assert len(train_data) == 254775 and len(test_data) == 10000
+        elif use_classes == 1000:
+            assert len(train_data) == 1281167 and len(test_data) == 50000
     else:
         exit(0)
     return train_data, test_data

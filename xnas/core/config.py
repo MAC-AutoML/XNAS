@@ -438,6 +438,30 @@ _C.DRNAS.METHOD = 'dirichlet'
 _C.DRNAS.TAU = [1, 10]
 
 
+# ------------------------------------------------------------------------------------ #
+# TENAS options
+# ------------------------------------------------------------------------------------ #
+_C.TENAS = CfgNode()
+
+# super type, "basic" for nb201 and "nasnet-super" for darts
+_C.TENAS.SUPER_TYPE = "basic"
+
+# Whether use track_running_stats or not in the BN layer
+_C.TENAS.TRACK = True
+
+# precision for % of changes of cond(NTK) and #Regions
+_C.TENAS.PRECISION = 3
+
+# use gaussian init
+_C.TENAS.INIT = "kaiming_normal"
+
+# repeat calculation of NTK and Regions
+_C.TENAS.REPEAT = 3
+
+# number of operator to prune on each edge per round
+_C.TENAS.PRUNE_NUMBER = 1
+
+
 
 def dump_cfg():
     """Dumps the config to the output directory."""
