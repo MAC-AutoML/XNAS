@@ -11,11 +11,11 @@ This project is now supported by PengCheng Lab
 ### Beta
 
 - DARTS
-  cifar10: `python search/DARTS.py --cfg configs/search/DARTS.yaml`
+  `python search/DARTS.py --cfg configs/search/DARTS.yaml`
 - PCDARTS
-  cifar10: `python search/PDARTS.py --cfg configs/search/PDARTS.yaml`
+  `python search/PDARTS.py --cfg configs/search/PDARTS.yaml`
 - PDARTS
-  cifar10: `python search/PCDARTS.py --cfg configs/search/PCDARTS.yaml`
+  `python search/PCDARTS.py --cfg configs/search/PCDARTS.yaml`
 - SNG
 - ASNG
 - MDENAS
@@ -23,11 +23,11 @@ This project is now supported by PengCheng Lab
 - MIGONAS
 - GridSearch
 - DrNAS
-  NB201_cifar10: `python search/DrNAS/nb201space.py --cfg configs/search/DrNAS/nb201_cifar10_Dirichlet.yaml`
-  NB201_cifar100: `python search/DrNAS/nb201space.py --cfg configs/search/DrNAS/nb201_cifar100_Dirichlet.yaml`
-  DARTS_cifar10: `python search/DrNAS/DARTSspace.py --cfg configs/search/DrNAS/DARTS_cifar10.yaml`
+  `python search/DrNAS/nb201space.py --cfg configs/search/DrNAS/nb201_cifar10_Dirichlet.yaml`
+  `python search/DrNAS/nb201space.py --cfg configs/search/DrNAS/nb201_cifar100_Dirichlet.yaml`
+  `python search/DrNAS/DARTSspace.py --cfg configs/search/DrNAS/DARTS_cifar10.yaml`
 - TENAS
-  NB201_cifar10: `python search/TENAS.py --cfg configs/search/TENAS/nb201_cifar10.yaml`*
+  `python search/TENAS.py --cfg configs/search/TENAS/nb201_cifar10.yaml`
 
 ## Supported Search Spaces
 
