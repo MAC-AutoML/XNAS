@@ -1,6 +1,6 @@
 # The macro structure is defined in NAS-Bench-201
-from xnas.search_space.TENAS.cell_searchs.search_model_darts    import TinyNetworkDarts
-# from .genotypes             import Structure as CellStructure, architectures as CellArchitectures
+from xnas.search_space.TENAS.cell_searchs.search_model_darts import TinyNetworkDarts
+from xnas.search_space.TENAS.cell_searchs.genotypes import Structure as CellStructure, architectures as CellArchitectures
 # NASNet-based macro structure
 from xnas.search_space.TENAS.cell_searchs.search_model_darts_nasnet import NASNetworkDARTS
 

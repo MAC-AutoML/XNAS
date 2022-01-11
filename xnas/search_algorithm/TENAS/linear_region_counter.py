@@ -5,8 +5,6 @@ import torch.nn as nn
 import torch.utils.data
 import torchvision.transforms as transforms
 import torchvision.datasets as dset
-from pdb import set_trace as bp
-# from datasets import ImageNet16
 from xnas.datasets.imagenet16 import ImageNet16
 from operator import mul
 from functools import reduce
@@ -53,8 +51,8 @@ class RandChannel(object):
 
 Dataset2Class = {'cifar10': 10,
                  'cifar100': 100,
-                 'imagenet-1k': 1000,
-                 'ImageNet16-120': 120}
+                 'imagenet': 1000,
+                 'imagenet16': 120}
 
 
 # NOTE: This highly similar piece of code is preserved because it uses random cropping and random channels, which are not common operations.
@@ -70,9 +68,9 @@ def get_datasets(name, root, input_size, cutout=-1):
     elif name == 'cifar100':
         mean = [x / 255 for x in [129.3, 124.1, 112.4]]
         std  = [x / 255 for x in [68.2, 65.4, 70.4]]
-    elif name.startswith('imagenet-1k'):
+    elif name == 'imagenet':
         mean, std = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
-    elif name.startswith('ImageNet16'):
+    elif name == 'imagenet16':
         mean = [x / 255 for x in [122.68, 116.66, 104.01]]
         std  = [x / 255 for x in [63.22,  61.26 , 65.09]]
     else:
@@ -84,21 +82,16 @@ def get_datasets(name, root, input_size, cutout=-1):
         if cutout > 0 : lists += [CUTOUT(cutout)]
         train_transform = transforms.Compose(lists)
         test_transform  = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean, std)])
-    elif name.startswith('ImageNet16'):
+    elif name == 'imagenet16':
         lists = [transforms.RandomCrop(input_size[1], padding=0), transforms.ToTensor(), transforms.Normalize(mean, std), RandChannel(input_size[0])]
         if cutout > 0 : lists += [CUTOUT(cutout)]
         train_transform = transforms.Compose(lists)
         test_transform  = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean, std)])
-    elif name.startswith('imagenet-1k'):
+    elif name == 'imagenet':
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        if name == 'imagenet-1k':
-            xlists    = []
-            xlists.append(transforms.Resize((32, 32), interpolation=2))
-            xlists.append(transforms.RandomCrop(input_size[1], padding=0))
-        # elif name == 'imagenet-1k-s':
-        #     xlists = [transforms.RandomResizedCrop(32, scale=(0.2, 1.0))]
-        #     xlists = []
-        else: raise ValueError('invalid name : {:}'.format(name))
+        xlists    = []
+        xlists.append(transforms.Resize((32, 32), interpolation=2))
+        xlists.append(transforms.RandomCrop(input_size[1], padding=0))
         xlists.append(transforms.ToTensor())
         xlists.append(normalize)
         xlists.append(RandChannel(input_size[0]))
@@ -115,14 +108,14 @@ def get_datasets(name, root, input_size, cutout=-1):
         train_data = dset.CIFAR100(root, train=True , transform=train_transform, download=True)
         test_data  = dset.CIFAR100(root, train=False, transform=test_transform , download=True)
         assert len(train_data) == 50000 and len(test_data) == 10000
-    elif name.startswith('imagenet-1k'):
+    elif name == 'imagenet':
         train_data = dset.ImageFolder(osp.join(root, 'train'), train_transform)
         test_data  = dset.ImageFolder(osp.join(root, 'val'),   test_transform)
     # elif name == 'ImageNet16':
     #     train_data = ImageNet16(root, True , train_transform)
     #     test_data  = ImageNet16(root, False, test_transform)
     #     assert len(train_data) == 1281167 and len(test_data) == 50000
-    elif name == 'ImageNet16-120':
+    elif name == 'imagenet16':
         train_data = ImageNet16(root, True , train_transform, 120)
         test_data  = ImageNet16(root, False, test_transform , 120)
         assert len(train_data) == 151700 and len(test_data) == 6000

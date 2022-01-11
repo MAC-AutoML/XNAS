@@ -27,7 +27,7 @@ This project is now supported by PengCheng Lab
   <br>NB201_cifar100: `python search/DrNAS/nb201space.py --cfg configs/search/DrNAS/nb201_cifar100_Dirichlet.yaml`
   <br>DARTS_cifar10: `python search/DrNAS/DARTSspace.py --cfg configs/search/DrNAS/DARTS_cifar10.yaml`
 - TENAS
-  <br>*not finished.*
+  <br>NB201_cifar10: `python search/TENAS.py --cfg configs/search/TENAS/nb201_cifar10.yaml`*
 
 ## Supported Search Spaces
 
@@ -133,4 +133,3 @@ We reimplement several widely used NAS methods including:
 2. fix Nvidia DALI backend support
 3. add **kwargs for space_builder
 4. test code for imagenet
-5. finish TENAS entry

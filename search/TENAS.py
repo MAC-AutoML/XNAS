@@ -1,6 +1,4 @@
-import os, sys, time, argparse
-import math
-import random
+import os, time
 from easydict import EasyDict as edict
 import numpy as np
 import torch
@@ -8,15 +6,22 @@ from torch import nn
 from tqdm import tqdm
 
 
-from flop_benchmark import get_model_infos
-
+import xnas.core.config as config
 import xnas.core.logging as logging
+from xnas.core.config import cfg
 from xnas.core.trainer import setup_env
 from xnas.datasets.loader import getDataLoader
 from xnas.search_space.TENAS import get_cell_based_tiny_net, get_search_spaces
 from xnas.search_algorithm.TENAS import Linear_Region_Collector, get_ntk_n
+from xnas.search_algorithm.TENAS.utils import get_model_infos, round_to
+
 
 from nas_201_api import NASBench201API as API
+
+# Load config and check
+config.load_cfg_fom_args()
+config.assert_and_infer_cfg()
+cfg.freeze()
 
 logger = logging.get_logger(__name__)
 
@@ -52,26 +57,12 @@ def init_model(model, method='kaiming_norm_fanin'):
     return model
 
 
-def round_to(number, precision, eps=1e-8):
-    # round to significant figure
-    dtype = type(number)
-    if number == 0:
-        return number
-    sign = number / abs(number)
-    number = abs(number) + eps
-    power = math.floor(math.log(number, 10)) + 1
-    if dtype == int:
-        return int(sign * round(number*10**(-power), precision) * 10**(power))
-    else:
-        return sign * round(number*10**(-power), precision) * 10**(power)
-
-
-def prune_func_rank(xargs, arch_parameters, model_config, model_config_thin, loader, lrc_model, search_space, precision=10, prune_number=1):
+def prune_func_rank(arch_parameters, model_config, model_config_thin, loader, lrc_model, search_space, precision=10, prune_number=1):
     # arch_parameters now has three dim: cell_type, edge, op
     network_origin = get_cell_based_tiny_net(model_config).cuda().train()
-    init_model(network_origin, xargs.init)
+    init_model(network_origin, cfg.TENAS.INIT)
     network_thin_origin = get_cell_based_tiny_net(model_config_thin).cuda().train()
-    init_model(network_thin_origin, xargs.init)
+    init_model(network_thin_origin, cfg.TENAS.INIT)
 
     for alpha in arch_parameters:
         alpha[:, 0] = -INF
@@ -101,10 +92,10 @@ def prune_func_rank(xargs, arch_parameters, model_config, model_config_thin, loa
                     network = get_cell_based_tiny_net(model_config).cuda().train()
                     network.set_alphas(_arch_param)
                     ntk_delta = []
-                    repeat = xargs.repeat
+                    repeat = cfg.TENAS.REPEAT
                     for _ in range(repeat):
                         # random reinit
-                        init_model(network_origin, xargs.init+"_fanout" if xargs.init.startswith('kaiming') else xargs.init)  # for backward
+                        init_model(network_origin, cfg.TENAS.INIT+"_fanout" if cfg.TENAS.INIT.startswith('kaiming') else cfg.TENAS.INIT)  # for backward
                         # make sure network_origin and network are identical
                         for param_ori, param in zip(network_origin.parameters(), network.parameters()):
                             param.data.copy_(param_ori.data)
@@ -125,16 +116,16 @@ def prune_func_rank(xargs, arch_parameters, model_config, model_config_thin, loa
                     network_thin.train()
                     with torch.no_grad():
                         _linear_regions = []
-                        repeat = xargs.repeat
+                        repeat = cfg.TENAS.REPEAT
                         for _ in range(repeat):
                             # random reinit
-                            init_model(network_thin_origin, xargs.init+"_fanin" if xargs.init.startswith('kaiming') else xargs.init)  # for forward
+                            init_model(network_thin_origin, cfg.TENAS.INIT+"_fanin" if cfg.TENAS.INIT.startswith('kaiming') else cfg.TENAS.INIT)  # for forward
                             # make sure network_thin and network_thin_origin are identical
                             for param_ori, param in zip(network_thin_origin.parameters(), network_thin.parameters()):
                                 param.data.copy_(param_ori.data)
                             network_thin.set_alphas(_arch_param)
                             #####
-                            lrc_model.reinit(models=[network_thin_origin, network_thin], seed=xargs.rand_seed)
+                            lrc_model.reinit(models=[network_thin_origin, network_thin], seed=cfg.RNG_SEED)
                             _lr, _lr_2 = lrc_model.forward_batch_sample()
                             _linear_regions.append(round((_lr - _lr_2) / _lr, precision))  # change of #Regions, lower the more likely to be prunned
                             lrc_model.clear()
@@ -188,12 +179,12 @@ def prune_func_rank(xargs, arch_parameters, model_config, model_config_thin, loa
     return arch_parameters, choices_edges
 
 
-def prune_func_rank_group(xargs, arch_parameters, model_config, model_config_thin, loader, lrc_model, search_space, edge_groups=[(0, 2), (2, 5), (5, 9), (9, 14)], num_per_group=2, precision=10):
+def prune_func_rank_group(arch_parameters, model_config, model_config_thin, loader, lrc_model, search_space, edge_groups=[(0, 2), (2, 5), (5, 9), (9, 14)], num_per_group=2, precision=10):
     # arch_parameters now has three dim: cell_type, edge, op
     network_origin = get_cell_based_tiny_net(model_config).cuda().train()
-    init_model(network_origin, xargs.init)
+    init_model(network_origin, cfg.TENAS.INIT)
     network_thin_origin = get_cell_based_tiny_net(model_config_thin).cuda().train()
-    init_model(network_thin_origin, xargs.init)
+    init_model(network_thin_origin, cfg.TENAS.INIT)
 
     for alpha in arch_parameters:
         alpha[:, 0] = -INF
@@ -227,10 +218,10 @@ def prune_func_rank_group(xargs, arch_parameters, model_config, model_config_thi
                         network = get_cell_based_tiny_net(model_config).cuda().train()
                         network.set_alphas(_arch_param)
                         ntk_delta = []
-                        repeat = xargs.repeat
+                        repeat = cfg.TENAS.REPEAT
                         for _ in range(repeat):
                             # random reinit
-                            init_model(network_origin, xargs.init+"_fanout" if xargs.init.startswith('kaiming') else xargs.init)  # for backward
+                            init_model(network_origin, cfg.TENAS.INIT+"_fanout" if cfg.TENAS.INIT.startswith('kaiming') else cfg.TENAS.INIT)  # for backward
                             # make sure network_origin and network are identical
                             for param_ori, param in zip(network_origin.parameters(), network.parameters()):
                                 param.data.copy_(param_ori.data)
@@ -251,16 +242,16 @@ def prune_func_rank_group(xargs, arch_parameters, model_config, model_config_thi
                         network_thin.train()
                         with torch.no_grad():
                             _linear_regions = []
-                            repeat = xargs.repeat
+                            repeat = cfg.TENAS.REPEAT
                             for _ in range(repeat):
                                 # random reinit
-                                init_model(network_thin_origin, xargs.init+"_fanin" if xargs.init.startswith('kaiming') else xargs.init)  # for forward
+                                init_model(network_thin_origin, cfg.TENAS.INIT+"_fanin" if cfg.TENAS.INIT.startswith('kaiming') else cfg.TENAS.INIT)  # for forward
                                 # make sure network_thin and network_thin_origin are identical
                                 for param_ori, param in zip(network_thin_origin.parameters(), network_thin.parameters()):
                                     param.data.copy_(param_ori.data)
                                 network_thin.set_alphas(_arch_param)
                                 #####
-                                lrc_model.reinit(models=[network_thin_origin, network_thin], seed=xargs.rand_seed)
+                                lrc_model.reinit(models=[network_thin_origin, network_thin], seed=cfg.RNG_SEED)
                                 _lr, _lr_2 = lrc_model.forward_batch_sample()
                                 _linear_regions.append(round((_lr - _lr_2) / _lr, precision))  # change of #Regions
                                 lrc_model.clear()
@@ -322,91 +313,62 @@ def is_single_path(network):
     return True
 
 
-def main(xargs):
-    PID = os.getpid()
+def main():
+    # PID = os.getpid()
     # assert torch.cuda.is_available(), 'CUDA is not available.'
     # torch.backends.cudnn.enabled = True
     # torch.backends.cudnn.benchmark = False
     # torch.backends.cudnn.deterministic = True
-    # prepare_seed(xargs.rand_seed)
-    setup_env()  # TODO: xargs.rand_seed -> cfg.RNG_SEED
+    # prepare_seed(cfg.RNG_SEED)
+    setup_env()
 
-    if xargs.timestamp == 'none':
-        xargs.timestamp = "{:}".format(time.strftime('%h-%d-%C_%H-%M-%s', time.gmtime(time.time())))
 
-    # train_data, valid_data, xshape, class_num = get_datasets(xargs.dataset, xargs.data_path, -1)
-
-    # NOTE: datasets' name should be reformat
-    assert xargs.dataset in ['cifar10', 'cifar100', 'imagenet-1k', 'ImageNet16-120']
-
-    Dataset2Class = {'cifar10': 10,
-                 'cifar100': 100,
-                 'imagenet-1k': 1000,
-                 'ImageNet16-120': 120}
-    class_num = Dataset2Class[xargs.dataset]
-
-    if xargs.dataset == 'cifar10' or xargs.dataset == 'cifar100':
+    if cfg.SEARCH.DATASET == 'cifar10' or cfg.SEARCH.DATASET == 'cifar100':
         xshape = (1, 3, 32, 32)
-        # train_data, valid_data = getData(xargs.dataset, xargs.data_path, 0)
-        train_loader, valid_loader = getDataLoader(xargs.dataset, xargs.data_path, xargs.batch_size, 0, args.workers)
-    elif xargs.dataset == 'ImageNet16-120':
+        # train_data, valid_data = getData(cfg.SEARCH.DATASET, cfg.SEARCH.DATAPATH, 0)
+        train_loader, valid_loader = getDataLoader(cfg.SEARCH.DATASET, cfg.SEARCH.DATAPATH, cfg.SEARCH.BATCH_SIZE, 0, cfg.DATA_LOADER.NUM_WORKERS)
+    elif cfg.SEARCH.DATASET == 'imagenet16':
         xshape = (1, 3, 16, 16)
-        train_loader, valid_loader = getDataLoader(xargs.dataset, xargs.data_path, xargs.batch_size, 0, args.workers, use_classes=120)
-    elif xargs.dataset == 'imagenet-1k':
+        train_loader, valid_loader = getDataLoader(cfg.SEARCH.DATASET, cfg.SEARCH.DATAPATH, cfg.SEARCH.BATCH_SIZE, 0, cfg.DATA_LOADER.NUM_WORKERS, use_classes=120)
+    elif cfg.SEARCH.DATASET == 'imagenet':
         # NOTE: TENAS resizes imagenet to 32*32
         xshape = (1, 3, 32, 32)
-        train_loader, valid_loader = getDataLoader(xargs.dataset, xargs.data_path, xargs.batch_size, 0, args.workers)
+        train_loader, valid_loader = getDataLoader(cfg.SEARCH.DATASET, cfg.SEARCH.DATAPATH, cfg.SEARCH.BATCH_SIZE, 0, cfg.DATA_LOADER.NUM_WORKERS)
         # TODO: fixed the resized ImageNet data.
         print('ImageNet is resized to (32, 32) by the author. This issue will be fixed in the next version.')
         raise NotImplementedError
 
 
-    ##### config & logging #####
-    config = edict()
-    config.class_num = class_num
-    config.xshape = xshape
-    config.batch_size = xargs.batch_size
-    xargs.save_dir = xargs.save_dir + \
-        "/repeat%d-prunNum%d-prec%d-%s-batch%d"%(
-                xargs.repeat, xargs.prune_number, xargs.precision, xargs.init, config["batch_size"]) + \
-        "/{:}/seed{:}".format(xargs.timestamp, xargs.rand_seed)
-    config.save_dir = xargs.save_dir
-    ###############
-
-
-    logger.info('||||||| {:10s} ||||||| Train-Loader-Num={:}, batch size={:}'.format(xargs.dataset, len(train_loader), config.batch_size))
-    logger.info('||||||| {:10s} ||||||| Config={:}'.format(xargs.dataset, config))
-
-    search_space = get_search_spaces('cell', xargs.search_space_name)
-    if xargs.search_space_name == 'nas-bench-201':
+    search_space = get_search_spaces('cell', cfg.SPACE.NAME)
+    if cfg.SPACE.NAME == 'nasbench201':
         model_config = edict({'name': 'DARTS-V1',
                               'C': 3, 'N': 1, 'depth': -1, 'use_stem': True,
-                              'max_nodes': xargs.max_nodes, 'num_classes': class_num,
+                              'max_nodes': cfg.SPACE.NODES, 'num_classes': cfg.SEARCH.NUM_CLASSES,
                               'space': search_space,
-                              'affine': True, 'track_running_stats': bool(xargs.track_running_stats),
+                              'affine': True, 'track_running_stats': cfg.TENAS.TRACK,
                              })
         model_config_thin = edict({'name': 'DARTS-V1',
                                    'C': 1, 'N': 1, 'depth': 1, 'use_stem': False,
-                                   'max_nodes': xargs.max_nodes, 'num_classes': class_num,
+                                   'max_nodes': cfg.SPACE.NODES, 'num_classes': cfg.SEARCH.NUM_CLASSES,
                                    'space': search_space,
-                                   'affine': True, 'track_running_stats': bool(xargs.track_running_stats),
+                                   'affine': True, 'track_running_stats': cfg.TENAS.TRACK,
                                   })
-    elif xargs.search_space_name == 'darts':
+    elif cfg.SPACE.NAME == 'darts':
         model_config = edict({'name': 'DARTS-V1',
                               'C': 1, 'N': 1, 'depth': 2, 'use_stem': True, 'stem_multiplier': 1,
-                              'num_classes': class_num,
+                              'num_classes': cfg.SEARCH.NUM_CLASSES,
                               'space': search_space,
-                              'affine': True, 'track_running_stats': bool(xargs.track_running_stats),
-                              'super_type': xargs.super_type,
+                              'affine': True, 'track_running_stats': cfg.TENAS.TRACK,
+                              'super_type': cfg.TENAS.SUPER_TYPE,
                               'steps': 4,
                               'multiplier': 4,
                              })
         model_config_thin = edict({'name': 'DARTS-V1',
                                    'C': 1, 'N': 1, 'depth': 2, 'use_stem': False, 'stem_multiplier': 1,
-                                   'max_nodes': xargs.max_nodes, 'num_classes': class_num,
+                                   'max_nodes': cfg.SPACE.NODES, 'num_classes': cfg.SEARCH.NUM_CLASSES,
                                    'space': search_space,
-                                   'affine': True, 'track_running_stats': bool(xargs.track_running_stats),
-                                   'super_type': xargs.super_type,
+                                   'affine': True, 'track_running_stats': cfg.TENAS.TRACK,
+                                   'super_type': cfg.TENAS.SUPER_TYPE,
                                    'steps': 4,
                                    'multiplier': 4,
                                   })
@@ -417,16 +379,16 @@ def main(xargs):
         alpha[:, :] = 0
 
     # TODO Linear_Region_Collector
-    lrc_model = Linear_Region_Collector(input_size=(1000, 1, 3, 3), sample_batch=3, dataset=xargs.dataset, data_path=xargs.data_path, seed=xargs.rand_seed)
+    lrc_model = Linear_Region_Collector(input_size=(1000, 1, 3, 3), sample_batch=3, dataset=cfg.SEARCH.DATASET, data_path=cfg.SEARCH.DATAPATH, seed=cfg.RNG_SEED)
 
     # ### all params trainable (except train_bn) #########################
     flop, param = get_model_infos(network, xshape)
     logger.info('FLOP = {:.2f} M, Params = {:.2f} MB'.format(flop, param))
     logger.info('search-space [{:} ops] : {:}'.format(len(search_space), search_space))
-    if xargs.arch_nas_dataset is None or xargs.search_space_name == 'darts':
-        api = None
+    if cfg.SPACE.NAME == "nasbench201":
+        api = API("./data/NAS-Bench-201-v1_0-e61699.pth")
     else:
-        api = API(xargs.arch_nas_dataset)
+        api = None
     # logger.info('{:} create API = {:} done'.format(time_string(), api))
 
     network = network.cuda()
@@ -442,15 +404,14 @@ def main(xargs):
         alpha[:, 0] = -INF
     arch_parameters_history.append([alpha.detach().clone() for alpha in arch_parameters])
     arch_parameters_history_npy.append([alpha.detach().clone().cpu().numpy() for alpha in arch_parameters])
-    np.save(os.path.join(xargs.save_dir, "arch_parameters_history.npy"), arch_parameters_history_npy)
+    np.save(os.path.join(cfg.OUT_DIR, "arch_parameters_history.npy"), arch_parameters_history_npy)
     while not is_single_path(network):
         epoch += 1
         torch.cuda.empty_cache()
-        print("<< ============== JOB (PID = %d) %s ============== >>"%(PID, '/'.join(xargs.save_dir.split("/")[-6:])))
 
-        arch_parameters, op_pruned = prune_func_rank(xargs, arch_parameters, model_config, model_config_thin, train_loader, lrc_model, search_space,
-                                                     precision=xargs.precision,
-                                                     prune_number=xargs.prune_number
+        arch_parameters, op_pruned = prune_func_rank(arch_parameters, model_config, model_config_thin, train_loader, lrc_model, search_space,
+                                                     precision=cfg.TENAS.PRECISION,
+                                                     prune_number=cfg.TENAS.PRUNE_NUMBER
                                                      )
         # rebuild supernet
         network = get_cell_based_tiny_net(model_config)
@@ -459,23 +420,23 @@ def main(xargs):
 
         arch_parameters_history.append([alpha.detach().clone() for alpha in arch_parameters])
         arch_parameters_history_npy.append([alpha.detach().clone().cpu().numpy() for alpha in arch_parameters])
-        np.save(os.path.join(xargs.save_dir, "arch_parameters_history.npy"), arch_parameters_history_npy)
+        np.save(os.path.join(cfg.OUT_DIR, "arch_parameters_history.npy"), arch_parameters_history_npy)
         genotypes['arch'][epoch] = network.genotype()
 
         logger.info('operators remaining (1s) and prunned (0s)\n{:}'.format('\n'.join([str((alpha > -INF).int()) for alpha in network.get_alphas()])))
 
-    if xargs.search_space_name == 'darts':
+    if cfg.SPACE.NAME == 'darts':
         print("===>>> Prune Edge Groups...")
-        arch_parameters = prune_func_rank_group(xargs, arch_parameters, model_config, model_config_thin, train_loader, lrc_model, search_space,
+        arch_parameters = prune_func_rank_group(arch_parameters, model_config, model_config_thin, train_loader, lrc_model, search_space,
                                                 edge_groups=[(0, 2), (2, 5), (5, 9), (9, 14)], num_per_group=2,
-                                                precision=xargs.precision,
+                                                precision=cfg.TENAS.PRECISION,
                                                 )
         network = get_cell_based_tiny_net(model_config)
         network = network.cuda()
         network.set_alphas(arch_parameters)
         arch_parameters_history.append([alpha.detach().clone() for alpha in arch_parameters])
         arch_parameters_history_npy.append([alpha.detach().clone().cpu().numpy() for alpha in arch_parameters])
-        np.save(os.path.join(xargs.save_dir, "arch_parameters_history.npy"), arch_parameters_history_npy)
+        np.save(os.path.join(cfg.OUT_DIR, "arch_parameters_history.npy"), arch_parameters_history_npy)
 
     logger.info('<<<--->>> End: {:}'.format(network.genotype()))
     logger.info('operators remaining (1s) and prunned (0s)\n{:}'.format('\n'.join([str((alpha > -INF).int()) for alpha in network.get_alphas()])))
@@ -489,25 +450,5 @@ def main(xargs):
 
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser("TENAS")
-    parser.add_argument('--data_path', type=str, help='Path to dataset')
-    parser.add_argument('--dataset', type=str, choices=['cifar10', 'cifar100', 'ImageNet16-120', 'imagenet-1k'], help='Choose between cifar10/100/ImageNet16-120/imagenet-1k')
-    parser.add_argument('--search_space_name', type=str, default='nas-bench-201',  help='space of operator candidates: nas-bench-201 or darts.')
-    parser.add_argument('--max_nodes', type=int, help='The maximum number of nodes.')
-    parser.add_argument('--track_running_stats', type=int, choices=[0, 1], help='Whether use track_running_stats or not in the BN layer.')
-    parser.add_argument('--workers', type=int, default=0, help='number of data loading workers (default: 0)')
-    parser.add_argument('--batch_size', type=int, default=16, help='batch size for ntk')
-    parser.add_argument('--save_dir', type=str, help='Folder to save checkpoints and log.')
-    parser.add_argument('--arch_nas_dataset', type=str, help='The path to load the nas-bench-201 architecture dataset (tiny-nas-benchmark).')
-    parser.add_argument('--rand_seed', type=int, help='manual seed')
-    parser.add_argument('--precision', type=int, default=3, help='precision for % of changes of cond(NTK) and #Regions')
-    parser.add_argument('--prune_number', type=int, default=1, help='number of operator to prune on each edge per round')
-    parser.add_argument('--repeat', type=int, default=3, help='repeat calculation of NTK and Regions')
-    parser.add_argument('--timestamp', default='none', type=str, help='timestamp for logging naming')
-    parser.add_argument('--init', default='kaiming_uniform', help='use gaussian init')
-    parser.add_argument('--super_type', type=str, default='basic',  help='type of supernet: basic or nasnet-super')
-    args = parser.parse_args()
-    if args.rand_seed is None or args.rand_seed < 0:
-        args.rand_seed = random.randint(1, 100000)
-    main(args)
+if __name__ == '__main__':   
+    main()

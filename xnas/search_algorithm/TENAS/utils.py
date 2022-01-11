@@ -1,6 +1,21 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import math
+
+
+def round_to(number, precision, eps=1e-8):
+    # round to significant figure
+    dtype = type(number)
+    if number == 0:
+        return number
+    sign = number / abs(number)
+    number = abs(number) + eps
+    power = math.floor(math.log(number, 10)) + 1
+    if dtype == int:
+        return int(sign * round(number*10**(-power), precision) * 10**(power))
+    else:
+        return sign * round(number*10**(-power), precision) * 10**(power)
 
 
 def count_parameters_in_MB(model):
