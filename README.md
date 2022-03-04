@@ -11,11 +11,11 @@ This project is now supported by PengCheng Lab
 ### Beta
 
 - DARTS
-  `python search/DARTS.py --cfg configs/search/DARTS.yaml`
+  - `python search/DARTS.py --cfg configs/search/DARTS.yaml`
 - PCDARTS
-  `python search/PDARTS.py --cfg configs/search/PDARTS.yaml`
+  - `python search/PDARTS.py --cfg configs/search/PDARTS.yaml`
 - PDARTS
-  `python search/PCDARTS.py --cfg configs/search/PCDARTS.yaml`
+  - `python search/PCDARTS.py --cfg configs/search/PCDARTS.yaml`
 - SNG
 - ASNG
 - MDENAS
@@ -23,11 +23,16 @@ This project is now supported by PengCheng Lab
 - MIGONAS
 - GridSearch
 - DrNAS
-  `python search/DrNAS/nb201space.py --cfg configs/search/DrNAS/nb201_cifar10_Dirichlet.yaml`
-  `python search/DrNAS/nb201space.py --cfg configs/search/DrNAS/nb201_cifar100_Dirichlet.yaml`
-  `python search/DrNAS/DARTSspace.py --cfg configs/search/DrNAS/DARTS_cifar10.yaml`
+  - `python search/DrNAS/nb201space.py --cfg configs/search/DrNAS/nb201_cifar10_Dirichlet.yaml`
+  - `python search/DrNAS/nb201space.py --cfg configs/search/DrNAS/nb201_cifar100_Dirichlet.yaml`
+  - `python search/DrNAS/DARTSspace.py --cfg configs/search/DrNAS/DARTS_cifar10.yaml`
 - TENAS
-  `python search/TENAS.py --cfg configs/search/TENAS/nb201_cifar10.yaml`
+  - `python search/TENAS.py --cfg configs/search/TENAS/nb201_cifar10.yaml`
+- RMINAS
+  - `./search/RMINAS/download_weight.sh # prepare weights of teacher models`
+  - `./python search/RMINAS/RMINAS_nb201.py --cfg configs/search/RMINAS/nb201_cifar10.yaml`
+  - `./python search/RMINAS/RMINAS_darts.py --cfg configs/search/RMINAS/darts_cifar10.yaml`
+
 
 ## Supported Search Spaces
 

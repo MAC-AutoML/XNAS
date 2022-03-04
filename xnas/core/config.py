@@ -462,6 +462,24 @@ _C.TENAS.REPEAT = 3
 _C.TENAS.PRUNE_NUMBER = 1
 
 
+# ------------------------------------------------------------------------------------ #
+# RMINAS options
+# ------------------------------------------------------------------------------------ #
+_C.RMINAS = CfgNode()
+
+# beta of mixed loss
+_C.RMINAS.LOSS_BETA = 0.80
+
+# number of archs for random forest warming up
+_C.RMINAS.RF_WARMUP = 100
+
+# threshold of random forest to choose good archs
+_C.RMINAS.RF_THRESRATE = 0.05
+
+# number of good archs when random forest terminates
+_C.RMINAS.RF_SUCC = 100
+
+
 
 def dump_cfg():
     """Dumps the config to the output directory."""
