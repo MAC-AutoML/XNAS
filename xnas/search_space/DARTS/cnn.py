@@ -146,7 +146,7 @@ class DartsCNN(nn.Module):
                     sample[true_id, self.basic_op_list.index(op_name)] = 1
         for i in range(self.all_edges):
             if np.sum(sample[i, :]) == 0:
-                sample[i, 7] = 1
+                sample[i, len(self.basic_op_list)-1] = 1
         return sample
 
     def _node_index(self, n_nodes, input_nodes=2, start_index=0):
