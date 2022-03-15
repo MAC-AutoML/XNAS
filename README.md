@@ -130,7 +130,7 @@ We reimplement several widely used NAS methods including:
 | dynamic_SNG      |2   |2.927    |0.0        |24.13     |96.87|473.156 |-       |78.07       |cell-based  |
 | dynamic_SNG      |3   |2.724    |0.0        |28.07     |97.45|442.826 |-       |77.68       |cell-based  |
 | dynamic_SNG      |4   |3.323    |0.0        |31.85     |96.65|528.784 |-       |79.78       |cell-based  |
-
+| RMINAS           |-   |         |           |          |     |        |        |            |cell-based  |
 
 ### TODO
 
