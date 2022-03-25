@@ -17,6 +17,10 @@ test.py
 test.ipynb
 nohup*.out
 
+# model weights
+*.pth
+*.th
+
 # C extensions
 *.so
 
