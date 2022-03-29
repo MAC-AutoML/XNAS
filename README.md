@@ -138,3 +138,27 @@ We reimplement several widely used NAS methods including:
 2. fix Nvidia DALI backend support
 3. add **kwargs for space_builder
 4. test code for imagenet
+
+## BibTex
+```
+@article{zheng2022rminas,
+  title={Neural Architecture Search with Representation Mutual Information},
+  author={Xiawu Zheng, Xiang Fei, Lei Zhang, Chenglin Wu, Fei Chao, Jianzhuang Liu, Wei Zeng, Yonghong Tian, Rongrong Ji},
+  journal={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+  year={2022}
+}
+@article{zheng2021migo,
+  title={MIGO-NAS: Towards fast and generalizable neural architecture search},
+  author={Zheng, Xiawu and Ji, Rongrong and Chen, Yuhang and Wang, Qiang and Zhang, Baochang and Chen, Jie and Ye, Qixiang and Huang, Feiyue and Tian, Yonghong},
+  journal={IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  year={2021},
+  publisher={IEEE}
+}
+@inproceedings{zheng2020rethinking,
+  title={Rethinking performance estimation in neural architecture search},
+  author={Zheng, Xiawu and Ji, Rongrong and Wang, Qiang and Ye, Qixiang and Li, Zhenguo and Tian, Yonghong and Tian, Qi},
+  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+  pages={11356--11365},
+  year={2020}
+}
+```
