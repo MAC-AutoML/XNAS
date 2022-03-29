@@ -141,7 +141,7 @@ We reimplement several widely used NAS methods including:
 
 ## BibTex
 ```
-@article{zheng2022rminas,
+@inproceedings{zheng2022rminas,
   title={Neural Architecture Search with Representation Mutual Information},
   author={Xiawu Zheng, Xiang Fei, Lei Zhang, Chenglin Wu, Fei Chao, Jianzhuang Liu, Wei Zeng, Yonghong Tian, Rongrong Ji},
   journal={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
