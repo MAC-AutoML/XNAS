@@ -11,7 +11,7 @@ RMI-NAS is an efficient architecture search method based on Representation Mutua
 ### Installation
 
 ```bash
-git clone https://github.com/MAC-AutoML/XNAS.git
+git clone https://git.openi.org.cn/PCL_AutoML/XNAS
 cd XNAS
 # set root path
 export PYTHONPATH=$PYTHONPATH:/Path/to/XNAS
