@@ -57,7 +57,7 @@ This project is now supported by PengCheng Lab
 ## Installation
 
 ```bash
-git clone https://github.com/MAC-AutoML/XNAS.git
+git clone https://git.openi.org.cn/PCL_AutoML/XNAS
 cd XNAS
 # set root path
 export PYTHONPATH=$PYTHONPATH:/Path/to/XNAS
