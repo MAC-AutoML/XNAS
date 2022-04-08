@@ -42,7 +42,12 @@ def main():
 
     # SEARCH.INIT_CHANNEL as 3 for rgb and TRAIN.CHANNELS as 32 by manual.
     # IM_SIZE, CHANNEL and NUM_CLASSES should be same with search period.
-    model = AugmentCNN(cfg.SEARCH.IM_SIZE, cfg.SEARCH.INPUT_CHANNEL, cfg.TRAIN.CHANNELS, 
+    # 判断SEARCH.IM_SIZE是list还是int
+    if isinstance(cfg.SEARCH.IM_SIZE, list):
+        im_size = cfg.SEARCH.IM_SIZE
+    elif isinstance(cfg.SEARCH.IM_SIZE, list):
+        im_size = max(cfg.SEARCH.IM_SIZE)
+    model = AugmentCNN(im_size, cfg.SEARCH.INPUT_CHANNEL, cfg.TRAIN.CHANNELS, 
                        cfg.SEARCH.NUM_CLASSES, cfg.TRAIN.LAYERS, use_aux, cfg.TRAIN.GENOTYPE)
 
     # TODO: Parallel
