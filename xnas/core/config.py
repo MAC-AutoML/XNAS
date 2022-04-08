@@ -65,6 +65,9 @@ _C.TEST.BATCH_SIZE = 128
 # Test weight file location
 _C.TEST.WEIGHTS = ""
 
+# Test image size
+_C.TEST.IM_SIZE = 224
+
 # ------------------------------------------------------------------------------------ #
 # Searching options
 # ------------------------------------------------------------------------------------ #
@@ -76,6 +79,9 @@ _C.SEARCH.DATASET = "cifar10"
 # data path using in indepandent train
 _C.SEARCH.DATAPATH = "/gdata/cifar10/"
 
+# label smoothing
+_C.SEARCH.LABEL_SMOOTH = 0.1
+
 # num of classes
 _C.SEARCH.NUM_CLASSES = 10
 
@@ -86,7 +92,8 @@ _C.SEARCH.SPLIT = [0.8, 0.2]
 _C.SEARCH.BATCH_SIZE = 256
 
 # Image size
-_C.SEARCH.IM_SIZE = 32
+# _C.SEARCH.IM_SIZE = 32
+_C.SEARCH.IM_SIZE = [32]
 
 # Image channel (rgb=3)
 _C.SEARCH.INPUT_CHANNEL = 3
@@ -161,6 +168,31 @@ _C.MB.SE_STAGES = []
 
 
 # ------------------------------------------------------------------------------------ #
+# OFA Search Space options
+# ------------------------------------------------------------------------------------ #
+_C.OFA = CfgNode()
+
+# task, choose from ['kernel', 'depth', 'expand']
+_C.OFA.TASK = 'depth'
+
+# phase, choose from [1, 2]
+_C.OFA.PHASE = 1
+
+# width_mult_list
+_C.OFA.WIDTH_MULTI_LIST = [1.0]
+
+
+# kernel size list
+_C.OFA.KS_LIST = [3,5,7]
+
+# expand_list
+_C.OFA.EXPAND_LIST = [6]
+
+# depth_list
+_C.OFA.DEPTH_LIST = [3,4]
+
+
+# ------------------------------------------------------------------------------------ #
 # Stotiscas natural gradient algorithm options
 # ------------------------------------------------------------------------------------ #
 _C.SNG = CfgNode()
@@ -224,7 +256,6 @@ _C.SNG.EDGE_SAMPLING_EPOCH = -1
 # ------------------------------------------------------------------------------------ #
 _C.OPTIM = CfgNode()
 
-
 # Base learning rate
 _C.OPTIM.BASE_LR = 0.1
 
@@ -286,7 +317,7 @@ _C.DATA_LOADER.NUM_WORKERS = 8
 # Load data to pinned host memory
 _C.DATA_LOADER.PIN_MEMORY = True
 
-# using which backend as image decoder and transformers: dali_cpu, dali_gpu, torch, and custom
+# using which backend as image decoder and transforms: dali_cpu, dali_gpu, torch, and custom
 _C.DATA_LOADER.BACKEND = 'dali_cpu'
 
 # Number of data loader workers per process
