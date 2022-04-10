@@ -256,7 +256,7 @@ _C.SNG.EDGE_SAMPLING_EPOCH = -1
 # ------------------------------------------------------------------------------------ #
 _C.OPTIM = CfgNode()
 
-# Base learning rate
+# Base learning rate, init_lr = OPTIM.BASE_LR * NUM_GPUS
 _C.OPTIM.BASE_LR = 0.1
 
 # Learning rate policy select from {'cos', 'exp', 'steps'}
@@ -293,10 +293,10 @@ _C.OPTIM.NESTEROV = True
 # Weight decay
 _C.OPTIM.WEIGHT_DECAY = 5e-4
 
-# Start the warm up from OPTIM.BASE_LR * OPTIM.WARMUP_FACTOR
+# Start the warm up from init_lr * OPTIM.WARMUP_FACTOR
 _C.OPTIM.WARMUP_FACTOR = 0.1
 
-# Gradually warm up the OPTIM.BASE_LR over this number of epochs
+# Gradually warm up to the init_lr over this number of epochs
 _C.OPTIM.WARMUP_EPOCHS = 0
 
 # Gradient clip threshold

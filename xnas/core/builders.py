@@ -8,6 +8,7 @@
 import torch
 
 from xnas.core.config import cfg
+from xnas.core.warmup_sheduler import GradualWarmupScheduler
 
 # DARTS series space
 from xnas.search_space.DARTS.cnn import _DartsCNN
@@ -131,10 +132,17 @@ def sng_builder(category):
         raise NotImplementedError
 
 
-def lr_scheduler_builder(w_optim):
+def lr_scheduler_builder(w_optim, last_epoch=-1):
     if cfg.OPTIM.LR_POLICY == "cos":
-        return torch.optim.lr_scheduler.CosineAnnealingLR(w_optim, cfg.OPTIM.MAX_EPOCH, eta_min=cfg.OPTIM.MIN_LR)
+        return torch.optim.lr_scheduler.CosineAnnealingLR(w_optim, cfg.OPTIM.MAX_EPOCH, eta_min=cfg.OPTIM.MIN_LR, last_epoch=last_epoch)
     elif cfg.OPTIM.LR_POLICY == "step":
-        return torch.optim.lr_scheduler.MultiStepLR(w_optim, cfg.OPTIM.STEPS, gamma=cfg.OPTIM.LR_MULT)
+        return torch.optim.lr_scheduler.MultiStepLR(w_optim, cfg.OPTIM.STEPS, gamma=cfg.OPTIM.LR_MULT, last_epoch=last_epoch)
     else:
         raise NotImplementedError
+
+
+def warmup_scheduler_builder(w_optim, actual_scheduler, last_epoch=-1):
+    if cfg.OPTIM.WARMUP_EPOCHS>0:
+        return GradualWarmupScheduler(w_optim, actual_scheduler, cfg.OPTIM.WARMUP_EPOCHS, cfg.OPTIM.WARMUP_FACTOR, last_epoch)
+    else:
+        return actual_scheduler
