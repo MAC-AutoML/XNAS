@@ -479,6 +479,19 @@ _C.RMINAS.RF_THRESRATE = 0.05
 # number of good archs when random forest terminates
 _C.RMINAS.RF_SUCC = 100
 
+# ------------------------------------------------------------------------------------ #
+# DropNAS options
+# ------------------------------------------------------------------------------------ #
+_C.DROPNAS = CfgNode()
+
+_C.DROPNAS.ALPHA_WEIGHT_DECAY = 1e-3
+
+_C.DROPNAS.ALPHA_LR = 0.0003
+
+_C.DROPNAS.WARMUP_EPOCHS = 0
+
+_C.DROPNAS.DROP_RATE = 3e-5
+
 
 
 def dump_cfg():
