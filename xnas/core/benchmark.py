@@ -20,11 +20,9 @@ def compute_time_eval(model):
     # Use eval mode
     model.eval()
     # Generate a dummy mini-batch and copy data to GPU
-    # NOTE: using cfg.SEARCH space instead
-    # im_size, batch_size = cfg.TRAIN.IM_SIZE, int(cfg.TEST.BATCH_SIZE / cfg.NUM_GPUS)
-    im_size, batch_size = cfg.SEARCH.IM_SIZE, int(cfg.TEST.BATCH_SIZE / cfg.NUM_GPUS)
-    inputs = torch.zeros(batch_size, 3, im_size,
-                         im_size).cuda(non_blocking=False)
+    # im_size, batch_size = cfg.SEARCH.IM_SIZE, int(cfg.TEST.BATCH_SIZE / cfg.NUM_GPUS)
+    im_size, batch_size = cfg.TEST.IM_SIZE, int(cfg.TEST.BATCH_SIZE / cfg.NUM_GPUS)
+    inputs = torch.zeros(batch_size, 3, im_size, im_size).cuda(non_blocking=False)
     # Compute precise forward pass time
     timer = Timer()
     total_iter = cfg.PREC_TIME.NUM_ITER + cfg.PREC_TIME.WARMUP_ITER
@@ -46,10 +44,14 @@ def compute_time_train(model, loss_fun):
     model.train()
     # Generate a dummy mini-batch and copy data to GPU
     # NOTE: using cfg.SEARCH space instead
+    # 判断SEARCH.IM_SIZE是list还是int
+    if isinstance(cfg.SEARCH.IM_SIZE, int):
+        im_size = cfg.SEARCH.IM_SIZE
+    elif isinstance(cfg.SEARCH.IM_SIZE, list):
+        im_size = max(cfg.SEARCH.IM_SIZE)
     # im_size, batch_size = cfg.TRAIN.IM_SIZE, int(cfg.TRAIN.BATCH_SIZE / cfg.NUM_GPUS)
-    im_size, batch_size = cfg.SEARCH.IM_SIZE, int(cfg.SEARCH.BATCH_SIZE / cfg.NUM_GPUS)
-    inputs = torch.rand(batch_size, 3, im_size,
-                        im_size).cuda(non_blocking=False)
+    batch_size = int(cfg.SEARCH.BATCH_SIZE / cfg.NUM_GPUS)
+    inputs = torch.rand(batch_size, 3, im_size, im_size).cuda(non_blocking=False)
     labels = torch.zeros(batch_size, dtype=torch.int64).cuda(
         non_blocking=False)
     # Cache BatchNorm2D running stats

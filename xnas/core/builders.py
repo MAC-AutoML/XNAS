@@ -8,6 +8,7 @@
 import torch
 
 from xnas.core.config import cfg
+from xnas.core.warmup_sheduler import GradualWarmupScheduler
 
 # DARTS series space
 from xnas.search_space.DARTS.cnn import _DartsCNN
@@ -16,10 +17,9 @@ from xnas.search_space.PCDARTS.cnn import _PcdartsCNN
 # NAS-Bench series space
 from xnas.search_space.NASBench201.cnn import _NASBench201
 from xnas.search_space.NASBench1shot1.cnn import _NASbench1shot1_1, _NASbench1shot1_2, _NASbench1shot1_3
-# MB series space
-from xnas.search_space.MB.cnn import _MobileNetV3CNN
-from xnas.search_space.MB.proxyless_cnn import _ProxylessCNN, _Proxyless_Google_CNN
-
+# OFA series space
+from xnas.search_space.OFA.ofa_networks import _OFAMobileNetV3, _OFAProxylessNASNet, _OFAResNet
+from xnas.search_space.OFA.utils import (cross_entropy_loss_with_label_smoothing, cross_entropy_loss_with_soft_target)
 # DrNAS series modified space
 from xnas.search_space.DrNAS.DARTSspace.cnn import _DrNASCNN_DARTSspace
 from xnas.search_space.DrNAS.nb201space.cnn import _DrNASCNN_nb201space, _DrNASCNN_GDAS_nb201space
@@ -37,9 +37,9 @@ _spaces = {
     "darts": _DartsCNN,
     "pdarts": _PdartsCNN,
     "pcdarts": _PcdartsCNN,
-    "ofa": _MobileNetV3CNN,
-    "proxyless": _ProxylessCNN,
-    "google": _Proxyless_Google_CNN,
+    "ofa_mbv3": _OFAMobileNetV3,
+    "ofa_proxyless": _OFAProxylessNASNet,
+    "ofa_resnet": _OFAResNet,
     "nasbench1shot1_1": _NASbench1shot1_1,
     "nasbench1shot1_2": _NASbench1shot1_2,
     "nasbench1shot1_3": _NASbench1shot1_3,
@@ -49,7 +49,9 @@ _spaces = {
 
 # Supported loss functions
 _loss_funs = {
-    "cross_entropy": torch.nn.CrossEntropyLoss
+    "cross_entropy": torch.nn.CrossEntropyLoss(),
+    "cross_entropy_with_label_smoothing": cross_entropy_loss_with_label_smoothing,
+    "cross_entropy_with_soft_target": cross_entropy_loss_with_soft_target,
 }
 
 
@@ -77,7 +79,7 @@ def build_space():
 
 def build_loss_fun():
     """Build the loss function."""
-    return get_loss_fun()()
+    return get_loss_fun()
 
 
 def register_space(name, ctor):
@@ -130,10 +132,17 @@ def sng_builder(category):
         raise NotImplementedError
 
 
-def lr_scheduler_builder(w_optim):
+def lr_scheduler_builder(w_optim, last_epoch=-1):
     if cfg.OPTIM.LR_POLICY == "cos":
-        return torch.optim.lr_scheduler.CosineAnnealingLR(w_optim, cfg.OPTIM.MAX_EPOCH, eta_min=cfg.OPTIM.MIN_LR)
+        return torch.optim.lr_scheduler.CosineAnnealingLR(w_optim, cfg.OPTIM.MAX_EPOCH, eta_min=cfg.OPTIM.MIN_LR, last_epoch=last_epoch)
     elif cfg.OPTIM.LR_POLICY == "step":
-        return torch.optim.lr_scheduler.MultiStepLR(w_optim, cfg.OPTIM.STEPS, gamma=cfg.OPTIM.LR_MULT)
+        return torch.optim.lr_scheduler.MultiStepLR(w_optim, cfg.OPTIM.STEPS, gamma=cfg.OPTIM.LR_MULT, last_epoch=last_epoch)
     else:
         raise NotImplementedError
+
+
+def warmup_scheduler_builder(w_optim, actual_scheduler, last_epoch=-1):
+    if cfg.OPTIM.WARMUP_EPOCHS>0:
+        return GradualWarmupScheduler(w_optim, actual_scheduler, cfg.OPTIM.WARMUP_EPOCHS, cfg.OPTIM.WARMUP_FACTOR, last_epoch)
+    else:
+        return actual_scheduler

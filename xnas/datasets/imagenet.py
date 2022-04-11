@@ -51,7 +51,7 @@ class XNAS_ImageFolder():
             dataset_name='imagenet',
             _rgb_normalized_mean=None,
             _rgb_normalized_std=None,
-            transformers=None,
+            transforms=None,
             num_workers=8,
             pin_memory=True,
             world_size=1,
@@ -63,18 +63,17 @@ class XNAS_ImageFolder():
                            'dali_gpu'], "Corresponding backend {} is not supported!".format(backend)
         self._data_path, self._split, self.backend, self.dataset_name = data_path, split, backend, dataset_name
         self._rgb_normalized_mean, self._rgb_normalized_std = _rgb_normalized_mean, _rgb_normalized_std
-        self.batch_size = [256, 200] if batch_size is None else batch_size
         self.num_workers = num_workers
+        self.batch_size = batch_size
         self.pin_memory = pin_memory
         self.world_size = world_size
         self.shuffle = shuffle
-        if transformers is None:
-            self.transformers = [{'crop': 'random', 'crop_size': 224, 'min_crop_size': 0.08, 'random_flip': True},
-                                 {'crop': 'center', 'crop_size': 224, 'min_crop_size': 256, 'random_flip': False}]
+        if transforms is None:
+            self.transforms = [{'crop': 'random', 'crop_size': cfg.SEARCH.IM_SIZE, 'min_crop': 0.08, 'random_flip': True},
+                                 {'crop': 'center', 'crop_size': cfg.TEST.IM_SIZE, 'min_crop': 256, 'random_flip': False}]
         else:
-            self.transformers = transformers
-        assert len(self.transformers) == len(
-            self._split), "Length of split and transformers should be equal"
+            self.transforms = transforms
+        assert len(self.transforms) == len(self._split), "Length of split and transforms should be equal"
         # Read all dataset
         logger.info("Constructing XNAS_ImageFolder")
         self._construct_imdb()
@@ -126,13 +125,12 @@ class XNAS_ImageFolder():
                 if self.backend == 'custom':
                     dataset = ImageList_custom([self._imdb[j] for j in _current_indices],
                                                _rgb_normalized_mean=self._rgb_normalized_mean,
-                                               _rgb_normalized_std=self._rgb_normalized_std, **self.transformers[i])
+                                               _rgb_normalized_std=self._rgb_normalized_std, **self.transforms[i])
                 else:
                     dataset = ImageList_torch([self._imdb[j] for j in _current_indices],
                                               _rgb_normalized_mean=self._rgb_normalized_mean,
-                                              _rgb_normalized_std=self._rgb_normalized_std, **self.transformers[i])
-                sampler = DistributedSampler(
-                    dataset) if cfg.NUM_GPUS > 1 else None
+                                              _rgb_normalized_std=self._rgb_normalized_std, **self.transforms[i])
+                sampler = DistributedSampler(dataset) if cfg.NUM_GPUS > 1 else None
                 loader = torch.utils.data.DataLoader(dataset,
                                                      batch_size=self.batch_size[i],
                                                      shuffle=(
@@ -150,7 +148,7 @@ class XNAS_ImageFolder():
                                         world_size=self.world_size,
                                         dali_cpu=dali_cpu,
                                         temp_folder='/tmp',
-                                        **self.transformers[i])
+                                        **self.transforms[i])
                 loader = loader.get_data_iter()
             data_loaders.append(loader)
             pre_partition = _current_partition
@@ -168,7 +166,7 @@ class ImageList_custom(torch.utils.data.Dataset):
             _rgb_normalized_std=None,
             crop='random',
             crop_size=224,
-            min_crop_size=0.08,
+            min_crop=0.08,
             random_flip=False):
         logger.info("Using Custom (opencv2 and numpy array) as backend.")
         self._imdb = _list
@@ -176,19 +174,20 @@ class ImageList_custom(torch.utils.data.Dataset):
         self._bgr_normalized_std = _rgb_normalized_std[::-1]
         self.crop = crop
         self.crop_size = crop_size
-        self.min_crop_size = min_crop_size
+        self.min_crop = min_crop
         self.random_flip = random_flip
 
     def _prepare_im(self, im):
         """Prepare the image for network input."""
+        crop_size = max(crop_size) # match crop_size(list type) with the following operations
         # Train and test setups differ
         if self.crop == "random":
             # Scale -> aspect ratio -> crop
             im = custom_transforms.random_sized_crop(
-                im=im, size=self.crop_size, area_frac=self.min_crop_size)
+                im=im, size=self.crop_size, area_frac=self.min_crop)
         elif self.crop == "center":
             # Scale -> center crop
-            im = custom_transforms.scale(self.min_crop_size, im)
+            im = custom_transforms.scale(self.min_crop, im)
             im = custom_transforms.center_crop(self.crop_size, im)
         if self.random_flip:
             im = custom_transforms.horizontal_flip(im=im, p=0.5, order="HWC")
@@ -228,32 +227,34 @@ class ImageList_torch(torch.utils.data.Dataset):
             _rgb_normalized_std=None,
             crop='random',
             crop_size=224,
-            min_crop_size=0.08,
+            min_crop=0.08,
             random_flip=False):
-        logger.info("Using Torch (PIL and torchvison transformer) as backend.")
+        logger.info("Using Torch (PIL and torchvison transforms) as backend.")
         self._imdb = _list
         self._bgr_normalized_mean = _rgb_normalized_mean[::-1]
         self._bgr_normalized_std = _rgb_normalized_std[::-1]
         self.crop = crop
         self.crop_size = crop_size
-        self.min_crop_size = min_crop_size
+        self.min_crop = min_crop
         self.random_flip = random_flip
         self.loader = default_loader
-        self._construct_transformer()
+        self._construct_transforms()
 
-    def _construct_transformer(self):
-        transformer = []
+    def _construct_transforms(self):
+        transforms = []
         if self.crop == "random":
-            transformer.append(torch_transforms.RandomResizedCrop(
-                self.crop_size, scale=(self.min_crop_size, 1.0)))
+            transforms.append(torch_transforms.RandomResizedCrop(self.crop_size, scale=(self.min_crop, 1.0)))
         elif self.crop == "center":
             # Scale -> center crop
-            transformer.append(torch_transforms.Resize(self.min_crop_size)) # TODO: this function seems to be wrong?
-            transformer.append(torch_transforms.CenterCrop(self.crop_size))
-            transformer.append(torch_transforms.ToTensor())
-            transformer.append(torch_transforms.Normalize(
-            mean=self._bgr_normalized_mean, std=self._bgr_normalized_std))
-        self.transform = torch_transforms.Compose(transformer)
+            # transforms.append(torch_transforms.Resize(self.min_crop)) # TODO: this function seems to be wrong?
+            transforms.append(torch_transforms.Resize(int(math.ceil(self.crop_size / 0.875))))
+            transforms.append(torch_transforms.CenterCrop(self.crop_size))
+        # TODO: color augmentation
+        if self.random_flip:
+            transforms.append(torch_transforms.RandomHorizontalFlip())
+        transforms.append(torch_transforms.ToTensor())
+        transforms.append(torch_transforms.Normalize(mean=self._bgr_normalized_mean, std=self._bgr_normalized_std))
+        self.transform = torch_transforms.Compose(transforms)
 
     def __getitem__(self, index):
         impath = self._imdb[index]["im_path"]
@@ -280,7 +281,7 @@ class ImageList_DALI():
             _rgb_normalized_std=None,
             crop='random',
             crop_size=224,
-            min_crop_size=0.08,
+            min_crop=0.08,
             random_flip=False,
             num_workers=8,
             pin_memory=True,
@@ -293,7 +294,7 @@ class ImageList_DALI():
         _rgb_std = [i * 255. for i in _rgb_normalized_std]
         self.crop = crop
         self.crop_size = crop_size
-        self.min_crop_size = min_crop_size
+        self.min_crop = min_crop
         self.random_flip = random_flip
         self.num_workers = num_workers
         self.pin_memory = pin_memory
@@ -310,7 +311,7 @@ class ImageList_DALI():
         device_id = torch.cuda.current_device()
         local_rank = torch.cuda.current_device()
         self.pipeline = ListPipe(batch_size, _temp_save_file, _rgb_mean, _rgb_std,
-                                 data_dir='', crop=crop, crop_size=crop_size, min_crop_size=min_crop_size,
+                                 data_dir='', crop=crop, crop_size=crop_size, min_crop=min_crop,
                                  random_flip=random_flip, device_id=device_id, num_threads=num_workers, local_rank=local_rank,
                                  world_size=world_size, dali_cpu=dali_cpu, shuffle=True)
 
@@ -325,7 +326,7 @@ class ImageList_DALI():
 
 class ListPipe(Pipeline):
 
-    def __init__(self, batch_size, file_list, mean, std, data_dir='', crop='random', crop_size=224, min_crop_size=0.08,
+    def __init__(self, batch_size, file_list, mean, std, data_dir='', crop='random', crop_size=224, min_crop=0.08,
                  random_flip=False, device_id=0, num_threads=8, local_rank=0, world_size=1, dali_cpu=False, shuffle=True):
         # As we're recreating the Pipeline at every epoch, the seed must be -1 (random seed)
         super(ListPipe, self).__init__(
@@ -346,6 +347,7 @@ class ListPipe(Pipeline):
         # nvJPEG buffers without additional reallocations
         device_memory_padding = 211025920 if decode_device == 'mixed' else 0
         host_memory_padding = 140544512 if decode_device == 'mixed' else 0
+        crop_size = max(crop_size) # match crop_size(list type) with the following operations
         if crop == 'random':
             self.decode = ops.ImageDecoderRandomCrop(device=decode_device, output_type=types.RGB,
                                                      device_memory_padding=device_memory_padding,
@@ -353,7 +355,7 @@ class ListPipe(Pipeline):
                                                      random_aspect_ratio=[
                                                          0.8, 1.25],
                                                      random_area=[
-                                                         min_crop_size, 1.0],
+                                                         min_crop, 1.0],
                                                      num_attempts=100)
             # Resize as desired.  To match torchvision data loader, use triangular interpolation.
             self.res = ops.Resize(device=self.dali_device, resize_x=crop_size, resize_y=crop_size,
@@ -364,7 +366,7 @@ class ListPipe(Pipeline):
                                            device_memory_padding=device_memory_padding,
                                            host_memory_padding=host_memory_padding)
             self.res = ops.Resize(
-                device=self.dali_device, resize_shorter=min_crop_size, interp_type=types.INTERP_TRIANGULAR)
+                device=self.dali_device, resize_shorter=min_crop, interp_type=types.INTERP_TRIANGULAR)
         self.cmn = ops.CropMirrorNormalize(device=self.dali_device,
                                            output_layout=types.NCHW,
                                            crop=(crop_size, crop_size),
