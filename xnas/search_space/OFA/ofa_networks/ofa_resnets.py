@@ -8,7 +8,7 @@ from xnas.search_space.OFA.utils.layers import IdentityLayer, ResidualBlock
 from xnas.search_space.OFA.base_networks import ResNet
 from xnas.search_space.OFA.utils import make_divisible, val2list, MyNetwork
 
-__all__ = ["_OFAResNet"]
+__all__ = ["_OFAResNet", "OFAResNet"]
 
 
 class OFAResNet(ResNet):

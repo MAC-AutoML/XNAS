@@ -12,7 +12,7 @@ from xnas.search_space.OFA.utils.layers import (
 from xnas.search_space.OFA.base_networks import ProxylessNASNet
 
 
-__all__ = ["_OFAProxylessNASNet"]
+__all__ = ["_OFAProxylessNASNet", "OFAProxylessNASNet"]
 
 
 class OFAProxylessNASNet(ProxylessNASNet):

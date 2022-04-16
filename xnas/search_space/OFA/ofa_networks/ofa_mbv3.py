@@ -11,7 +11,7 @@ from xnas.search_space.OFA.utils.layers import (
 from xnas.search_space.OFA.base_networks import MobileNetV3
 from xnas.search_space.OFA.utils import make_divisible, val2list, MyNetwork
 
-__all__ = ["_OFAMobileNetV3"]
+__all__ = ["_OFAMobileNetV3", "OFAMobileNetV3"]
 
 
 class OFAMobileNetV3(MobileNetV3):
