@@ -543,7 +543,6 @@ def load_cfg_fom_args(description="Config file options."):
     args = parser.parse_args()
     _C.merge_from_file(args.cfg_file)
     _C.merge_from_list(args.opts)
-    _C.freeze()
 
 
 def assert_and_infer_cfg(cache_urls=True):
