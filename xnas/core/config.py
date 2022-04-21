@@ -65,6 +65,9 @@ _C.TEST.BATCH_SIZE = 128
 # Test weight file location
 _C.TEST.WEIGHTS = ""
 
+# Test image size
+_C.TEST.IM_SIZE = 224
+
 # ------------------------------------------------------------------------------------ #
 # Searching options
 # ------------------------------------------------------------------------------------ #
@@ -76,6 +79,9 @@ _C.SEARCH.DATASET = "cifar10"
 # data path using in indepandent train
 _C.SEARCH.DATAPATH = "/gdata/cifar10/"
 
+# label smoothing
+_C.SEARCH.LABEL_SMOOTH = 0.1
+
 # num of classes
 _C.SEARCH.NUM_CLASSES = 10
 
@@ -86,7 +92,8 @@ _C.SEARCH.SPLIT = [0.8, 0.2]
 _C.SEARCH.BATCH_SIZE = 256
 
 # Image size
-_C.SEARCH.IM_SIZE = 32
+# _C.SEARCH.IM_SIZE = 32
+_C.SEARCH.IM_SIZE = [32]
 
 # Image channel (rgb=3)
 _C.SEARCH.INPUT_CHANNEL = 3
@@ -161,6 +168,31 @@ _C.MB.SE_STAGES = []
 
 
 # ------------------------------------------------------------------------------------ #
+# OFA Search Space options
+# ------------------------------------------------------------------------------------ #
+_C.OFA = CfgNode()
+
+# task, choose from ['kernel', 'depth', 'expand']
+_C.OFA.TASK = 'depth'
+
+# phase, choose from [1, 2]
+_C.OFA.PHASE = 1
+
+# width_mult_list
+_C.OFA.WIDTH_MULTI_LIST = [1.0]
+
+
+# kernel size list
+_C.OFA.KS_LIST = [3,5,7]
+
+# expand_list
+_C.OFA.EXPAND_LIST = [6]
+
+# depth_list
+_C.OFA.DEPTH_LIST = [3,4]
+
+
+# ------------------------------------------------------------------------------------ #
 # Stotiscas natural gradient algorithm options
 # ------------------------------------------------------------------------------------ #
 _C.SNG = CfgNode()
@@ -224,8 +256,7 @@ _C.SNG.EDGE_SAMPLING_EPOCH = -1
 # ------------------------------------------------------------------------------------ #
 _C.OPTIM = CfgNode()
 
-
-# Base learning rate
+# Base learning rate, init_lr = OPTIM.BASE_LR * NUM_GPUS
 _C.OPTIM.BASE_LR = 0.1
 
 # Learning rate policy select from {'cos', 'exp', 'steps'}
@@ -262,10 +293,10 @@ _C.OPTIM.NESTEROV = True
 # Weight decay
 _C.OPTIM.WEIGHT_DECAY = 5e-4
 
-# Start the warm up from OPTIM.BASE_LR * OPTIM.WARMUP_FACTOR
+# Start the warm up from init_lr * OPTIM.WARMUP_FACTOR
 _C.OPTIM.WARMUP_FACTOR = 0.1
 
-# Gradually warm up the OPTIM.BASE_LR over this number of epochs
+# Gradually warm up to the init_lr over this number of epochs
 _C.OPTIM.WARMUP_EPOCHS = 0
 
 # Gradient clip threshold
@@ -286,7 +317,7 @@ _C.DATA_LOADER.NUM_WORKERS = 8
 # Load data to pinned host memory
 _C.DATA_LOADER.PIN_MEMORY = True
 
-# using which backend as image decoder and transformers: dali_cpu, dali_gpu, torch, and custom
+# using which backend as image decoder and transforms: dali_cpu, dali_gpu, torch, and custom
 _C.DATA_LOADER.BACKEND = 'dali_cpu'
 
 # Number of data loader workers per process
@@ -479,6 +510,19 @@ _C.RMINAS.RF_THRESRATE = 0.05
 # number of good archs when random forest terminates
 _C.RMINAS.RF_SUCC = 100
 
+# ------------------------------------------------------------------------------------ #
+# DropNAS options
+# ------------------------------------------------------------------------------------ #
+_C.DROPNAS = CfgNode()
+
+_C.DROPNAS.ALPHA_WEIGHT_DECAY = 1e-3
+
+_C.DROPNAS.ALPHA_LR = 0.0003
+
+_C.DROPNAS.WARMUP_EPOCHS = 0
+
+_C.DROPNAS.DROP_RATE = 3e-5
+
 
 
 def dump_cfg():
@@ -512,7 +556,6 @@ def load_cfg_fom_args(description="Config file options."):
     args = parser.parse_args()
     _C.merge_from_file(args.cfg_file)
     _C.merge_from_list(args.opts)
-    _C.freeze()
 
 
 def assert_and_infer_cfg(cache_urls=True):

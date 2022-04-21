@@ -17,39 +17,49 @@ _DIR_NAME = "checkpoints"
 _NAME_PREFIX = "model_epoch_"
 
 
-def get_checkpoint_dir():
+def get_checkpoint_dir(out_dir=None):
     """Retrieves the location for storing checkpoints."""
-    return os.path.join(cfg.OUT_DIR, _DIR_NAME)
+    if out_dir is None:
+        return os.path.join(cfg.OUT_DIR, _DIR_NAME)
+    else:
+        return os.path.join(out_dir, _DIR_NAME)
 
 
-def get_checkpoint(epoch):
+def get_checkpoint(epoch, checkpoint_dir=None):
     """Retrieves the path to a checkpoint file."""
     name = "{}{:04d}.pyth".format(_NAME_PREFIX, epoch)
-    return os.path.join(get_checkpoint_dir(), name)
+    if checkpoint_dir is None:
+        return os.path.join(get_checkpoint_dir(), name)
+    else:
+        return os.path.join(checkpoint_dir, name)
+        
 
-
-def get_last_checkpoint():
+def get_last_checkpoint(checkpoint_dir=None):
     """Retrieves the most recent checkpoint (highest epoch number)."""
-    checkpoint_dir = get_checkpoint_dir()
+    if checkpoint_dir is None:
+        checkpoint_dir = get_checkpoint_dir()
     # Checkpoint file names are in lexicographic order
     checkpoints = [f for f in os.listdir(checkpoint_dir) if _NAME_PREFIX in f]
     last_checkpoint_name = sorted(checkpoints)[-1]
     return os.path.join(checkpoint_dir, last_checkpoint_name)
 
 
-def has_checkpoint():
+def has_checkpoint(checkpoint_dir=None):
     """Determines if there are checkpoints available."""
-    checkpoint_dir = get_checkpoint_dir()
+    if checkpoint_dir is None:
+        checkpoint_dir = get_checkpoint_dir()
     if not os.path.exists(checkpoint_dir):
         return False
     return any(_NAME_PREFIX in f for f in os.listdir(checkpoint_dir))
 
 
-def save_checkpoint(model, optimizer, epoch):
+def save_checkpoint(model, optimizer, epoch, checkpoint_dir=None):
     """Saves a checkpoint."""
     # Save checkpoints only from the master process
     # Ensure that the checkpoint dir exists
-    os.makedirs(get_checkpoint_dir(), exist_ok=True)
+    if checkpoint_dir is None:
+        checkpoint_dir = get_checkpoint_dir()
+    os.makedirs(checkpoint_dir, exist_ok=True)
     # Omit the DDP wrapper in the multi-gpu setting
     sd = model.module.state_dict() if cfg.NUM_GPUS > 1 else model.state_dict()
     # Record the state
@@ -60,7 +70,7 @@ def save_checkpoint(model, optimizer, epoch):
         "cfg": cfg.dump(),
     }
     # Write the checkpoint
-    checkpoint_file = get_checkpoint(epoch + 1)
+    checkpoint_file = get_checkpoint(epoch + 1, checkpoint_dir)
     torch.save(checkpoint, checkpoint_file)
     return checkpoint_file
 

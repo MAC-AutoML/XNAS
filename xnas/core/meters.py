@@ -81,9 +81,10 @@ class ScalarMeter(object):
 class TrainMeter(object):
     """Measures training stats."""
 
-    def __init__(self, epoch_iters):
+    def __init__(self, epoch_iters, include_lr_warmup=False):
         self.epoch_iters = epoch_iters
-        self.max_iter = cfg.OPTIM.MAX_EPOCH * epoch_iters
+        self.include_lr_warmup = include_lr_warmup
+        self.max_iter = (cfg.OPTIM.MAX_EPOCH+cfg.OPTIM.WARMUP_EPOCHS) * epoch_iters if self.include_lr_warmup else cfg.OPTIM.MAX_EPOCH * epoch_iters
         self.iter_timer = Timer()
         self.loss = ScalarMeter(cfg.LOG_PERIOD)
         self.loss_total = 0.0
@@ -131,7 +132,7 @@ class TrainMeter(object):
         eta_sec = self.iter_timer.average_time * (self.max_iter - cur_iter_total)
         mem_usage = gpu_mem_usage()
         stats = {
-            "epoch": "{}/{}".format(cur_epoch + 1, cfg.OPTIM.MAX_EPOCH),
+            "epoch": "{}/{}".format(cur_epoch + 1, cfg.OPTIM.MAX_EPOCH+cfg.OPTIM.WARMUP_EPOCHS) if self.include_lr_warmup else cfg.OPTIM.MAX_EPOCH,
             "iter": "{}/{}".format(cur_iter + 1, self.epoch_iters),
             "time_avg": self.iter_timer.average_time,
             "time_diff": self.iter_timer.diff,
@@ -158,7 +159,7 @@ class TrainMeter(object):
         top5_err = self.num_top5_mis / self.num_samples
         avg_loss = self.loss_total / self.num_samples
         stats = {
-            "epoch": "{}/{}".format(cur_epoch + 1, cfg.OPTIM.MAX_EPOCH),
+            "epoch": "{}/{}".format(cur_epoch + 1, cfg.OPTIM.MAX_EPOCH+cfg.OPTIM.WARMUP_EPOCHS) if self.include_lr_warmup else cfg.OPTIM.MAX_EPOCH,
             "time_avg": self.iter_timer.average_time,
             "eta": time_string(eta_sec),
             "top1_err": top1_err,
@@ -177,7 +178,8 @@ class TrainMeter(object):
 class TestMeter(object):
     """Measures testing stats."""
 
-    def __init__(self, max_iter):
+    def __init__(self, max_iter, include_lr_warmup=False):
+        self.include_lr_warmup = include_lr_warmup
         self.max_iter = max_iter
         self.iter_timer = Timer()
         # Current minibatch errors (smoothed over a window)
@@ -218,7 +220,7 @@ class TestMeter(object):
     def get_iter_stats(self, cur_epoch, cur_iter):
         mem_usage = gpu_mem_usage()
         iter_stats = {
-            "epoch": "{}/{}".format(cur_epoch + 1, cfg.OPTIM.MAX_EPOCH),
+            "epoch": "{}/{}".format(cur_epoch + 1, cfg.OPTIM.MAX_EPOCH+cfg.OPTIM.WARMUP_EPOCHS) if self.include_lr_warmup else cfg.OPTIM.MAX_EPOCH,
             "iter": "{}/{}".format(cur_iter + 1, self.max_iter),
             "time_avg": self.iter_timer.average_time,
             "time_diff": self.iter_timer.diff,
@@ -241,7 +243,7 @@ class TestMeter(object):
         self.min_top5_err = min(self.min_top5_err, top5_err)
         mem_usage = gpu_mem_usage()
         stats = {
-            "epoch": "{}/{}".format(cur_epoch + 1, cfg.OPTIM.MAX_EPOCH),
+            "epoch": "{}/{}".format(cur_epoch + 1, cfg.OPTIM.MAX_EPOCH+cfg.OPTIM.WARMUP_EPOCHS) if self.include_lr_warmup else cfg.OPTIM.MAX_EPOCH,
             "time_avg": self.iter_timer.average_time,
             "top1_err": top1_err,
             "top5_err": top5_err,

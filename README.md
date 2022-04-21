@@ -32,7 +32,8 @@ This project is now supported by PengCheng Lab
   - `./search/RMINAS/download_weight.sh # prepare weights of teacher models`
   - `./python search/RMINAS/RMINAS_nb201.py --cfg configs/search/RMINAS/nb201_cifar10.yaml`
   - `./python search/RMINAS/RMINAS_darts.py --cfg configs/search/RMINAS/darts_cifar10.yaml`
-
+- DROPNAS
+  - `./python search/DropNAS.py --cfg configs/search/DROPNAS.yaml`
 
 ## Supported Search Spaces
 
