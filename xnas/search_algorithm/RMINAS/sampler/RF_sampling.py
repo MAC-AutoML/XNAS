@@ -37,7 +37,7 @@ class RF_suggest():
         elif self.space == 'mb':
             self.num_estimator = 140
             
-        self.model = RandomForestClassifier(n_estimators=self.num_estimator)
+        self.model = RandomForestClassifier(n_estimators=self.num_estimator,random_state=seed)
     
     def _update_lossthres(self):
         losses = [i['loss'] for i in self.trained_arch]
