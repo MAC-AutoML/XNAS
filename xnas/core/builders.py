@@ -9,28 +9,27 @@ import torch
 
 from xnas.core.config import cfg
 from xnas.core.warmup_sheduler import GradualWarmupScheduler
-
-# DARTS series space
-from xnas.search_space.DARTS.cnn import _DartsCNN
-from xnas.search_space.PDARTS.cnn import _PdartsCNN
-from xnas.search_space.PCDARTS.cnn import _PcdartsCNN
-# NAS-Bench series space
-from xnas.search_space.NASBench201.cnn import _NASBench201
-from xnas.search_space.NASBench1shot1.cnn import _NASbench1shot1_1, _NASbench1shot1_2, _NASbench1shot1_3
-# OFA series space
-from xnas.search_space.OFA.ofa_networks import _OFAMobileNetV3, _OFAProxylessNASNet, _OFAResNet
-from xnas.search_space.OFA.utils import (cross_entropy_loss_with_label_smoothing, cross_entropy_loss_with_soft_target)
-# DrNAS series modified space
-from xnas.search_space.DrNAS.DARTSspace.cnn import _DrNASCNN_DARTSspace
-from xnas.search_space.DrNAS.nb201space.cnn import _DrNASCNN_nb201space, _DrNASCNN_GDAS_nb201space
-
-# MIGO series 
-from xnas.search_algorithm.SNG import SNG, Dynamic_SNG
 from xnas.search_algorithm.ASNG import ASNG, Dynamic_ASNG
 from xnas.search_algorithm.DDPNAS import CategoricalDDPNAS
 from xnas.search_algorithm.MDENAS import CategoricalMDENAS
 from xnas.search_algorithm.MIGO import MIGO
-
+# MIGO series
+from xnas.search_algorithm.SNG import SNG, Dynamic_SNG
+# DARTS series space
+from xnas.search_space.DARTS.cnn import _DartsCNN
+# DrNAS series modified space
+from xnas.search_space.DrNAS.DARTSspace.cnn import _DrNASCNN_DARTSspace
+from xnas.search_space.DrNAS.nb201space.cnn import _DrNASCNN_nb201space, _DrNASCNN_GDAS_nb201space
+from xnas.search_space.NASBench1shot1.cnn import _NASbench1shot1_1, _NASbench1shot1_2, _NASbench1shot1_3
+# NAS-Bench series space
+from xnas.search_space.NASBench201.cnn import _NASBench201
+# OFA series space
+from xnas.search_space.OFA.ofa_networks import _OFAMobileNetV3, _OFAProxylessNASNet, _OFAResNet
+from xnas.search_space.OFA.utils import (cross_entropy_loss_with_label_smoothing, cross_entropy_loss_with_soft_target)
+from xnas.search_space.PCDARTS.cnn import _PcdartsCNN
+from xnas.search_space.PDARTS.cnn import _PdartsCNN
+# SPOS space
+from xnas.search_space.SPOS.supernet import _SPOSSUPNET
 
 # Supported models
 _spaces = {
@@ -44,7 +43,8 @@ _spaces = {
     "nasbench1shot1_2": _NASbench1shot1_2,
     "nasbench1shot1_3": _NASbench1shot1_3,
     "nasbench201": _NASBench201,
-    "nasbench301": _DartsCNN
+    "nasbench301": _DartsCNN,
+    "spos": _SPOSSUPNET
 }
 
 # Supported loss functions
@@ -134,15 +134,18 @@ def sng_builder(category):
 
 def lr_scheduler_builder(w_optim, last_epoch=-1):
     if cfg.OPTIM.LR_POLICY == "cos":
-        return torch.optim.lr_scheduler.CosineAnnealingLR(w_optim, cfg.OPTIM.MAX_EPOCH, eta_min=cfg.OPTIM.MIN_LR, last_epoch=last_epoch)
+        return torch.optim.lr_scheduler.CosineAnnealingLR(w_optim, cfg.OPTIM.MAX_EPOCH, eta_min=cfg.OPTIM.MIN_LR,
+                                                          last_epoch=last_epoch)
     elif cfg.OPTIM.LR_POLICY == "step":
-        return torch.optim.lr_scheduler.MultiStepLR(w_optim, cfg.OPTIM.STEPS, gamma=cfg.OPTIM.LR_MULT, last_epoch=last_epoch)
+        return torch.optim.lr_scheduler.MultiStepLR(w_optim, cfg.OPTIM.STEPS, gamma=cfg.OPTIM.LR_MULT,
+                                                    last_epoch=last_epoch)
     else:
         raise NotImplementedError
 
 
 def warmup_scheduler_builder(w_optim, actual_scheduler, last_epoch=-1):
-    if cfg.OPTIM.WARMUP_EPOCHS>0:
-        return GradualWarmupScheduler(w_optim, actual_scheduler, cfg.OPTIM.WARMUP_EPOCHS, cfg.OPTIM.WARMUP_FACTOR, last_epoch)
+    if cfg.OPTIM.WARMUP_EPOCHS > 0:
+        return GradualWarmupScheduler(w_optim, actual_scheduler, cfg.OPTIM.WARMUP_EPOCHS, cfg.OPTIM.WARMUP_FACTOR,
+                                      last_epoch)
     else:
         return actual_scheduler
