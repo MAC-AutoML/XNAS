@@ -1,0 +1,30 @@
+SPACE:
+  NAME: 'drnas_darts'
+  CHANNELS: 48
+  LAYERS: 14
+  NODES: 4
+LOADER:
+  DATASET: 'imagenet'
+  SPLIT: [0.5, 0.5]
+  BATCH_SIZE: 512
+  NUM_WORKERS: 16
+  NUM_CLASSES: 1000
+SEARCH:
+  IM_SIZE: 32
+OPTIM:
+  BASE_LR: 0.5
+  MIN_LR: 0.0
+  WEIGHT_DECAY: 3.e-4
+  LR_POLICY: 'cos'
+  WARMUP_EPOCH: 5
+DARTS:
+  UNROLLED: False
+  ALPHA_LR: 6.e-3
+  ALPHA_WEIGHT_DECAY: 1.e-3
+DRNAS:
+  K: 6
+  REG_TYPE: "l2"
+  REG_SCALE: 1.e-3
+  METHOD: 'dirichlet'
+  TAU: [1, 10]
+OUT_DIR: 'exp/drnas'

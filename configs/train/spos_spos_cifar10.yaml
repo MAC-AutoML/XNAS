@@ -1,0 +1,15 @@
+SPACE:
+  NAME: 'infer_spos'
+LOADER:
+  DATASET: 'cifar10'
+  NUM_CLASSES: 10
+  SPLIT: [0.5, 0.5]
+  BATCH_SIZE: 64
+SEARCH:
+  IM_SIZE: 32
+SPOS:
+  RESIZE: True
+  LAYERS: 20
+  NUM_CHOICE: 4
+  CHOICE: [1, 0, 3, 1, 3, 0, 3, 0, 0, 3, 3, 0, 1, 0, 1, 2, 2, 1, 1, 3]
+OUT_DIR: 'username/project/XNAS/experiment/spos'

@@ -5,61 +5,64 @@ import torchvision.datasets as dset
 from xnas.core.config import cfg
 from xnas.datasets.transforms import *
 from xnas.datasets.imagenet16 import ImageNet16
-from xnas.datasets.imagenet import XNAS_ImageFolder
+from xnas.datasets.imagenet import ImageFolder
 
 
-SUPPORT_DATASETS = ["cifar10", "cifar100", "svhn", "imagenet16"]
+SUPPORTED_DATASETS = [
+    "cifar10", 
+    "cifar100", 
+    "svhn", 
+    "imagenet16", 
+    "mnist", 
+    "fashionmnist"
+]
+
 # if you use datasets loaded by imagefolder, you can add it here.
 IMAGEFOLDER_FORMAT = ["imagenet"]
 
 
 def construct_loader(
-    name,
-    split,
-    batch_size,
-    datapath=None,
-    cutout_length=0,
-    num_workers=8,
-    use_classes=None,
-    backend="custom",
-):
-    assert (name in SUPPORT_DATASETS) or (
-        name in IMAGEFOLDER_FORMAT
-    ), "dataset not supported."
-    datapath = "./data/" + name if datapath is None else datapath
+        cutout_length=0,
+        use_classes=None,
+        transforms=None,
+    ):
+    """Construct NAS dataloaders with train&valid subsets."""
+    
+    split = cfg.LOADER.SPLIT
+    name = cfg.LOADER.DATASET
+    batch_size = cfg.LOADER.BATCH_SIZE 
+    datapath = cfg.LOADER.DATAPATH
+    
+    assert (name in SUPPORTED_DATASETS) or (name in IMAGEFOLDER_FORMAT), "dataset not supported."
+    datapath = "./data/" + name if not datapath else datapath + name
+
+    # expand batch_size to support different number during training & validating
     if isinstance(batch_size, int):
         batch_size = [batch_size, batch_size]
     elif batch_size is None:
-        batch_size = [256, 200]
-    assert len(batch_size) == 2, "len of batch_size should be 2"
-    if name in SUPPORT_DATASETS:
-        train_data, _ = getData(name, datapath, cutout_length, use_classes)
-        return splitDataLoader(train_data, batch_size, split, num_workers)
+        batch_size = [256, 256]
+    assert len(batch_size) == len(split), "lengths of batch_size and split should be same."
+    
+    if name in SUPPORTED_DATASETS:
+        # using training data only.
+        train_data, _ = get_data(name, datapath, cutout_length, use_classes=use_classes, transforms=transforms)
+        return split_dataloader(train_data, batch_size, split)
     elif name in IMAGEFOLDER_FORMAT:
-        if isinstance(cfg.SEARCH.IM_SIZE, list):
-            search_img_size = cfg.SEARCH.IM_SIZE
-        elif isinstance(cfg.SEARCH.IM_SIZE, int):
-            search_img_size = [cfg.SEARCH.IM_SIZE]
-            
-        data_ = XNAS_ImageFolder(
-            datapath, split, backend, batch_size=batch_size, num_workers=num_workers,
-            transforms=[
-                {'crop': 'random', 'crop_size': search_img_size, 'min_crop': 0.08, 'random_flip': True},
-                {'crop': 'center', 'crop_size': cfg.TEST.IM_SIZE, 'min_crop': 256, 'random_flip': False}, # 注：ImageList_torch中并不使用min_crop
-            ]
-        )
-        return data_.generate_data_loader()
+        return ImageFolder(
+            datapath, split, batch_size=batch_size,
+            transforms=transforms,
+        ).generate_data_loader()
     else:
         print("dataset not supported.")
         exit(0) 
 
 
-def getData(name, root, cutout_length, download=True, use_classes=None):
-    assert name in SUPPORT_DATASETS, "dataset not support."
+def get_data(name, root, cutout_length, download=True, use_classes=None, transforms=None):
+    assert name in SUPPORTED_DATASETS, "dataset not support."
     assert cutout_length >= 0, "cutout_length should not be less than zero."
 
     if name == "cifar10":
-        train_transform, valid_transform = transforms_cifar10(cutout_length)
+        train_transform, valid_transform = transforms_cifar10(cutout_length) if transforms is None else transforms
         train_data = dset.CIFAR10(
             root=root, train=True, download=download, transform=train_transform
         )
@@ -67,7 +70,7 @@ def getData(name, root, cutout_length, download=True, use_classes=None):
             root=root, train=False, download=download, transform=valid_transform
         )
     elif name == "cifar100":
-        train_transform, valid_transform = transforms_cifar100(cutout_length)
+        train_transform, valid_transform = transforms_cifar100(cutout_length) if transforms is None else transforms
         train_data = dset.CIFAR100(
             root=root, train=True, download=download, transform=train_transform
         )
@@ -75,15 +78,31 @@ def getData(name, root, cutout_length, download=True, use_classes=None):
             root=root, train=False, download=download, transform=valid_transform
         )
     elif name == "svhn":
-        train_transform, valid_transform = transforms_svhn(cutout_length)
+        train_transform, valid_transform = transforms_svhn(cutout_length) if transforms is None else transforms
         train_data = dset.SVHN(
             root=root, split="train", download=download, transform=train_transform
         )
         test_data = dset.SVHN(
             root=root, split="test", download=download, transform=valid_transform
         )
+    elif name == "mnist":
+        train_transform, valid_transform = transforms_mnist(cutout_length) if transforms is None else transforms
+        train_data = dset.MNIST(
+            root=root, train=True, download=download, transform=train_transform
+        )
+        test_data = dset.MNIST(
+            root=root, train=False, download=download, transform=valid_transform
+        )
+    elif name == "fashionmnist":
+        train_transform, valid_transform = transforms_mnist(cutout_length) if transforms is None else transforms
+        train_data = dset.FashionMNIST(
+            root=root, train=True, download=download, transform=train_transform
+        )
+        test_data = dset.FashionMNIST(
+            root=root, train=False, download=download, transform=valid_transform
+        )
     elif name == "imagenet16":
-        train_transform, valid_transform = transforms_imagenet16()
+        train_transform, valid_transform = transforms_imagenet16() if transforms is None else transforms
         train_data = ImageNet16(
             root=root,
             train=True,
@@ -96,7 +115,7 @@ def getData(name, root, cutout_length, download=True, use_classes=None):
             transform=valid_transform,
             use_num_of_class_only=use_classes,
         )
-        if use_classes == 120:
+        if use_classes == 120 or use_classes is None:   # Use 120 classes by default.
             assert len(train_data) == 151700 and len(test_data) == 6000
         elif use_classes == 150:
             assert len(train_data) == 190272 and len(test_data) == 7500
@@ -109,32 +128,43 @@ def getData(name, root, cutout_length, download=True, use_classes=None):
     return train_data, test_data
 
 
-def getDataLoader(
-    name,
-    root,
-    batch_size,
-    cutout_length,
-    num_workers=8,
+def get_normal_dataloader(
+    name=None,
+    train_batch=None,
+    cutout_length=0,
     download=True,
     use_classes=None,
+    transforms=None,
 ):
-    train_data, test_data = getData(name, root, cutout_length, download, use_classes)
+    name=cfg.LOADER.DATASET if name is None else name
+    train_batch=cfg.LOADER.BATCH_SIZE if train_batch is None else train_batch
+    name=cfg.LOADER.DATASET
+    root=cfg.LOADER.DATAPATH
+    test_batch=cfg.TEST.BATCH_SIZE
+    
+    # get normal dataloaders with train&test subsets.
+    train_data, test_data = get_data(name, root, cutout_length, download, use_classes, transforms)
+    
+    # if loader.batch_size is a list for [train, val_1, ...], the first value will be used.
+    if isinstance(batch_size, list):
+        batch_size = batch_size[0]
+        
     train_loader = data.DataLoader(
         dataset=train_data,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        pin_memory=True,
+        batch_size=train_batch,
+        num_workers=cfg.LOADER.NUM_WORKERS,
+        pin_memory=cfg.LOADER.PIN_MEMORY,
     )
     test_loader = data.DataLoader(
         dataset=test_data,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        pin_memory=True,
+        batch_size=test_batch,
+        num_workers=cfg.LOADER.NUM_WORKERS,
+        pin_memory=cfg.LOADER.PIN_MEMORY,
     )
     return train_loader, test_loader
 
 
-def splitDataLoader(data_, batch_size, split, num_workers=8):
+def split_dataloader(data_, batch_size, split):
     assert 0 not in split, "illegal split list with zero."
     assert sum(split) == 1, "summation of split should be one."
     num_data = len(data_)
@@ -145,45 +175,12 @@ def splitDataLoader(data_, batch_size, split, num_workers=8):
     return [
         data.DataLoader(
             dataset=data_,
-            batch_size=batch_size[i-1],
+            batch_size=batch_size[i - 1],
             sampler=data.sampler.SubsetRandomSampler(
                 indices[portion[i - 1] : portion[i]]
             ),
-            num_workers=num_workers,
-            pin_memory=True,
+            num_workers=cfg.LOADER.NUM_WORKERS,
+            pin_memory=cfg.LOADER.PIN_MEMORY,
         )
         for i in range(1, len(portion))
     ]
-
-
-
-# Dropnas
-def get_data(dataset, data_path, cutout_length, validation):
-    """ Get torchvision dataset """
-    dataset = dataset.lower()
-
-    if dataset == 'cifar10':
-        dset_cls = dset.CIFAR10
-        n_classes = 10
-    elif dataset == 'mnist':
-        dset_cls = dset.MNIST
-        n_classes = 10
-    elif dataset == 'fashionmnist':
-        dset_cls = dset.FashionMNIST
-        n_classes = 10
-    else:
-        raise ValueError(dataset)
-
-    trn_transform, val_transform = DropNAS_data_transforms(dataset, cutout_length)
-    trn_data = dset_cls(root=data_path, train=True, download=True, transform=trn_transform)
-
-    shape = trn_data.data.shape
-    input_channels = 3 if len(shape) == 4 else 1
-    assert shape[1] == shape[2], "not expected shape = {}".format(shape)
-    input_size = shape[1]
-
-    ret = [input_size, input_channels, n_classes, trn_data]
-    if validation:
-        ret.append(dset_cls(root=data_path, train=False, download=True, transform=val_transform))
-
-    return ret

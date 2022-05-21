@@ -122,4 +122,3 @@ class ImageNet16(data.Dataset):
             if not check_integrity(fpath, md5):
                 return False
         return True
-
