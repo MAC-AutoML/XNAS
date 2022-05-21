@@ -48,10 +48,10 @@ We also provide the interpretation of papers and experimental records for each a
 |           ASNG            |          |      [`Github`](https://github.com/shirakawas/ASNG-NAS)      |
 |          MDENAS           |          |       [`Github`](https://github.com/tanglang96/MDENAS)       |
 |          DDPNAS           |          |       [`Github`](https://github.com/tanglang96/DDPNAS)       |
-|          MIGONAS          |          |          [`Openi`](https://github.com/quark0/darts)          |
+|          MIGONAS          |          |          [`Openi`](https://git.openi.org.cn/PCL_AutoML/XNAS/src/branch/dev)          |
 |        GridSearch         |          |                              -                               |
 |           DrNAS           |          |     [`Github`](https://github.com/xiangning-chen/DrNAS)      |
-|          RMINAS           |          |          [`Openi`](https://github.com/quark0/darts)          |
+|          RMINAS           |          |          [`Openi`](https://git.openi.org.cn/PCL_AutoML/XNAS/src/branch/dev)          |
 |          DropNAS          |          |      [`Github`](https://github.com/wiljohnhong/dropnas)      |
 |           SPOS            |          | [`Github`](https://github.com/megvii-model/SinglePathOneShot) |
 |            OFA            |          |   [`Github`](https://github.com/mit-han-lab/once-for-all)    |
