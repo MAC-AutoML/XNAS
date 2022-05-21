@@ -1,0 +1,8 @@
+configspace
+python >= 3.7
+pytorch == 1.9
+pillow
+simplejson
+scikit-learn
+tensorboard
+yacs

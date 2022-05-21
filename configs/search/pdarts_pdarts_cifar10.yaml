@@ -1,0 +1,39 @@
+SPACE:
+  NAME: 'pdarts'
+  CHANNELS: 16
+  LAYERS: 5
+  NODES: 4
+  BASIC_OP: [
+    'none',
+    'max_pool_3x3',
+    'avg_pool_3x3',
+    'skip_connect',
+    'sep_conv_3x3',
+    'sep_conv_5x5',
+    'dil_conv_3x3',
+    'dil_conv_5x5'
+  ]
+LOADER:
+  DATASET: 'cifar10'
+  SPLIT: [0.5, 0.5]
+  BATCH_SIZE: 64
+  NUM_CLASSES: 10
+SEARCH:
+  IM_SIZE: 32
+OPTIM:
+  MAX_EPOCH: 25
+  MIN_LR: 0.0
+  BASE_LR: 0.025
+  WEIGHT_DECAY: 3.e-4
+DARTS:
+  UNROLLED: False
+  ALPHA_LR: 6.e-4
+  ALPHA_WEIGHT_DECAY: 1.e-3
+PDARTS:
+  ADD_LAYERS: [0, 6, 12]
+  ADD_WIDTH: [0, 0, 0]
+  DROPOUT_RATE: [0.1, 0.4, 0.7]
+  NUM_TO_KEEP: [5, 3, 1]
+  EPS_NO_ARCHS: [10, 10, 10]
+  SCALE_FACTOR: 0.2
+OUT_DIR: 'exp/pdarts'

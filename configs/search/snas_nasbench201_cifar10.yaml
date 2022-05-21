@@ -1,0 +1,30 @@
+SPACE:
+  NAME: 'drnas_nb201'
+  CHANNELS: 16
+  LAYERS: 5
+  NODES: 4
+LOADER:
+  DATASET: 'cifar10'
+  SPLIT: [0.5, 0.5]
+  BATCH_SIZE: 64
+  NUM_CLASSES: 10
+SEARCH:
+  IM_SIZE: 32
+OPTIM:
+  BASE_LR: 0.025
+  MIN_LR: 0.001
+  WEIGHT_DECAY: 3.e-4
+  LR_POLICY: 'cos'
+  MAX_EPOCH: 100
+DARTS:
+  UNROLLED: True
+  ALPHA_LR: 3.e-4
+  ALPHA_WEIGHT_DECAY: 1.e-3
+DRNAS:
+  K: 1
+  REG_TYPE: "l2"
+  REG_SCALE: 1.e-3
+  METHOD: 'snas'
+  TAU: [1, 10]
+  PROGRESSIVE: False
+OUT_DIR: 'exp/snas'
