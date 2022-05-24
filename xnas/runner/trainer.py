@@ -22,7 +22,7 @@ from xnas.core.config import cfg
 from torch.utils.tensorboard import SummaryWriter
 
 
-__all__ = ["Trainer", "DartsTrainer"]
+__all__ = ["Trainer", "DartsTrainer", "OneShotTrainer"]
 
 
 logger = logging.get_logger(__name__)
@@ -155,8 +155,10 @@ class Trainer(Recorder):
         """Load from checkpoint."""
         ckpt_epoch, ckpt_dict = self.resume()
         if ckpt_epoch != -1:
-            self.optimizer.load_state_dict(ckpt_dict['optimizer'])
-            self.lr_scheduler.load_state_dict(ckpt_dict['lr_scheduler'])
+            if self.optimizer is not None:
+                self.optimizer.load_state_dict(ckpt_dict['optimizer'])
+            if self.lr_scheduler is not None:
+                self.lr_scheduler.load_state_dict(ckpt_dict['lr_scheduler'])
             return ckpt_epoch + 1
         else:
             return 0

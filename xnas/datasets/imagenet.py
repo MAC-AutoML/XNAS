@@ -33,8 +33,8 @@ class ImageFolder():
             _rgb_normalized_mean=None,
             _rgb_normalized_std=None,
             transforms=None,
-            num_workers=cfg.LOADER.NUM_WORKERS,
-            pin_memory=cfg.LOADER.PIN_MEMORY,
+            num_workers=None,
+            pin_memory=None,
             shuffle=True
         ):
         assert os.path.exists(datapath), "Data path '{}' not found".format(datapath)
@@ -42,10 +42,10 @@ class ImageFolder():
         
         self._data_path, self._split, self.dataset_name = datapath, split, dataset_name
         self._rgb_normalized_mean, self._rgb_normalized_std = _rgb_normalized_mean, _rgb_normalized_std
-        self.num_workers = num_workers
-        self.batch_size = batch_size
-        self.pin_memory = pin_memory
+        self.num_workers = cfg.LOADER.NUM_WORKERS if num_workers is None else num_workers
+        self.pin_memory = cfg.LOADER.PIN_MEMORY if pin_memory is None else pin_memory
         self.shuffle = shuffle
+        self.batch_size = batch_size
         if transforms is None:
             self.transforms = [{'crop': 'random', 'crop_size': cfg.SEARCH.IM_SIZE, 'min_crop': 0.08, 'random_flip': True},
                                {'crop': 'center', 'crop_size': cfg.TEST.IM_SIZE, 'min_crop': -1, 'random_flip': False}]  # NOTE: min_crop is not used here.

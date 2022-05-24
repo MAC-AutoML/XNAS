@@ -67,13 +67,13 @@ We are gradually providing support for more settings.
 
 To run XNAS, `python>=3.7` and `pytorch=1.9` are required. Other versions of `PyTorch` may also work well, but there are potential API differences that can cause warnings to be generated.
 
-For detailed instructions, please refer to [**Getting_started.md**](./docs/Getting_started.md) and [**Data_preparation.md**](./docs/Data_preparation.md) in our docs.
+For detailed instructions, please refer to [**Getting_started.md**](./docs/get_started.md) and [**Data_preparation.md**](./docs/data_preparation.md) in our docs.
 
 ## Contributing
 
 We welcome contributions to the library along with any potential issues or suggestions.
 
-Please refer to [**Contributing.md**](./docs/Contributing.md) in our docs for more information.
+Please refer to [**Contributing.md**](./docs/notes.md) in our docs for more information.
 
 ## Citation
 
