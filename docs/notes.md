@@ -1,8 +1,8 @@
-## Contributing to XNAS
+# Contributing
 
 We welcome contributions to the library along with any potential issues or suggestions. 
 
-### Pull Requests
+## Pull Requests
 
 We actively welcome your pull requests.
 

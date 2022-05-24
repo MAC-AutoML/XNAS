@@ -81,7 +81,7 @@ def main():
     # check whether warm-up training is used
     if cfg.LOADER.BATCH_SIZE <= 256 or cfg.LOADER.DATASET != 'imagenet':
         cfg.OPTIM.WARMUP_EPOCH = 0  # DrNAS does not warm-up if batch_size is small
-    train_epochs[0] -= cfg.OPTIM.WARMUP_EPOCH
+    train_epochs[0] += cfg.OPTIM.WARMUP_EPOCH
     
     # init recorders
     drnas_trainer = DartsTrainer(
@@ -120,6 +120,7 @@ def main():
                             writer=drnas_trainer.writer, 
                             cur_epoch=cur_epoch
                         )
+            start_epoch += 1
         # set tau for snas & gdas
         if TAU_FLAG:
             tau_epoch += tau_step

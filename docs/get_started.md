@@ -1,10 +1,10 @@
-## Getting Started
+# Prerequisites
 
 XNAS does not provide installation via `pip` currently. To run XNAS, `python>=3.7` and `pytorch==1.9` are required. Other versions of `PyTorch` may also work well, but there are potential API differences that can cause warnings to be generated.
 
 We have listed other requirements in `requirements.txt` file.
 
-## Installation
+# Installation
 
 1. Clone this repo.
 2. (Optional) Create a virtualenv for this library.
@@ -38,16 +38,16 @@ Benchmarks supported by XNAS and their linkes are following.
 - nasbench201: [GitHub](https://github.com/D-X-Y/NAS-Bench-201)
 - nasbench301: [GitHub](https://github.com/automl/nasbench301)
 
-For detailed instructions to install these benchmarks, please refer to the `$XNAS/docs/benchmarks` directory.
+For detailed instructions to install these benchmarks, please refer to [**Data Preparation**](./data_preparation.md).
 
 
-## Usage
+# Usage
 
-Before running code in XNAS, please make sure you have followed instructions in [**Data_preparation.md**](./Data_preparation.md) in our docs to complete preparing the necessary data.
+Before running code in XNAS, please make sure you have followed instructions in [**Data Preparation**](./data_preparation.md) in our docs to complete preparing the necessary data.
 
 The main program entries for the search and training process are in the `$XNAS/scripts` folder. To modify and add NAS code, please place files in this folder.
 
-### Configuration Files
+## Configuration Files
 
 XNAS uses the `.yaml` file format to organize the configuration files. All configuration files are placed under `$XNAS/configs` directory. To ensure the uniformity and clarity of files, we strongly recommend using the following naming convention:
 
@@ -61,7 +61,7 @@ For example, using `DARTS` algorithm, searching on `NASBench201` space and `CIFA
 darts_nasbench201_cifar10_nasbench301_maxepoch75.yaml
 ```
 
-### Running Examples
+## Running Examples
 
 XNAS reads configuration files from the command line. A simple running example is following:
 

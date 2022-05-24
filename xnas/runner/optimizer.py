@@ -1,23 +1,19 @@
-"""Optimizers and loss functions."""
+"""Optimizers."""
 
 import torch
+import torch.nn as nn
 from xnas.core.config import cfg
 
 
 __all__ = [
     'optimizer_builder', 
-    'darts_alpha_optimizer', 
-    'criterion_builder'
+    'darts_alpha_optimizer',
 ]
 
 
 SUPPORTED_OPTIMIZERS = {
     "SGD",
     "Adam",
-}
-
-SUPPORTED_CRITERIONS = {
-    "cross_entropy": torch.nn.CrossEntropyLoss(),
 }
 
 
@@ -69,9 +65,3 @@ def darts_alpha_optimizer(name, param):
             betas=(0.5, 0.999),
             weight_decay=cfg.DARTS.ALPHA_WEIGHT_DECAY,
         )
-
-
-def criterion_builder():
-    err_str = "Loss function type '{}' not supported"
-    assert cfg.SEARCH.LOSS_FUN in SUPPORTED_CRITERIONS.keys(), err_str.format(cfg.SEARCH.LOSS_FUN)
-    return SUPPORTED_CRITERIONS[cfg.SEARCH.LOSS_FUN]

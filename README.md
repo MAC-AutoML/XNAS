@@ -67,13 +67,13 @@ We are gradually providing support for more settings.
 
 To run XNAS, `python>=3.7` and `pytorch=1.9` are required. Other versions of `PyTorch` may also work well, but there are potential API differences that can cause warnings to be generated.
 
-For detailed instructions, please refer to [**Getting_started.md**](./docs/Getting_started.md) and [**Data_preparation.md**](./docs/Data_preparation.md) in our docs.
+For detailed instructions, please refer to [**get_started.md**](./docs/get_started.md) and [**data_preparation.md**](./docs/data_preparation.md) in our docs.
 
 ## Contributing
 
 We welcome contributions to the library along with any potential issues or suggestions.
 
-Please refer to [**Contributing.md**](./docs/Contributing.md) in our docs for more information.
+Please refer to [**Contributing.md**](./docs/notes.md) in our docs for more information.
 
 ## Citation
 
@@ -110,7 +110,6 @@ This project is released under the [MIT license](https://mit-license.org).
 
 - 迁移OFA代码
 - 补充101&201安装测试
-  - 补完SNG Search代码
   - 检查201搜索空间
   - 检查RMINAS
 - 补充模块测试案例

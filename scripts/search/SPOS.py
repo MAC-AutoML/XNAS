@@ -23,7 +23,8 @@ def main():
     lr_scheduler = lr_scheduler_builder(optimizer)
     
     # init sampler
-    train_sampler, evaluate_sampler = RAND(), REA()
+    train_sampler = RAND(cfg.SPOS.NUM_CHOICE, cfg.SPOS.LAYERS)
+    evaluate_sampler = REA(cfg.SPOS.NUM_CHOICE, cfg.SPOS.LAYERS)
     
     # init recorders
     spos_trainer = OneShotTrainer(
@@ -33,9 +34,9 @@ def main():
         lr_scheduler=lr_scheduler,
         train_loader=train_loader,
         test_loader=valid_loader,
-        train_sampler=train_sampler,
-        evaluate_sampler=evaluate_sampler,
+        sample_type='iter'
     )
+    spos_trainer.register_iter_sample(train_sampler)
     
     # load checkpoint or initial weights
     start_epoch = spos_trainer.loading() if cfg.SEARCH.AUTO_RESUME else 0
@@ -44,16 +45,19 @@ def main():
     spos_trainer.start()
     for cur_epoch in range(start_epoch, cfg.OPTIM.MAX_EPOCH):
         # train epoch
-        spos_trainer.train_epoch(cur_epoch)
+        top1_err = spos_trainer.train_epoch(cur_epoch)
         # test epoch
         if (cur_epoch+1) % cfg.EVAL_PERIOD == 0 or (cur_epoch+1) == cfg.OPTIM.MAX_EPOCH:
-            spos_trainer.test_epoch(cur_epoch)
+            top1_err = spos_trainer.test_epoch(cur_epoch)
     spos_trainer.finish()
     
     # sample best architecture from supernet
-    best_arch, best_top1err = spos_trainer.best_arch()
+    for cycle in range(200):    # NOTE: this should be a hyperparameter
+        sample = evaluate_sampler.suggest()
+        top1_err = spos_trainer.evaluate_epoch(sample)
+        evaluate_sampler.record(sample, top1_err)
+    best_arch, best_top1err = evaluate_sampler.final_best()
     logger.info("Best arch: {} \nTop1 error: {}".format(best_arch, best_top1err))
-
 
 if __name__ == '__main__':
     main()
