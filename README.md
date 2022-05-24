@@ -110,7 +110,6 @@ This project is released under the [MIT license](https://mit-license.org).
 
 - 迁移OFA代码
 - 补充101&201安装测试
-  - 补完SNG Search代码
   - 检查201搜索空间
   - 检查RMINAS
 - 补充模块测试案例

@@ -47,6 +47,7 @@ class Recorder():
         self.full_timer.toc()
         logger.info("Overall time cost: {}".format(str(self.full_timer.total_time)))
         gc.collect()
+        self.full_timer = None
 
 
 class Trainer(Recorder):
@@ -261,7 +262,7 @@ class DartsTrainer(Trainer):
 
 
 class OneShotTrainer(Trainer):
-    def __init__(self, supernet, criterion, optimizer, lr_scheduler, train_loader, test_loader, train_sampler, evaluate_sampler):
+    def __init__(self, supernet, criterion, optimizer, lr_scheduler, train_loader, test_loader, sample_type='epoch'):
         super().__init__(
             model=supernet, 
             criterion=criterion, 
@@ -269,11 +270,15 @@ class OneShotTrainer(Trainer):
             lr_scheduler=lr_scheduler, 
             train_loader=train_loader, 
             test_loader=test_loader)
-        self.train_sampler = train_sampler
-        self.evaluate_sampler = evaluate_sampler
+        self.iter_sampler = None
+        self.sample_type = sample_type
+        assert self.sample_type in ['epoch', 'iter']
         self.evaluate_meter = meter.TestMeter(len(self.test_loader))
+    
+    def register_iter_sample(self, sampler):
+        self.iter_sampler = sampler
 
-    def train_epoch(self, cur_epoch):
+    def train_epoch(self, cur_epoch, sample=None):
         """Sample path from supernet and train it."""
         self.model.train()
         lr = self.lr_scheduler.get_last_lr()[0]
@@ -283,8 +288,9 @@ class OneShotTrainer(Trainer):
         for cur_iter, (inputs, labels) in enumerate(self.train_loader):
             inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
             # sample subnet
-            choice = self.train_sampler.suggest()
-            preds = self.model(inputs, choice)
+            if self.sample_type == 'iter':
+                sample = self.iter_sampler.suggest()
+            preds = self.model(inputs, sample)
             loss = self.criterion(preds, labels)
             self.optimizer.zero_grad()
             loss.backward()
@@ -294,7 +300,8 @@ class OneShotTrainer(Trainer):
             # Compute the errors
             top1_err, top5_err = meter.topk_errors(preds, labels, [1, 5])
             loss, top1_err, top5_err = loss.item(), top1_err.item(), top5_err.item()
-            self.train_sampler.record(choice, top1_err)     # use top1_err as evaluation
+            if self.sample_type == 'iter':
+                self.iter_sampler.record(sample, top1_err)     # use top1_err as evaluation
             self.train_meter.iter_toc()
             # Update and log stats
             self.train_meter.update_stats(top1_err, top5_err, loss, lr, inputs.size(0))
@@ -311,19 +318,22 @@ class OneShotTrainer(Trainer):
         # Saving checkpoint
         if (cur_epoch + 1) % cfg.SAVE_PERIOD == 0:
             self.saving(cur_epoch)
+        return top1_err
 
     @torch.no_grad()
-    def test_epoch(self, cur_epoch):
+    def test_epoch(self, cur_epoch, sample=None):
         self.model.eval()
         self.test_meter.iter_tic()
         for cur_iter, (inputs, labels) in enumerate(self.test_loader):
             inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
             # sample subnet
-            choice = self.train_sampler.suggest()
-            preds = self.model(inputs, choice)
+            if self.sample_type == 'iter':
+                sample = self.iter_sampler.suggest()
+            preds = self.model(inputs, sample)
             top1_err, top5_err = meter.topk_errors(preds, labels, [1, 5])
             top1_err, top5_err = top1_err.item(), top5_err.item()
-            self.train_sampler.record(choice, top1_err)
+            if self.sample_type == 'iter':
+                self.iter_sampler.record(sample, top1_err)     # use top1_err as evaluation
             self.test_meter.iter_toc()
             self.test_meter.update_stats(top1_err, top5_err, inputs.size(0) * cfg.NUM_GPUS)
             self.test_meter.log_iter_stats(cur_epoch, cur_iter)
@@ -338,20 +348,20 @@ class OneShotTrainer(Trainer):
         if self.best_err > top1_err:
             self.best_err = top1_err
             self.saving(cur_epoch, best=True)
+        return top1_err
             
     @torch.no_grad()
-    def best_arch(self, cycles):
-        """Return final best subnet architecture and its performance"""
+    def evaluate_epoch(self, sample):
+        """Return performance of the given sample (subnet)"""
         self.model.eval()
-        for c in range(cycles):
-            choice = self.evaluate_sampler.suggest()
-            for cur_iter, (inputs, labels) in enumerate(self.test_loader):
-                inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
-                preds = self.model(inputs, choice)
-                top1_err, top5_err = meter.topk_errors(preds, labels, [1, 5])
-                top1_err, top5_err = top1_err.item(), top5_err.item()
-                self.evaluate_meter.update_stats(top1_err, top5_err, inputs.size(0) * cfg.NUM_GPUS)
-            top1_err = self.evaluate_meter.mb_top1_err.get_win_median()
-            self.evaluate_sampler.record(choice, top1_err)
-            self.evaluate_meter.reset()
-        return self.evaluate_sampler.final_best()
+        # choice = self.evaluate_sampler.suggest()
+        for cur_iter, (inputs, labels) in enumerate(self.test_loader):
+            inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
+            preds = self.model(inputs, sample)
+            top1_err, top5_err = meter.topk_errors(preds, labels, [1, 5])
+            top1_err, top5_err = top1_err.item(), top5_err.item()
+            self.evaluate_meter.update_stats(top1_err, top5_err, inputs.size(0) * cfg.NUM_GPUS)
+        top1_err = self.evaluate_meter.mb_top1_err.get_win_median()
+        # self.evaluate_sampler.record(choice, top1_err)
+        self.evaluate_meter.reset()
+        return top1_err

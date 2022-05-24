@@ -176,6 +176,9 @@ class SPOS_supernet(nn.Module):
         # self.global_pooling = nn.AvgPool2d(7)
         self.classifier = nn.Linear(LAST_CHANNEL, self.classes, bias=False)
         self._initialize_weights()
+    
+    def weights(self):
+        return self.parameters()
 
     def forward(self, x, choice=np.random.randint(4, size=20)):
         x = self.stem(x)

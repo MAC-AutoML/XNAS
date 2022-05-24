@@ -100,6 +100,9 @@ class DartsCNN(nn.Module):
         self.norm_node_index = self._node_index(n_nodes, input_nodes=2, start_index=0)
         self.reduce_node_index = self._node_index(n_nodes, input_nodes=2, start_index=self.num_edges)
 
+    def weights(self):
+        return self.parameters()
+    
     def forward(self, x, sample):
         s0 = s1 = self.stem(x)
 

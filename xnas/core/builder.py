@@ -21,7 +21,8 @@ from xnas.core.config import cfg
 # Dataloader
 from xnas.datasets.loader import construct_loader
 # Optimizers, criterions and LR_schedulers
-from xnas.runner.optimizer import optimizer_builder, criterion_builder
+from xnas.runner.optimizer import optimizer_builder
+from xnas.runner.criterion import criterion_builder
 from xnas.runner.scheduler import lr_scheduler_builder
 
 
@@ -31,6 +32,7 @@ __all__ = [
     'criterion_builder',
     'lr_scheduler_builder',
     'space_builder',
+    'SNG_builder',
     'evaluator_builder',
     'setup_env',
 ]
