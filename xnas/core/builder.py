@@ -106,7 +106,7 @@ def SNG_builder(category):
     elif cfg.SNG.NAME == 'MDENAS':
         return CategoricalMDENAS(category, cfg.SNG.THETA_LR)
     elif cfg.SNG.NAME == 'DDPNAS':
-        return CategoricalDDPNAS(category, cfg.SNG.PRUNING_STEP)
+        return CategoricalDDPNAS(category, cfg.SNG.PRUNING_STEP, cfg.SNG.THETA_LR)
     elif cfg.SNG.NAME == 'MIGO':
         return MIGO(categories=category,
                     step=cfg.SNG.PRUNING_STEP, lam=cfg.SNG.LAMBDA,
