@@ -325,17 +325,17 @@ class TinyNetwork(nn.Module):
             name=self.__class__.__name__, **self.__dict__
         )
 
-    def feature_extractor(self, inputs):
-        features = []
-        feature = self.stem(inputs)
-        features.append(feature)
+    # def feature_extractor(self, inputs):
+    #     features = []
+    #     feature = self.stem(inputs)
+    #     features.append(feature)
 
-        for i, cell in enumerate(self.cells):
-            feature = cell(feature)
-            features.append(feature)
-        out = self.lastact(feature)
-        features.append(out)
-        return features
+    #     for i, cell in enumerate(self.cells):
+    #         feature = cell(feature)
+    #         features.append(feature)
+    #     out = self.lastact(feature)
+    #     features.append(out)
+    #     return features
 
     def forward(self, inputs):
         feature = self.stem(inputs)
@@ -357,7 +357,7 @@ class TinyNetwork(nn.Module):
 
         for i, cell in enumerate(self.cells):
             feature = cell(feature)
-            if i in 4:
+            if i == 4:
                 tensor1 = feature
             elif i == 10:
                 tensor2 = feature
@@ -374,7 +374,7 @@ class TinyNetwork(nn.Module):
 
         for i, cell in enumerate(self.cells):
             feature = cell(feature)
-            if i in 4:
+            if i == 4:
                 tensor1 = feature
             elif i == 10:
                 tensor2 = feature

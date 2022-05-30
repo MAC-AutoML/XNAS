@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://cdn.thrase.cn/xnas%2Fheader.png" width="200">
+<img src="https://cdn.thrase.cn/xnas/header.png" width="200">
 
 <p>
 	<a href="https://img.shields.io/badge/Python-%3E%3D3.7-blue"><img src="https://img.shields.io/badge/Python-%3E%3D3.7-blue"></a>
@@ -109,8 +109,5 @@ This project is released under the [MIT license](https://mit-license.org).
 ## TODO
 
 - 迁移OFA代码
-- 补充101&201安装测试
-  - 检查201搜索空间
-  - 检查RMINAS
-- 补充模块测试案例
+- 补充101安装测试
 - 多显卡支持

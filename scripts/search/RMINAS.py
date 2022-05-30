@@ -45,8 +45,9 @@ def main():
     if cfg.LOADER.DATASET == 'cifar10':
         from xnas.algorithms.RMINAS.teacher_model.resnet20_cifar10.resnet import resnet20
         checkpoint_res = torch.load('xnas/algorithms/RMINAS/teacher_model/resnet20_cifar10/resnet20.th')
-        network = resnet20()
+        network = torch.nn.DataParallel(resnet20())
         network.load_state_dict(checkpoint_res['state_dict'])
+        network = network.module
 
     elif cfg.LOADER.DATASET == 'cifar100':
         from xnas.algorithms.RMINAS.teacher_model.resnet101_cifar100.resnet import resnet101
@@ -111,7 +112,6 @@ def main():
             model = space_builder().cuda()
         
         model.train()
-
         # weights optimizer
         optimizer = optimizer_builder("SGD", model.parameters())
 
@@ -129,7 +129,6 @@ def main():
             if cur_epoch == cfg.OPTIM.MAX_EPOCH:
                 return loss.cpu().detach().numpy()
     
-    
     trained_arch_darts, trained_loss = [], []
     def train_procedure(sample):
         if cfg.SPACE.NAME == 'infer_nb201':
@@ -146,7 +145,7 @@ def main():
             mixed_loss = np.inf if np.isnan(mixed_loss) else mixed_loss
             trained_loss.append(mixed_loss)
             RFS.trained_arch.append({'arch':sample, 'loss':mixed_loss})
-    
+        logger.info("sample: {}, loss:{}".format(sample, mixed_loss))
     
     start_time = time.time()
     # ====== Warmup ======
@@ -175,7 +174,7 @@ def main():
     logger.info('Actual training times: {}'.format(len(RFS.trained_arch_index)))
     if cfg.SPACE.NAME == 'infer_nb201':
         logger.info('Searched architecture:\n{}'.format(str(RFS.optimal_arch(method='sum', top=50))))
-        # logger.info('Searched architecture:\n{}'.format(str(RFS.optimal_arch(method='greedy', top=50))))
+        logger.info('Searched architecture:\n{}'.format(str(RFS.optimal_arch(method='greedy', top=50))))
     elif cfg.SPACE.NAME == 'infer_darts':
         op_sample = RFS.optimal_arch(method='sum', top=50)
         op_alpha = torch.from_numpy(np.r_[op_sample, op_sample])
