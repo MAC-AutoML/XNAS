@@ -14,7 +14,7 @@ cfg = _C
 # -------------------------------------------------------- #
 # Data Loader options
 # -------------------------------------------------------- #
-_C.LOADER = CfgNode()
+_C.LOADER = CfgNode(new_allowed=True)
 
 _C.LOADER.DATASET = "cifar10"
 
@@ -39,7 +39,7 @@ _C.LOADER.BATCH_SIZE = 256
 # ------------------------------------------------------------------------------------ #
 # Search Space options
 # ------------------------------------------------------------------------------------ #
-_C.SPACE = CfgNode()
+_C.SPACE = CfgNode(new_allowed=True)
 
 _C.SPACE.NAME = 'darts'
 
@@ -57,7 +57,7 @@ _C.SPACE.BASIC_OP = []
 # ------------------------------------------------------------------------------------ #
 # Optimizer options in network
 # ------------------------------------------------------------------------------------ #
-_C.OPTIM = CfgNode()
+_C.OPTIM = CfgNode(new_allowed=True)
 
 # Base learning rate, init_lr = OPTIM.BASE_LR * NUM_GPUS
 _C.OPTIM.BASE_LR = 0.1
@@ -98,7 +98,7 @@ _C.OPTIM.FINAL_EPOCH = 0
 # -------------------------------------------------------- #
 # Searching options
 # -------------------------------------------------------- #
-_C.SEARCH = CfgNode()
+_C.SEARCH = CfgNode(new_allowed=True)
 
 # cropping image size of searching
 # type: int or list(for cropping in imagenet)
@@ -123,7 +123,7 @@ _C.SEARCH.EVALUATION = ""
 # ------------------------------------------------------------------------------------ #
 # Options for model training
 # ------------------------------------------------------------------------------------ #
-_C.TRAIN = CfgNode()
+_C.TRAIN = CfgNode(new_allowed=True)
 
 _C.TRAIN.IM_SIZE = 32
 
@@ -136,15 +136,13 @@ _C.TRAIN.LAYERS = 20
 
 _C.TRAIN.CHANNELS = 36
 
-_C.TRAIN.AUX_WEIGHT = 0.
-
 _C.TRAIN.GENOTYPE = ""
 
 
 # -------------------------------------------------------- #
 # Model testing options
 # -------------------------------------------------------- #
-_C.TEST = CfgNode()
+_C.TEST = CfgNode(new_allowed=True)
 
 _C.TEST.IM_SIZE = 224
 
@@ -155,7 +153,7 @@ _C.TEST.BATCH_SIZE = 128
 # -------------------------------------------------------- #
 # Benchmarks options
 # -------------------------------------------------------- #
-_C.BENCHMARK = CfgNode()
+_C.BENCHMARK = CfgNode(new_allowed=True)
 
 # Path to NAS-Bench-201 weights file
 _C.BENCHMARK.NB201PATH = "./data/NAS-Bench-201-v1_1-096897.pth"
