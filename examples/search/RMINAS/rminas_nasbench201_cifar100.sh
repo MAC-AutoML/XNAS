@@ -1,1 +1,1 @@
-echo `python scripts/search/RMINAS.py --cfg configs/search/RMINAS/rminas_nasbench201_cifar100.yaml OUT_DIR exp/rminas_nasbench201_cifar100`
+python scripts/search/RMINAS.py --cfg configs/search/RMINAS/rminas_nasbench201_cifar100.yaml OUT_DIR exp/search/rminas_nasbench201_cifar100

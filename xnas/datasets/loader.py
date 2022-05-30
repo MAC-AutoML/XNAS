@@ -35,7 +35,6 @@ def construct_loader(
     datapath = cfg.LOADER.DATAPATH
     
     assert (name in SUPPORTED_DATASETS) or (name in IMAGEFOLDER_FORMAT), "dataset not supported."
-    datapath = "./data/" + name if not datapath else os.path.join(datapath, name)
 
     # expand batch_size to support different number during training & validating
     if isinstance(batch_size, int):
@@ -45,7 +44,7 @@ def construct_loader(
     assert len(batch_size) == len(split), "lengths of batch_size and split should be same."
     
     # check if randomresized crop is used only in ImageFolder type datasets
-    if isinstance(cfg.SEARCH.IMG_SIZE, list):
+    if isinstance(cfg.SEARCH.IM_SIZE, list):
         assert name in IMAGEFOLDER_FORMAT, "RandomResizedCrop can only be used in ImageFolder currently."
     
     if name in SUPPORTED_DATASETS:
