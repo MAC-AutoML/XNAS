@@ -61,10 +61,10 @@ def main():
     elif cfg.OFA.TASK == 'depth':
         # add depth list constraints
         if (len(set(net.ks_list)) == 1) and (len(set(net.expand_ratio_list)) == 1):
-            validate_func_dict["depth_list"] = net.depth_list
+            validate_func_dict["depth_list"] = net.depth_list.copy()
     elif cfg.OFA.TASK == 'expand':
         if len(set(net.ks_list)) == 1 and len(set(net.depth_list)) == 1:
-            validate_func_dict["expand_ratio_list"] = net.expand_ratio_list
+            validate_func_dict["expand_ratio_list"] = net.expand_ratio_list.copy()
     else:
         raise NotImplementedError
 

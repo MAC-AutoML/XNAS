@@ -52,7 +52,7 @@ def construct_loader(
         train_data, _ = get_data(name, datapath, cutout_length, use_classes=use_classes, transforms=transforms)
         return split_dataloader(train_data, batch_size, split)
     elif name in IMAGEFOLDER_FORMAT:
-        return ImageFolder(
+        return ImageFolder( # using path of training data of ImageNet as `datapath`
             datapath, split, batch_size=batch_size,
             transforms=transforms,
         ).generate_data_loader()

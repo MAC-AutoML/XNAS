@@ -8,7 +8,7 @@ SEARCH:
   NUM_CLASSES: 10
   SPLIT: [0.5, 0.5]
   BATCH_SIZE: 1024
-  IM_SIZE: [128,160,192,224]
+  MULTI_SIZES: [128,160,192,224]
   LOSS_FUN: 'cross_entropy_with_label_smoothing'
   LABEL_SMOOTH: 0.1
   # DATAPATH: 'TODO'

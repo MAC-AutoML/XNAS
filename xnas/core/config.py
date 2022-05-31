@@ -100,10 +100,11 @@ _C.OPTIM.FINAL_EPOCH = 0
 # -------------------------------------------------------- #
 _C.SEARCH = CfgNode(new_allowed=True)
 
-# cropping image size of searching
-# type: int or list(for cropping in imagenet)
-# _C.SEARCH.IM_SIZE = [128, 256]
 _C.SEARCH.IM_SIZE = 32
+
+# Multi-sized Crop
+# NOTE: IM_SIZE in ImageNet will be covered if this one is setted. 
+_C.SEARCH.MULTI_SIZES = []
 
 # channels of input images, 3 for rgb
 _C.SEARCH.INPUT_CHANNELS = 3

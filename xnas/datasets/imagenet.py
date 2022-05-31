@@ -18,6 +18,7 @@ from torch.utils.data.distributed import DistributedSampler
 
 import xnas.logger.logging as logging
 from xnas.core.config import cfg
+from xnas.datasets.transforms import MultiSizeRandomCrop
 
 
 logger = logging.get_logger(__name__)
@@ -37,6 +38,7 @@ class ImageFolder():
             pin_memory=None,
             shuffle=True
         ):
+        datapath = './data/imagenet/' if not datapath else datapath
         assert os.path.exists(datapath), "Data path '{}' not found".format(datapath)
         assert sum(split) == 1, "Summation of split should be 1"
         
@@ -46,13 +48,27 @@ class ImageFolder():
         self.pin_memory = cfg.LOADER.PIN_MEMORY if pin_memory is None else pin_memory
         self.shuffle = shuffle
         self.batch_size = batch_size
+        
+        self.msrc = None
+        self.loader = torch.utils.data.DataLoader
+        # self.collate_fn = None
+        
         if transforms is None:
-            self.transforms = [{'crop': 'random', 'crop_size': cfg.SEARCH.IM_SIZE, 'min_crop': 0.08, 'random_flip': True},
+            im_size = cfg.SEARCH.IM_SIZE if len(cfg.SEARCH.MULTI_SIZES)==0 else cfg.SEARCH.MULTI_SIZES
+            self.transforms = [{'crop': 'random', 'crop_size': im_size, 'min_crop': 0.08, 'random_flip': True},
                                {'crop': 'center', 'crop_size': cfg.TEST.IM_SIZE, 'min_crop': -1, 'random_flip': False}]  # NOTE: min_crop is not used here.
         else:
             self.transforms = transforms
         assert len(self.transforms) == len(self._split), "Length of split and transforms should be equal"
         
+        # Check if using multisize_random_crop
+        if len(cfg.SEARCH.MULTI_SIZES):
+            from xnas.datasets.utils.msrc_loader import msrc_DataLoader
+            self.msrc = MultiSizeRandomCrop(cfg.SEARCH.MULTI_SIZES)
+            self.loader = msrc_DataLoader
+            logger.info("Using Random MultiSize Crop, \n \
+                        continuous={} candidate im_sizes={}".format(self.msrc.CONTINUOUS, self.msrc.CANDIDATE_SIZES))
+
         # Read all dataset
         logger.info("Constructing ImageFolder")
         self._construct_imdb()
@@ -101,15 +117,16 @@ class ImageFolder():
             assert not len(
                 _current_indices) == 0, "The length of indices is zero!"
             dataset = ImageList_torch([self._imdb[j] for j in _current_indices],
+                                       self.msrc,  # add support for multisize_random_crop
                                        _rgb_normalized_mean=self._rgb_normalized_mean,
                                        _rgb_normalized_std=self._rgb_normalized_std, **self.transforms[i])
             sampler = DistributedSampler(dataset) if cfg.NUM_GPUS > 1 else None
-            loader = torch.utils.data.DataLoader(dataset,
-                                                 batch_size=self.batch_size[i],
-                                                 shuffle=(False if sampler else True),
-                                                 sampler=sampler,
-                                                 num_workers=self.num_workers,
-                                                 pin_memory=self.pin_memory)
+            loader = self.loader(dataset,
+                                batch_size=self.batch_size[i],
+                                shuffle=(False if sampler else True),
+                                sampler=sampler,
+                                num_workers=self.num_workers,
+                                pin_memory=self.pin_memory)
             data_loaders.append(loader)
             pre_partition = _current_partition
             pre_index = _current_index
@@ -125,6 +142,7 @@ class ImageList_torch(torch.utils.data.Dataset):
     def __init__(
             self,
             _list,
+            msrc=None,
             _rgb_normalized_mean=None,
             _rgb_normalized_std=None,
             crop='random',
@@ -132,6 +150,7 @@ class ImageList_torch(torch.utils.data.Dataset):
             min_crop=0.08,
             random_flip=False):
         self._imdb = _list
+        self.msrc = msrc
         self._bgr_normalized_mean = _rgb_normalized_mean[::-1]
         self._bgr_normalized_std = _rgb_normalized_std[::-1]
         self.crop = crop
@@ -144,7 +163,11 @@ class ImageList_torch(torch.utils.data.Dataset):
     def _construct_transforms(self):
         transforms = []
         if self.crop == "random":
-            transforms.append(torch_transforms.RandomResizedCrop(self.crop_size, scale=(self.min_crop, 1.0)))
+            if isinstance(self.crop_size, int):
+                transforms.append(torch_transforms.RandomResizedCrop(self.crop_size, scale=(self.min_crop, 1.0)))
+            elif isinstance(self.crop_size, list):
+                # using MultiSizeRandomCrop
+                transforms.append(self.msrc)
         elif self.crop == "center":
             transforms.append(torch_transforms.Resize(math.ceil(self.crop_size / 0.875)))   # assert crop_size==224
             transforms.append(torch_transforms.CenterCrop(self.crop_size))
