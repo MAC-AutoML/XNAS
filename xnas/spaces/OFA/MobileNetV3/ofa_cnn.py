@@ -27,6 +27,7 @@ class OFAMobileNetV3(MobileNetV3):
         ks_list=3,
         expand_ratio_list=6,
         depth_list=4,
+        kernel_trans=1
     ):
 
         self.width_mult = width_mult
@@ -103,6 +104,7 @@ class OFAMobileNetV3(MobileNetV3):
                     stride=stride,
                     act_func=act_func,
                     use_se=use_se,
+                    kernel_trans=kernel_trans,
                 )
                 if stride == 1 and feature_dim == output_channel:
                     shortcut = IdentityLayer(feature_dim, feature_dim)

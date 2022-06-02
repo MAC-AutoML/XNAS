@@ -1,12 +1,13 @@
 """Learning rate schedulers."""
 
+import math
 import torch
 from xnas.core.config import cfg
 
 from torch.optim.lr_scheduler import _LRScheduler
 
 
-__all__ = ['lr_scheduler_builder']
+__all__ = ['lr_scheduler_builder', 'adjust_learning_rate_per_batch']
 
 
 def lr_scheduler_builder(optimizer, last_epoch=-1, **kwargs):
@@ -79,3 +80,42 @@ class GradualWarmupScheduler(_LRScheduler):
             self._last_lr = self.actual_scheduler.get_last_lr()
         else:
             return super(GradualWarmupScheduler, self).step(epoch)
+
+
+def _calc_learning_rate(
+    init_lr, n_epochs, epoch, n_iter=None, iter=0,
+):
+    if cfg.SEARCH.LOSS_FUN.startswith("cross_entropy"):
+        t_total = n_epochs * n_iter
+        t_cur = epoch * n_iter + iter
+        lr = 0.5 * init_lr * (1 + math.cos(math.pi * t_cur / t_total))
+    else:
+        raise ValueError("do not support: {}".format(cfg.SEARCH.LOSS_FUN))
+    return lr
+
+def _warmup_adjust_learning_rate(
+        init_lr, n_epochs, epoch, n_iter, iter=0, warmup_lr=0
+    ):
+        """adjust lr during warming-up. Changes linearly from `warmup_lr` to `init_lr`."""
+        T_cur = epoch * n_iter + iter + 1
+        t_total = n_epochs * n_iter
+        new_lr = T_cur / t_total * (init_lr - warmup_lr) + warmup_lr
+        return new_lr
+
+def adjust_learning_rate_per_batch(epoch, n_iter=None, iter=0, warmup=False):
+    """adjust learning of a given optimizer and return the new learning rate"""
+    
+    init_lr = cfg.OPTIM.BASE_LR * cfg.NUM_GPUS
+    n_epochs = cfg.OPTIM.MAX_EPOCH
+    n_warmup_epochs = cfg.OPTIM.WARMUP_EPOCH
+    warmup_lr = init_lr * cfg.WARMUP_FACTOR
+    
+    if warmup:
+        new_lr = _warmup_adjust_learning_rate(
+            init_lr, n_warmup_epochs, epoch, n_iter, iter, warmup_lr
+        )
+    else:
+        new_lr = _calc_learning_rate(
+            init_lr, n_epochs, epoch, n_iter, iter
+        )
+    return new_lr

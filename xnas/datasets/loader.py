@@ -44,7 +44,7 @@ def construct_loader(
     assert len(batch_size) == len(split), "lengths of batch_size and split should be same."
     
     # check if randomresized crop is used only in ImageFolder type datasets
-    if isinstance(cfg.SEARCH.IM_SIZE, list):
+    if len(cfg.SEARCH.MULTI_SIZES):
         assert name in IMAGEFOLDER_FORMAT, "RandomResizedCrop can only be used in ImageFolder currently."
     
     if name in SUPPORTED_DATASETS:

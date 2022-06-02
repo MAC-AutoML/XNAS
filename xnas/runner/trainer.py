@@ -12,6 +12,7 @@ import gc
 import os
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import xnas.logger.timer as timer
 import xnas.logger.meter as meter
 import xnas.logger.logging as logging
@@ -22,7 +23,7 @@ from xnas.core.config import cfg
 from torch.utils.tensorboard import SummaryWriter
 
 
-__all__ = ["Trainer", "DartsTrainer", "OneShotTrainer"]
+__all__ = ["Trainer", "DartsTrainer", "OneShotTrainer", "KDTrainer"]
 
 
 logger = logging.get_logger(__name__)
@@ -62,7 +63,7 @@ class Trainer(Recorder):
         self.test_loader = test_loader
         self.train_meter = meter.TrainMeter(len(self.train_loader))
         self.test_meter = meter.TestMeter(len(self.test_loader))
-        self.best_err = 0xD8
+        self.best_err = 23*3*3*3
     
     def train_epoch(self, cur_epoch):
         self.model.train()
@@ -367,3 +368,57 @@ class OneShotTrainer(Trainer):
         # self.evaluate_sampler.record(choice, top1_err)
         self.evaluate_meter.reset()
         return top1_err
+
+
+class KDTrainer(Trainer):
+    def __init__(self, model, teacher_model, kd_ratio, criterion, optimizer, lr_scheduler, train_loader, test_loader):
+        super().__init__(model, criterion, optimizer, lr_scheduler, train_loader, test_loader)
+        self.teacher_model = teacher_model
+        self.kd_ratio = kd_ratio
+        from xnas.runner.criterion import CrossEntropyLoss_soft_target
+        self.celoss_st = CrossEntropyLoss_soft_target
+    
+    def train_epoch(self, cur_epoch):
+        self.model.train()
+        lr = self.lr_scheduler.get_last_lr()[0]
+        cur_step = cur_epoch * len(self.train_loader)
+        self.writer.add_scalar('train/lr', lr, cur_step)
+        self.train_meter.iter_tic()
+        for cur_iter, (inputs, labels) in enumerate(self.train_loader):
+            inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
+            preds = self.model(inputs)
+            loss = self.criterion(preds, labels)
+            
+            # Knowledge Distillation from teacher model
+            if (self.teacher_model is not None) and (self.kd_ratio > 0.):
+                self.teacher_model.train()
+                with torch.no_grad():
+                    soft_logits = self.teacher_model(inputs).detach()
+                    soft_label = F.softmax(soft_logits, dim=1)
+                kd_loss = self.celoss_st(preds, soft_label)
+                loss += kd_loss * self.kd_ratio
+            
+            self.optimizer.zero_grad()
+            loss.backward()
+            nn.utils.clip_grad_norm_(self.model.weights(), cfg.OPTIM.GRAD_CLIP)
+            self.optimizer.step()
+
+            # Compute the errors
+            top1_err, top5_err = meter.topk_errors(preds, labels, [1, 5])
+            loss, top1_err, top5_err = loss.item(), top1_err.item(), top5_err.item()
+            self.train_meter.iter_toc()
+            # Update and log stats
+            self.train_meter.update_stats(top1_err, top5_err, loss, lr, inputs.size(0))
+            self.train_meter.log_iter_stats(cur_epoch, cur_iter)
+            self.train_meter.iter_tic()
+            self.writer.add_scalar('train/loss', loss, cur_step)
+            self.writer.add_scalar('train/top1_error', top1_err, cur_step)
+            self.writer.add_scalar('train/top5_error', top5_err, cur_step)
+            cur_step += 1
+        # Log epoch stats
+        self.train_meter.log_epoch_stats(cur_epoch)
+        self.train_meter.reset()
+        self.lr_scheduler.step()
+        # Saving checkpoint
+        if (cur_epoch + 1) % cfg.SAVE_PERIOD == 0:
+            self.saving(cur_epoch)
