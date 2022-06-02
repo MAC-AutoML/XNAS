@@ -94,21 +94,21 @@ class CategoricalDDPNAS:
                     if not len(self.pruned_index[index]) == 0:
                         pruned_weight[index, self.pruned_index[index]] = np.nan
                     pruned_index = np.nanargmin(pruned_weight[index, :])
-                    if self.non_param_index_count[index] == 3 and pruned_index in self.non_param_index:
-                        pruned_weight[index, pruned_index] = np.nan
-                        pruned_index = np.nanargmin(pruned_weight[index, :])
-                    if self.param_index_count[index] == 3 and pruned_index in self.param_index:
-                        pruned_weight[index, pruned_index] = np.nan
-                        pruned_index = np.nanargmin(pruned_weight[index, :])
-                    if pruned_index in self.param_index:
-                        self.param_index_count[index] += 1
-                    if pruned_index in self.non_param_index:
-                        self.non_param_index_count[index] += 1
+                    # if self.non_param_index_count[index] == 3 and pruned_index in self.non_param_index:
+                    #     pruned_weight[index, pruned_index] = np.nan
+                    #     pruned_index = np.nanargmin(pruned_weight[index, :])
+                    # if self.param_index_count[index] == 3 and pruned_index in self.param_index:
+                    #     pruned_weight[index, pruned_index] = np.nan
+                    #     pruned_index = np.nanargmin(pruned_weight[index, :])
+                    # if pruned_index in self.param_index:
+                    #     self.param_index_count[index] += 1
+                    # if pruned_index in self.non_param_index:
+                    #     self.non_param_index_count[index] += 1
                     self.pruned_index[index].append(pruned_index)
                     # self.p_model.theta[index, pruned_index] = 0
                 self.p_model.theta /= np.sum(self.p_model.theta, axis=1)[:, np.newaxis]
-                if self.param_index_count[0] == 3 and self.non_param_index_count[0] == 3:
-                    self.training_finish = True
+                # if self.param_index_count[0] == 3 and self.non_param_index_count[0] == 3:
+                #     self.training_finish = True
                 self.current_step = 1
                 # init val_performance
                 self.val_performance = []

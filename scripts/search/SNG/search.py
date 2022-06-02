@@ -32,7 +32,7 @@ def main():
     w_optim = optimizer_builder("SGD", search_space.parameters())
     lr_scheduler = lr_scheduler_builder(w_optim)
     
-    if cfg.SPACE.NAME in ['darts']:
+    if cfg.SPACE.NAME in ['darts', 'nasbench201']:
         distribution_optimizer = SNG_builder([search_space.num_ops]*search_space.all_edges)
     else:
         raise NotImplementedError

@@ -22,6 +22,10 @@ OPS = {
         else FactorizedReduce(C_in, C_out, stride, affine, track_running_stats),
 }
 
+NON_PARAMETER_OP = ['none', 'avg_pool_3x3', 'max_pool_3x3', 'skip_connect']
+PARAMETER_OP = ['sep_conv_3x3', 'sep_conv_5x5', 'sep_conv_7x7', 'dil_conv_3x3',
+                'dil_conv_5x5', 'conv_7x1_1x7', 'nor_conv_3x3', 'nor_conv_1x1']
+
 CONNECT_NAS_BENCHMARK = ["none", "skip_connect", "nor_conv_3x3"]
 NAS_BENCH_201 = ["none", "skip_connect", "nor_conv_1x1", "nor_conv_3x3", "avg_pool_3x3"]
 DARTS_SPACE = [
@@ -40,6 +44,13 @@ SearchSpaceNames = {
     "nas-bench-201": NAS_BENCH_201,
     "darts": DARTS_SPACE,
 }
+
+def get_op_index(op_list, parameter_list):
+    op_idx_list = []
+    for op_idx, op in enumerate(op_list):
+        if op in parameter_list:
+            op_idx_list.append(op_idx)
+    return op_idx_list
 
 
 class ReLUConvBN(nn.Module):
