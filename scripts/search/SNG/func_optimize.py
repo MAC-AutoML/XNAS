@@ -33,7 +33,7 @@ def get_optimizer(name, category, step=4, gamma=0.9, sample_with_prob=True, util
     elif name == 'dynamic_ASNG':
         return Dynamic_ASNG(categories=category, step=step, pruning=True, sample_with_prob=sample_with_prob)
     elif name == 'DDPNAS':
-        return CategoricalDDPNAS(category, 100)
+        return CategoricalDDPNAS(category, 100, gamma=0.8, theta_lr=0.01)
     elif name == 'MDENAS':
         return CategoricalMDENAS(category, 0.01)
     elif name == 'MIGO':

@@ -7,7 +7,7 @@ from xnas.core.utils import index_to_one_hot, softmax
 
 
 class CategoricalDDPNAS:
-    def __init__(self, category, steps, theta_lr, gamma=0.8):
+    def __init__(self, category, steps,  theta_lr, gamma):
         self.p_model = Categorical(categories=category)
         # how many steps to pruning the distribution
         self.steps = steps
