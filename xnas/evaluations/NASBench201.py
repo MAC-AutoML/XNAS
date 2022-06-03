@@ -34,6 +34,7 @@ def evaluate(genotype, epoch=12, **kwargs):
         imagenet16_test,
     ) = distill(result)
     
+    logger.info("Evaluate with NAS-Bench-201 (Bench epoch:{})".format(epoch))
     logger.info("cifar10 train %f test %f", cifar10_train, cifar10_test)
     logger.info("cifar100 train %f valid %f test %f", cifar100_train, cifar100_valid, cifar100_test)
     logger.info("imagenet16 train %f valid %f test %f", imagenet16_train, imagenet16_valid, imagenet16_test)

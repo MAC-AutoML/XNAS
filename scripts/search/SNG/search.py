@@ -1,6 +1,6 @@
 """SNG searching
 
-(DARTS space only)
+(DARTS & nb201 space only)
 """
 
 import torch
@@ -85,7 +85,9 @@ def main():
         # Evaluate the model
         if (cur_epoch+1) % cfg.EVAL_PERIOD == 0 or (cur_epoch+1) == cfg.OPTIM.MAX_EPOCH:
             logger.info("=== Optimal genotype at epoch: {} ===".format(cur_epoch))
-            logger.info(search_space.genotype(distribution_optimizer.p_model.theta))
+            geno = search_space.genotype(distribution_optimizer.p_model.theta)
+            logger.info(geno)
+            evaluator(geno, epoch=12)
             logger.info("=== alphas at epoch: {} ===".format(cur_epoch))
             for alpha in distribution_optimizer.p_model.theta:
                 logger.info(alpha)
@@ -143,7 +145,7 @@ def random_sampling(search_space, distribution_optimizer, epoch=-1000, _random=F
                     if i in non_edge_idx:
                         pass
                     elif i in search_space.non_op_idx:
-                        if i == 7:
+                        if i == search_space.none_idx:
                             _error = True
                         _num = _num + 1
                 if _error:
@@ -156,7 +158,7 @@ def random_sampling(search_space, distribution_optimizer, epoch=-1000, _random=F
                 sample = np.array([np.random.choice(num_ops, 1)[0] for i in range(total_edges)])
         if cfg.SNG.EDGE_SAMPLING and epoch > cfg.SNG.EDGE_SAMPLING_EPOCH:
             for i in non_edge_idx:
-                sample[i] = 7
+                sample[i] = search_space.none_idx
         sample = index_to_one_hot(sample, distribution_optimizer.p_model.Cmax)
         # in the pruning method we have to sampling anyway
         distribution_optimizer.sampling()

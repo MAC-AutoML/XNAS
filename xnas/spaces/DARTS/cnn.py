@@ -66,6 +66,7 @@ class DartsCNN(nn.Module):
                               'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5', 'none'] if len(basic_op_list) == 0 else basic_op_list
         self.non_op_idx = get_op_index(self.basic_op_list, NON_PARAMETER_OP)
         self.para_op_idx = get_op_index(self.basic_op_list, PARAMETER_OP)
+        self.none_idx = 7
         C_cur = stem_multiplier * C  # 3 * 16 = 48
         self.stem = nn.Sequential(
             nn.Conv2d(self.C_in, C_cur, 3, 1, 1, bias=False),
