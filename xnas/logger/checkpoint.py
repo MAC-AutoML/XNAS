@@ -28,12 +28,13 @@ def get_checkpoint_name(epoch, checkpoint_dir=None, best=False):
         return os.path.join(checkpoint_dir, name)
 
 
-def get_last_checkpoint(checkpoint_dir=None):
+def get_last_checkpoint(checkpoint_dir=None, best=False):
     """Retrieves the most recent checkpoint (highest epoch number)."""
     if checkpoint_dir is None:
         checkpoint_dir = get_checkpoint_dir()
     # Checkpoint file names are in lexicographic order
-    checkpoints = [f for f in os.listdir(checkpoint_dir) if _NAME_PREFIX in f]
+    filename = "best_" + _NAME_PREFIX if best else _NAME_PREFIX
+    checkpoints = [f for f in os.listdir(checkpoint_dir) if filename in f]
     last_checkpoint_name = sorted(checkpoints)[-1]
     return os.path.join(checkpoint_dir, last_checkpoint_name)
 

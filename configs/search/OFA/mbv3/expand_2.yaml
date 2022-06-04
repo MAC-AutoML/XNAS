@@ -1,5 +1,3 @@
-# OUT_DIR: '/userhome/project/XNAS/experiment/OFA/mbv3_cifar10/expand/phase1'
-OUT_DIR: '/home/binghan/XNAS/experiment/OFA/mbv3_cifar10/expand/phase1'
 NUM_GPUS: 1
 SPACE:
   NAME: 'ofa_mbv3'
@@ -11,26 +9,22 @@ SEARCH:
   MULTI_SIZES: [128,160,192,224]
   LOSS_FUN: 'cross_entropy_with_label_smoothing'
   LABEL_SMOOTH: 0.1
-  # DATAPATH: 'TODO'
-  # WEIGHTS: '/userhome/project/XNAS/experiment/OFA/mbv3_cifar10/depth/phase2/checkpoints/model_epoch_0125.pyth'
-  WEIGHTS: '/home/binghan/XNAS/experiment/OFA/mbv3_cifar10/depth/phase2/checkpoints/model_epoch_0125.pyth'
   AUTO_RESUME: True
 OFA:
   TASK: 'expand'
-  PHASE: 1
+  PHASE: 2
   WIDTH_MULTI_LIST: [1.0]
   KS_LIST: [3,5,7]
-  EXPAND_LIST: [4,6]
+  EXPAND_LIST: [3,4,6]
   DEPTH_LIST: [2,3,4]
   CHANNEL_DIVISIBLE: 8
   SUBNET_BATCH_SIZE: 4
   KD_RATIO: 0.
   # KD_PATH: "exp/OFA/teacher_model.pyth"
 OPTIM:
-  MAX_EPOCH: 25
-  BASE_LR: 2.5e-3
-  MIN_LR: 0.0
-  WARMUP_EPOCH: 0
+  MAX_EPOCH: 120
+  BASE_LR: 7.5e-3
+  WARMUP_EPOCH: 5
   WARMUP_FACTOR: 1
   LR_POLICY: 'cos'
   MOMENTUM: 0.9
@@ -39,3 +33,4 @@ OPTIM:
 TEST:
   BATCH_SIZE: 256
   IM_SIZE: 224
+

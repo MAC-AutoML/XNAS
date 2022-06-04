@@ -1,10 +1,3 @@
-# --------------
-# refer from:
-# https://github.com/skhu101/GM-NAS/blob/main/once-for-all-GM/train_ofa_net.py
-# --------------
-
-# OUT_DIR: '/userhome/project/XNAS/experiment/OFA/mbv3_cifar10/normal/phase1'
-OUT_DIR: '/home/binghan/XNAS/experiment/OFA/mbv3_cifar10/normal/phase1'
 NUM_GPUS: 1
 SPACE:
   NAME: 'ofa_mbv3'
@@ -16,25 +9,23 @@ SEARCH:
   MULTI_SIZES: [128,160,192,224]
   LOSS_FUN: 'cross_entropy_with_label_smoothing'
   LABEL_SMOOTH: 0.1
-  # DATAPATH: 'TODO'
-  # WEIGHTS: 'TODO'
-  WEIGHTS: ''
   AUTO_RESUME: True
 OFA:
-  TASK: 'normal'
+  TASK: 'depth'
   PHASE: 1
   WIDTH_MULTI_LIST: [1.0]
-  KS_LIST: [7]
+  KS_LIST: [3,5,7]
   EXPAND_LIST: [6]
-  DEPTH_LIST: [4]
+  DEPTH_LIST: [3,4]
   CHANNEL_DIVISIBLE: 8
-  SUBNET_BATCH_SIZE: 1  # [?]
+  SUBNET_BATCH_SIZE: 2
   KD_RATIO: 0.
   # KD_PATH: "exp/OFA/teacher_model.pyth"
 OPTIM:
-  MAX_EPOCH: 180
-  BASE_LR: 0.1625
-  WARMUP_EPOCH: 5
+  MAX_EPOCH: 25
+  BASE_LR: 2.5e-3
+  MIN_LR: 0.0
+  WARMUP_EPOCH: 0
   WARMUP_FACTOR: 1
   LR_POLICY: 'cos'
   MOMENTUM: 0.9
@@ -43,4 +34,3 @@ OPTIM:
 TEST:
   BATCH_SIZE: 256
   IM_SIZE: 224
-

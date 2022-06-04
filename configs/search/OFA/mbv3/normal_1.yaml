@@ -1,5 +1,8 @@
-# OUT_DIR: '/userhome/project/XNAS/experiment/OFA/mbv3_cifar10/expand/phase2'
-OUT_DIR: '/home/binghan/XNAS/experiment/OFA/mbv3_cifar10/expand/phase2'
+# --------------
+# refer from:
+# https://github.com/skhu101/GM-NAS/blob/main/once-for-all-GM/train_ofa_net.py
+# --------------
+
 NUM_GPUS: 1
 SPACE:
   NAME: 'ofa_mbv3'
@@ -12,23 +15,23 @@ SEARCH:
   LOSS_FUN: 'cross_entropy_with_label_smoothing'
   LABEL_SMOOTH: 0.1
   # DATAPATH: 'TODO'
-  # WEIGHTS: '//userhome/project/XNAS/experiment/OFA/mbv3_cifar10/expand/phase1/checkpoints/model_epoch_0025.pyth'
-  WEIGHTS: '/home/binghan/XNAS/experiment/OFA/mbv3_cifar10/expand/phase1/checkpoints/model_epoch_0025.pyth'
+  # WEIGHTS: 'TODO'
+  WEIGHTS: ''
   AUTO_RESUME: True
 OFA:
-  TASK: 'expand'
-  PHASE: 2
+  TASK: 'normal'
+  PHASE: 1
   WIDTH_MULTI_LIST: [1.0]
-  KS_LIST: [3,5,7]
-  EXPAND_LIST: [3,4,6]
-  DEPTH_LIST: [2,3,4]
+  KS_LIST: [7]
+  EXPAND_LIST: [6]
+  DEPTH_LIST: [4]
   CHANNEL_DIVISIBLE: 8
-  SUBNET_BATCH_SIZE: 4
+  SUBNET_BATCH_SIZE: 1
   KD_RATIO: 0.
   # KD_PATH: "exp/OFA/teacher_model.pyth"
 OPTIM:
-  MAX_EPOCH: 120
-  BASE_LR: 7.5e-3
+  MAX_EPOCH: 180
+  BASE_LR: 0.1625
   WARMUP_EPOCH: 5
   WARMUP_FACTOR: 1
   LR_POLICY: 'cos'

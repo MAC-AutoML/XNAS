@@ -1,4 +1,5 @@
 configspace
+numpy
 python >= 3.7
 pytorch == 1.9
 pillow

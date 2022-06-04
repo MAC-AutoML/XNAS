@@ -125,7 +125,7 @@ class Trainer(Recorder):
             self.best_err = top1_err
             self.saving(cur_epoch, best=True)
 
-    def resume(self):
+    def resume(self, best=False):
         """Resume from previous checkpoints.
         may not loaded if there is no checkpoints.
         """
@@ -134,18 +134,19 @@ class Trainer(Recorder):
             logger.info("Resume checkpoint from epoch: {}".format(ckpt_epoch+1))
             return ckpt_epoch, ckpt_dict
         elif checkpoint.has_checkpoint():
-            last_checkpoint = checkpoint.get_last_checkpoint()
+            last_checkpoint = checkpoint.get_last_checkpoint(best=best)
             ckpt_epoch, ckpt_dict = checkpoint.load_checkpoint(last_checkpoint, self.model)
             logger.info("Resume checkpoint from epoch: {}".format(ckpt_epoch+1))
             return ckpt_epoch, ckpt_dict
         else:
             return -1, -1
 
-    def saving(self, epoch, best=False):
+    def saving(self, epoch, best=False, ckpt_dir=None):
         """Save to checkpoint."""
         checkpoint_file = checkpoint.save_checkpoint(
             model=self.model, 
             epoch=epoch, 
+            checkpoint_dir=ckpt_dir,
             best=best,
             optimizer=self.optimizer, 
             lr_scheduler=self.lr_scheduler,

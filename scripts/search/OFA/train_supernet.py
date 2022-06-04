@@ -1,5 +1,6 @@
 """OFA supernet training."""
 
+import os
 import random
 
 import torch
@@ -11,6 +12,7 @@ import xnas.logger.meter as meter
 import xnas.logger.logging as logging
 from xnas.core.config import cfg
 from xnas.core.builder import *
+from xnas.logger.checkpoint import get_last_checkpoint
 
 # OFA
 from xnas.runner.trainer import KDTrainer
@@ -21,6 +23,8 @@ from xnas.spaces.OFA.utils import init_model, list_mean
 # Load config and check
 config.load_configs()
 logger = logging.get_logger(__name__)
+# Upper dir for supernet
+upper_dir = os.path.join(*cfg.OUT_DIR.split('/')[:-1]) 
 
 def main():
     setup_env()
@@ -83,16 +87,21 @@ def main():
     }
     if cfg.OFA.TASK == 'normal':
         pass
-    elif cfg.OFA.TASK == 'kernel':
-        validate_func_dict["ks_list"] = sorted(net.ks_list)
-    elif cfg.OFA.TASK == 'depth':
-        if (len(set(net.ks_list)) == 1) and (len(set(net.expand_ratio_list)) == 1):
-            validate_func_dict["depth_list"] = net.depth_list.copy()
-    elif cfg.OFA.TASK == 'expand':
-        if len(set(net.ks_list)) == 1 and len(set(net.depth_list)) == 1:
-            validate_func_dict["expand_ratio_list"] = net.expand_ratio_list.copy()
     else:
-        raise NotImplementedError
+        if cfg.OFA.TASK == 'kernel':
+            validate_func_dict["ks_list"] = sorted(net.ks_list)
+        elif cfg.OFA.TASK == 'depth':
+            if (len(set(net.ks_list)) == 1) and (len(set(net.expand_ratio_list)) == 1):
+                validate_func_dict["depth_list"] = net.depth_list.copy()
+        elif cfg.OFA.TASK == 'expand':
+            if len(set(net.ks_list)) == 1 and len(set(net.depth_list)) == 1:
+                validate_func_dict["expand_ratio_list"] = net.expand_ratio_list.copy()
+        else:
+            raise NotImplementedError
+        # load last stage's checkpoint if not resume
+        if start_epoch == 0:
+            load_last_stage_ckpt(cfg.OFA.TASK, cfg.OFA.PHASE)
+            ofa_trainer.resume()    # only load the state_dict of model
 
     # Training
     logger.info("=== OFA | Task: {} | Phase: {} ===".format(cfg.OFA.TASK, cfg.OFA.PHASE))
@@ -102,6 +111,20 @@ def main():
         if (cur_epoch+1) % cfg.EVAL_PERIOD == 0 or (cur_epoch+1) == cfg.OPTIM.MAX_EPOCH:
             ofa_trainer.validate_all_subnets(cur_epoch, **validate_func_dict)
     ofa_trainer.finish()
+    # Saving the best checkpoint of current task
+    filename = "{}_{}.pyth".format(cfg.OFA.TASK, cfg.OFA.PHASE)
+    best_checkpoint = get_last_checkpoint(best=True)
+    torch.save(torch.load(best_checkpoint), os.path.join(upper_dir, "stage_ckpt", filename))
+
+
+def load_last_stage_ckpt(task, phase):
+    order = ['normal_1', 'kernel_1', 'depth_1', 'depth_2', 'expand_1', 'expand_2']
+    cfg.SEARCH.WEIGHTS = os.path.join(
+        upper_dir, 
+        "stage_ckpt", 
+        order[order.index('{}_{}'.format(task, phase)) - 1], 
+        ".pyth"
+    )
 
 
 class OFATrainer(KDTrainer):
