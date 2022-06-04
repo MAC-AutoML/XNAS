@@ -6,16 +6,15 @@
 NUM_GPUS: 1
 SPACE:
   NAME: 'ofa_mbv3'
-SEARCH:
+LOADER:
   DATASET: 'imagenet'
-  NUM_CLASSES: 10
+  NUM_CLASSES: 1000
   SPLIT: [0.5, 0.5]
   BATCH_SIZE: 64
+SEARCH:
   MULTI_SIZES: [128,160,192,224]
-  LOSS_FUN: 'cross_entropy_with_label_smoothing'
+  LOSS_FUN: 'cross_entropy_smooth'
   LABEL_SMOOTH: 0.1
-  # DATAPATH: 'TODO'
-  # WEIGHTS: 'TODO'
   WEIGHTS: ''
   AUTO_RESUME: True
 OFA:
@@ -32,11 +31,12 @@ OFA:
 OPTIM:
   MAX_EPOCH: 180
   BASE_LR: 0.1625
+  MIN_LR: 1.e-3
   WARMUP_EPOCH: 5
-  WARMUP_FACTOR: 1
+  WARMUP_FACTOR: 1.
   LR_POLICY: 'cos'
   MOMENTUM: 0.9
-  WEIGHT_DECAY: 3e-5
+  WEIGHT_DECAY: 3.e-5
   OPTIM.NESTEROV: True
 TEST:
   BATCH_SIZE: 256

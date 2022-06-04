@@ -45,10 +45,6 @@ def main():
     optimizer = optimizer_builder("SGD", net_params)
     # lr_scheduler = lr_scheduler_builder()     # OFA controls lr per iter & manually.
     
-    # [debug]
-    from xnas.spaces.OFA.MobileNetV3.ofa_cnn import _OFAMobileNetV3
-    net = _OFAMobileNetV3()
-    
     if cfg.OFA.KD_RATIO > 0.:
         logger.info("Using knowledge distillation with KD_ratio={}".format(cfg.OFA.KD_RATIO))
         from xnas.spaces.OFA.MobileNetV3.cnn import MobileNetV3Large
@@ -114,7 +110,9 @@ def main():
     # Saving the best checkpoint of current task
     filename = "{}_{}.pyth".format(cfg.OFA.TASK, cfg.OFA.PHASE)
     best_checkpoint = get_last_checkpoint(best=True)
-    torch.save(torch.load(best_checkpoint), os.path.join(upper_dir, "stage_ckpt", filename))
+    save_path = os.path.join(upper_dir, "stage_ckpt")
+    os.makedirs(save_path, exist_ok=True)
+    torch.save(torch.load(best_checkpoint), os.path.join(save_path, filename))
 
 
 def load_last_stage_ckpt(task, phase):
@@ -122,8 +120,7 @@ def load_last_stage_ckpt(task, phase):
     cfg.SEARCH.WEIGHTS = os.path.join(
         upper_dir, 
         "stage_ckpt", 
-        order[order.index('{}_{}'.format(task, phase)) - 1], 
-        ".pyth"
+        order[order.index('{}_{}'.format(task, phase)) - 1]+".pyth"
     )
 
 
@@ -138,6 +135,9 @@ class OFATrainer(KDTrainer):
         # self.writer.add_scalar('train/lr', lr, cur_step)
         self.train_meter.iter_tic()
         for cur_iter, (inputs, labels) in enumerate(self.train_loader):
+            # [debug]
+            if cur_iter > 100:
+                break
             inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
             
             # Adjust lr per iter
@@ -165,8 +165,7 @@ class OFATrainer(KDTrainer):
             for i_subnet in range(cfg.OFA.SUBNET_BATCH_SIZE):
                 subnet_seed = int("%d%.3d%.3d" % (cur_step, i_subnet, 0))
                 random.seed(subnet_seed)
-                subnet_settings = self.model.sample_active_subnet()
-                logger.info("epoch:{} iter:{} subnet_settings:{}".format(cur_epoch, cur_iter, subnet_settings))
+                self.model.sample_active_subnet()
                 preds = self.model(inputs)
                 loss = self.criterion(preds, labels)
                 if (self.teacher_model is not None) and (self.kd_ratio > 0.):
@@ -206,6 +205,9 @@ class OFATrainer(KDTrainer):
         self.model.eval()
         self.test_meter.iter_tic()
         for cur_iter, (inputs, labels) in enumerate(self.test_loader):
+            # [debug]
+            if cur_iter > 100:
+                break
             inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
             preds = self.model(inputs)
             top1_err, top5_err = meter.topk_errors(preds, labels, [1, 5])

@@ -108,7 +108,7 @@ def adjust_learning_rate_per_batch(epoch, n_iter=None, iter=0, warmup=False):
     init_lr = cfg.OPTIM.BASE_LR * cfg.NUM_GPUS
     n_epochs = cfg.OPTIM.MAX_EPOCH
     n_warmup_epochs = cfg.OPTIM.WARMUP_EPOCH
-    warmup_lr = init_lr * cfg.WARMUP_FACTOR
+    warmup_lr = init_lr * cfg.OPTIM.WARMUP_FACTOR
     
     if warmup:
         new_lr = _warmup_adjust_learning_rate(

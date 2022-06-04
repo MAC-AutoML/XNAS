@@ -160,6 +160,9 @@ class OFAMobileNetV3(MobileNetV3):
         x = x.view(x.size(0), -1)
         x = self.classifier(x)
         return x
+    
+    def weights(self):
+        return self.parameters()
 
     @property
     def module_str(self):
@@ -406,7 +409,7 @@ def _OFAMobileNetV3():
     )
     
     return OFAMobileNetV3(
-        n_classes=cfg.SEARCH.NUM_CLASSES,
+        n_classes=cfg.LOADER.NUM_CLASSES,
         bn_param=(0.1, 1e-5),
         dropout_rate=0.1,
         base_stage_width=None,

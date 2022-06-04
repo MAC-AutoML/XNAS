@@ -3,7 +3,7 @@ TASKS="normal_1 kernel_1 depth_1 depth_2 expand_1 expand_2"
 
 for loop in $TASKS
 do
-    echo `python scripts/search/OFA/train_supernet.py --cfg configs/OFA/mbv3/$loop.yaml OUT_DIR exp/$OUT_NAME/$loop`
+    echo `python scripts/search/OFA/train_supernet.py --cfg configs/search/OFA/mbv3/$loop.yaml OUT_DIR exp/search/$OUT_NAME/$loop`
 done
 
 # # full supernet

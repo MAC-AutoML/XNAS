@@ -143,15 +143,22 @@ class Trainer(Recorder):
 
     def saving(self, epoch, best=False, ckpt_dir=None):
         """Save to checkpoint."""
+        _kwdict = {}
+        if self.optimizer is not None:
+            _kwdict['optimizer'] = self.optimizer
+        if self.lr_scheduler is not None:
+            _kwdict['lr_scheduler'] = self.lr_scheduler
         checkpoint_file = checkpoint.save_checkpoint(
             model=self.model, 
             epoch=epoch, 
             checkpoint_dir=ckpt_dir,
             best=best,
-            optimizer=self.optimizer, 
-            lr_scheduler=self.lr_scheduler,
+            **_kwdict
         )
-        logger.info("[Best: {}] saving checkpoint to: {}".format(best, checkpoint_file))
+        info_str = "Saving checkpoint to: {}".format(checkpoint_file)
+        if best:
+            info_str = "[Best] " + info_str
+        logger.info(info_str)
 
     def loading(self):
         """Load from checkpoint."""

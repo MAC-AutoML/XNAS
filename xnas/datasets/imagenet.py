@@ -66,8 +66,7 @@ class ImageFolder():
             from xnas.datasets.utils.msrc_loader import msrc_DataLoader
             self.msrc = MultiSizeRandomCrop(cfg.SEARCH.MULTI_SIZES)
             self.loader = msrc_DataLoader
-            logger.info("Using Random MultiSize Crop, \n \
-                        continuous={} candidate im_sizes={}".format(self.msrc.CONTINUOUS, self.msrc.CANDIDATE_SIZES))
+            logger.info("Using Random MultiSize Crop, continuous={} candidate im_sizes={}".format(self.msrc.CONTINUOUS, self.msrc.CANDIDATE_SIZES))
 
         # Read all dataset
         logger.info("Constructing ImageFolder")

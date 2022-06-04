@@ -22,8 +22,8 @@ def _label_smooth(target, n_classes: int, label_smoothing):
 
 def CrossEntropyLoss_soft_target(pred, soft_target):
     """CELoss with soft target, mainly used during KD"""
-    logsoftmax = nn.LogSoftmax()
-    return torch.mean(torch.sum(-soft_target * logsoftmax(pred), 1))
+    logsoftmax = nn.LogSoftmax(dim=1)
+    return torch.mean(torch.sum(-soft_target * logsoftmax(pred), dim=1))
 
 
 def CrossEntropyLoss_label_smoothed(pred, target, label_smoothing=0.):

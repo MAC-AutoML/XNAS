@@ -62,7 +62,7 @@ _C.OPTIM = CfgNode(new_allowed=True)
 # Base learning rate, init_lr = OPTIM.BASE_LR * NUM_GPUS
 _C.OPTIM.BASE_LR = 0.1
 
-_C.OPTIM.MIN_LR = 0.001
+_C.OPTIM.MIN_LR = 1.e-3
 
 
 # Learning rate policy select from {'cos', 'exp', 'steps'}
