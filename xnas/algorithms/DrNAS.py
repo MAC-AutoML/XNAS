@@ -22,6 +22,7 @@ class Architect(object):
             betas=(0.5, 0.999),
             weight_decay=weight_decay,
         )
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     def _compute_unrolled_model(self, input, target, eta, network_optimizer):
         loss = self.net._loss(input, target)
@@ -39,7 +40,7 @@ class Architect(object):
         )
         unrolled_model = self._construct_model_from_theta(
             theta.sub(eta, moment + dtheta)
-        )
+        ).to(self.device)
         return unrolled_model
 
     def unrolled_backward(
@@ -120,7 +121,7 @@ class Architect(object):
         assert offset == len(theta)
         model_dict.update(params)
         model_new.load_state_dict(model_dict)
-        return model_new.cuda()
+        return model_new
 
     def _hessian_vector_product(self, vector, input, target, r=1e-2):
         R = r / _concat(vector).norm()

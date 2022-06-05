@@ -27,9 +27,9 @@ logger = logging.get_logger(__name__)
 upper_dir = os.path.join(*cfg.OUT_DIR.split('/')[:-1]) 
 
 def main():
-    setup_env()
+    device = setup_env()
     # Network
-    net = space_builder().cuda()
+    net = space_builder()
     init_model(net)
     # Loss function
     criterion = criterion_builder()
@@ -55,7 +55,7 @@ def main():
             ks=7,
             expand_ratio=6,
             depth_param=4,
-        ).cuda()
+        ).to(device)
         ofa_teacher_model.load_state_dict(torch.load(cfg.OFA.KD_PATH)["state_dict"])
     else:
         ofa_teacher_model = None
@@ -138,7 +138,7 @@ class OFATrainer(KDTrainer):
             # [debug]
             if cur_iter > 100:
                 break
-            inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
+            inputs, labels = inputs.to(self.device), labels.to(self.device, non_blocking=True)
             
             # Adjust lr per iter
             cur_lr = adjust_learning_rate_per_batch(
@@ -184,7 +184,7 @@ class OFATrainer(KDTrainer):
             i_loss, i_top1err, i_top5err = list_mean(losses), list_mean(top1errs), list_mean(top5errs)
             self.train_meter.iter_toc()
             # Update and log stats
-            self.train_meter.update_stats(i_top1err, i_top5err, i_loss, cur_lr, inputs.size(0))
+            self.train_meter.update_stats(i_top1err, i_top5err, i_loss, cur_lr, inputs.size(0) * cfg.NUM_GPUS)
             self.train_meter.log_iter_stats(cur_epoch, cur_iter)
             self.train_meter.iter_tic()
             self.writer.add_scalar('train/loss', i_loss, cur_step)
@@ -208,7 +208,7 @@ class OFATrainer(KDTrainer):
             # [debug]
             if cur_iter > 100:
                 break
-            inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
+            inputs, labels = inputs.to(self.device), labels.to(self.device, non_blocking=True)
             preds = self.model(inputs)
             top1_err, top5_err = meter.topk_errors(preds, labels, [1, 5])
             top1_err, top5_err = top1_err.item(), top5_err.item()

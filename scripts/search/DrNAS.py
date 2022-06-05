@@ -59,7 +59,7 @@ def drnas_hp_builder():
 
 
 def main():
-    setup_env()
+    device = setup_env()
     criterion = criterion_builder()
     evaluator = evaluator_builder()
     
@@ -69,7 +69,7 @@ def main():
     drnas_hp_builder()
     
     # init models
-    model = space_builder(criterion=criterion).cuda() # DrNAS combines the space with model controller.
+    model = space_builder(criterion=criterion).to(device) # DrNAS combines the space with model controller.
     architect = None if cfg.LOADER.DATASET == 'imagenet' else Architect(model, cfg)
     
     # init optimizers

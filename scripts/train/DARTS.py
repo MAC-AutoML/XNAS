@@ -16,10 +16,10 @@ config.load_configs()
 logger = logging.get_logger(__name__)
 
 def main():
-    setup_env()
+    device = setup_env()
     
-    model = space_builder().cuda()
-    criterion = criterion_builder().cuda()
+    model = space_builder().to(device)
+    criterion = criterion_builder().to(device)
     # evaluator = evaluator_builder()
     
     [train_loader, valid_loader] = get_normal_dataloader()
@@ -53,7 +53,7 @@ class Darts_Retrainer(Trainer):
         self.writer.add_scalar('train/lr', lr, cur_step)
         self.train_meter.iter_tic()
         for cur_iter, (inputs, labels) in enumerate(self.train_loader):
-            inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
+            inputs, labels = inputs.to(self.device), labels.to(self.device, non_blocking=True)
             preds, preds_aux = self.model(inputs)
             loss = self.criterion(preds, labels)
             self.optimizer.zero_grad()
@@ -68,7 +68,7 @@ class Darts_Retrainer(Trainer):
             loss, top1_err, top5_err = loss.item(), top1_err.item(), top5_err.item()
             self.train_meter.iter_toc()
             # Update and log stats
-            self.train_meter.update_stats(top1_err, top5_err, loss, lr, inputs.size(0))
+            self.train_meter.update_stats(top1_err, top5_err, loss, lr, inputs.size(0) * cfg.NUM_GPUS)
             self.train_meter.log_iter_stats(cur_epoch, cur_iter)
             self.train_meter.iter_tic()
             self.writer.add_scalar('train/loss', loss, cur_step)
@@ -88,7 +88,7 @@ class Darts_Retrainer(Trainer):
         self.model.eval()
         self.test_meter.iter_tic()
         for cur_iter, (inputs, labels) in enumerate(self.test_loader):
-            inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
+            inputs, labels = inputs.to(self.device), labels.to(self.device, non_blocking=True)
             preds, _ = self.model(inputs)
             top1_err, top5_err = meter.topk_errors(preds, labels, [1, 5])
             top1_err, top5_err = top1_err.item(), top5_err.item()

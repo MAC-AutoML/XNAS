@@ -64,6 +64,7 @@ class Trainer(Recorder):
         self.train_meter = meter.TrainMeter(len(self.train_loader))
         self.test_meter = meter.TestMeter(len(self.test_loader))
         self.best_err = 23*3*3*3
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() and cfg.NUM_GPUS else 'cpu')
     
     def train_epoch(self, cur_epoch):
         self.model.train()
@@ -72,7 +73,7 @@ class Trainer(Recorder):
         self.writer.add_scalar('train/lr', lr, cur_step)
         self.train_meter.iter_tic()
         for cur_iter, (inputs, labels) in enumerate(self.train_loader):
-            inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
+            inputs, labels = inputs.to(self.device), labels.to(self.device, non_blocking=True)
             preds = self.model(inputs)
             loss = self.criterion(preds, labels)
             self.optimizer.zero_grad()
@@ -85,7 +86,7 @@ class Trainer(Recorder):
             loss, top1_err, top5_err = loss.item(), top1_err.item(), top5_err.item()
             self.train_meter.iter_toc()
             # Update and log stats
-            self.train_meter.update_stats(top1_err, top5_err, loss, lr, inputs.size(0))
+            self.train_meter.update_stats(top1_err, top5_err, loss, lr, inputs.size(0) * cfg.NUM_GPUS)
             self.train_meter.log_iter_stats(cur_epoch, cur_iter)
             self.train_meter.iter_tic()
             self.writer.add_scalar('train/loss', loss, cur_step)
@@ -105,7 +106,7 @@ class Trainer(Recorder):
         self.model.eval()
         self.test_meter.iter_tic()
         for cur_iter, (inputs, labels) in enumerate(self.test_loader):
-            inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
+            inputs, labels = inputs.to(self.device), labels.to(self.device, non_blocking=True)
             preds = self.model(inputs)
             top1_err, top5_err = meter.topk_errors(preds, labels, [1, 5])
             top1_err, top5_err = top1_err.item(), top5_err.item()
@@ -201,7 +202,7 @@ class DartsTrainer(Trainer):
         self.train_meter.iter_tic()
         valid_loader_iter = iter(self.valid_loader)  # using valid_loader during darts optimization
         for cur_iter, (trn_X, trn_y) in enumerate(self.train_loader):
-            trn_X, trn_y = trn_X.cuda(), trn_y.cuda(non_blocking=True)
+            trn_X, trn_y = trn_X.to(self.device), trn_y.to(self.device, non_blocking=True)
             # hook for two-phase optimizing
             if alpha_step:
                 try:
@@ -209,7 +210,7 @@ class DartsTrainer(Trainer):
                 except StopIteration:
                     valid_loader_iter = iter(self.valid_loader)
                     (val_X, val_y) = next(valid_loader_iter)
-                val_X, val_y = val_X.cuda(), val_y.cuda(non_blocking=True)
+                val_X, val_y = val_X.to(self.device), val_y.to(self.device, non_blocking=True)
                 
                 # phase 2. architect step (alpha)
                 self.a_optimizer.zero_grad()
@@ -235,7 +236,7 @@ class DartsTrainer(Trainer):
             loss, top1_err, top5_err = loss.item(), top1_err.item(), top5_err.item()
             self.train_meter.iter_toc()
             # Update and log stats
-            self.train_meter.update_stats(top1_err, top5_err, loss, lr, trn_X.size(0))
+            self.train_meter.update_stats(top1_err, top5_err, loss, lr, trn_X.size(0) * cfg.NUM_GPUS)
             self.train_meter.log_iter_stats(cur_epoch, cur_iter)
             self.train_meter.iter_tic()
             self.writer.add_scalar('train/loss', loss, cur_step)
@@ -297,7 +298,7 @@ class OneShotTrainer(Trainer):
         self.writer.add_scalar('train/lr', lr, cur_step)
         self.train_meter.iter_tic()
         for cur_iter, (inputs, labels) in enumerate(self.train_loader):
-            inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
+            inputs, labels = inputs.to(self.device), labels.to(self.device, non_blocking=True)
             # sample subnet
             if self.sample_type == 'iter':
                 sample = self.iter_sampler.suggest()
@@ -315,7 +316,7 @@ class OneShotTrainer(Trainer):
                 self.iter_sampler.record(sample, top1_err)     # use top1_err as evaluation
             self.train_meter.iter_toc()
             # Update and log stats
-            self.train_meter.update_stats(top1_err, top5_err, loss, lr, inputs.size(0))
+            self.train_meter.update_stats(top1_err, top5_err, loss, lr, inputs.size(0) * cfg.NUM_GPUS)
             self.train_meter.log_iter_stats(cur_epoch, cur_iter)
             self.train_meter.iter_tic()
             self.writer.add_scalar('train/loss', loss, cur_step)
@@ -336,7 +337,7 @@ class OneShotTrainer(Trainer):
         self.model.eval()
         self.test_meter.iter_tic()
         for cur_iter, (inputs, labels) in enumerate(self.test_loader):
-            inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
+            inputs, labels = inputs.to(self.device), labels.to(self.device, non_blocking=True)
             # sample subnet
             if self.sample_type == 'iter':
                 sample = self.iter_sampler.suggest()
@@ -367,7 +368,7 @@ class OneShotTrainer(Trainer):
         self.model.eval()
         # choice = self.evaluate_sampler.suggest()
         for cur_iter, (inputs, labels) in enumerate(self.test_loader):
-            inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
+            inputs, labels = inputs.to(self.device), labels.to(self.device, non_blocking=True)
             preds = self.model(inputs, sample)
             top1_err, top5_err = meter.topk_errors(preds, labels, [1, 5])
             top1_err, top5_err = top1_err.item(), top5_err.item()
@@ -393,7 +394,7 @@ class KDTrainer(Trainer):
         self.writer.add_scalar('train/lr', lr, cur_step)
         self.train_meter.iter_tic()
         for cur_iter, (inputs, labels) in enumerate(self.train_loader):
-            inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
+            inputs, labels = inputs.to(self.device), labels.to(self.device, non_blocking=True)
             preds = self.model(inputs)
             loss = self.criterion(preds, labels)
             
@@ -416,7 +417,7 @@ class KDTrainer(Trainer):
             loss, top1_err, top5_err = loss.item(), top1_err.item(), top5_err.item()
             self.train_meter.iter_toc()
             # Update and log stats
-            self.train_meter.update_stats(top1_err, top5_err, loss, lr, inputs.size(0))
+            self.train_meter.update_stats(top1_err, top5_err, loss, lr, inputs.size(0) * cfg.NUM_GPUS)
             self.train_meter.log_iter_stats(cur_epoch, cur_iter)
             self.train_meter.iter_tic()
             self.writer.add_scalar('train/loss', loss, cur_step)

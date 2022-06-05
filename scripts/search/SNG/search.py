@@ -23,9 +23,9 @@ logger = logging.get_logger(__name__)
 
 
 def main():
-    setup_env()
-    search_space = space_builder().cuda()
-    criterion = criterion_builder().cuda()
+    device = setup_env()
+    search_space = space_builder().to(device)
+    criterion = criterion_builder().to(device)
     evaluator = evaluator_builder()
     [train_loader, valid_loader] = construct_loader()
     

@@ -16,15 +16,15 @@ config.load_configs()
 logger = logging.get_logger(__name__)
 
 def main():
-    setup_env()
+    device = setup_env()
     search_space = space_builder()
-    criterion = criterion_builder().cuda()
+    criterion = criterion_builder().to(device)
     evaluator = evaluator_builder()
     
     [train_loader, valid_loader] = construct_loader()
     
     # init models
-    darts_controller = DartsCNNController(search_space, criterion).cuda()
+    darts_controller = DartsCNNController(search_space, criterion).to(device)
     architect = Architect(darts_controller, cfg.OPTIM.MOMENTUM, cfg.OPTIM.WEIGHT_DECAY)
     
     # init optimizers

@@ -163,7 +163,8 @@ class TinyNetwork(nn.Module):
         #### reg
         self.reg_type = reg_type
         self.reg_scale = reg_scale
-        self.anchor = Dirichlet(torch.ones_like(self._arch_parameters).cuda())
+        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.anchor = Dirichlet(torch.ones_like(self._arch_parameters).to(device))
 
     def _loss(self, input, target):
         logits = self(input)

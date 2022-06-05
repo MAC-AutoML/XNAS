@@ -35,7 +35,7 @@ def rminas_hp_builder():
 
 
 def main():    
-    setup_env()
+    device = setup_env()
     
     rminas_hp_builder()
     
@@ -76,16 +76,16 @@ def main():
         network = get_cell_based_tiny_net(net_config) 
         network.load_state_dict(result.get_net_param())
     
-    network.cuda()
+    network.to(device)
     
     """selecting well-performed data."""
     more_data_X, more_data_y = get_random_data(cfg.LOADER.BATCH_SIZE, cfg.LOADER.DATASET)
     with torch.no_grad():
-        ce_loss = torch.nn.CrossEntropyLoss(reduction='none').cuda()
+        ce_loss = torch.nn.CrossEntropyLoss(reduction='none').to(device)
         more_logits = network(more_data_X)
         _, indices = torch.topk(-ce_loss(more_logits, more_data_y).cpu().detach(), cfg.LOADER.BATCH_SIZE)
-    data_y = torch.Tensor([more_data_y[i] for i in indices]).long().cuda()
-    data_X = torch.Tensor([more_data_X[i].cpu().numpy() for i in indices]).cuda()
+    data_y = torch.Tensor([more_data_y[i] for i in indices]).long().to(device)
+    data_X = torch.Tensor([more_data_X[i].cpu().numpy() for i in indices]).to(device)
     with torch.no_grad():
         feature_res = network.feature_extractor(data_X)
     
@@ -94,8 +94,8 @@ def main():
     # loss function
     loss_fun_cka = RMI_loss(data_X.size()[0])
     loss_fun_cka = loss_fun_cka.requires_grad_()
-    loss_fun_cka.cuda()
-    loss_fun_log = torch.nn.CrossEntropyLoss().cuda()
+    loss_fun_cka.to(device)
+    loss_fun_log = torch.nn.CrossEntropyLoss().to(device)
         
     def train_arch(modelinfo):      
         if cfg.SPACE.NAME == 'infer_nb201':
@@ -106,10 +106,10 @@ def main():
                 'arch_str':nb201_api.arch(modelinfo), 
                 'num_classes': cfg.LOADER.NUM_CLASSES}
             net_config = dict2config(arch_config, None)
-            model = get_cell_based_tiny_net(net_config).cuda()
+            model = get_cell_based_tiny_net(net_config).to(device)
         elif cfg.SPACE.NAME == 'infer_darts':
             cfg.TRAIN.GENOTYPE = str(modelinfo)
-            model = space_builder().cuda()
+            model = space_builder().to(device)
         
         model.train()
         # weights optimizer
