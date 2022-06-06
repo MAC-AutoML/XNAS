@@ -40,14 +40,18 @@ class ImageFolder():
         ):
         datapath = './data/imagenet/' if not datapath else datapath
         assert os.path.exists(datapath), "Data path '{}' not found".format(datapath)
-        assert sum(split) == 1, "Summation of split should be 1"
         
+        self.use_val = cfg.LOADER.USE_VAL
         self._data_path, self._split, self.dataset_name = datapath, split, dataset_name
         self._rgb_normalized_mean, self._rgb_normalized_std = _rgb_normalized_mean, _rgb_normalized_std
         self.num_workers = cfg.LOADER.NUM_WORKERS if num_workers is None else num_workers
         self.pin_memory = cfg.LOADER.PIN_MEMORY if pin_memory is None else pin_memory
         self.shuffle = shuffle
         self.batch_size = batch_size
+        if not self.use_val:
+            assert sum(self.split) == 1, "Summation of split should be 1"
+        
+        print(cfg.NUM_GPUS)
         
         self.msrc = None
         self.loader = torch.utils.data.DataLoader
@@ -59,7 +63,10 @@ class ImageFolder():
                                {'crop': 'center', 'crop_size': cfg.TEST.IM_SIZE, 'min_crop': -1, 'random_flip': False}]  # NOTE: min_crop is not used here.
         else:
             self.transforms = transforms
-        assert len(self.transforms) == len(self._split), "Length of split and transforms should be equal"
+        if not self.use_val:
+            assert len(self.transforms) == len(self._split), "Length of split and transforms should be equal"
+        else:
+            assert len(self.transforms) == 2
         
         # Check if using multisize_random_crop
         if len(cfg.SEARCH.MULTI_SIZES):
@@ -74,7 +81,10 @@ class ImageFolder():
 
     def _construct_imdb(self):
         # Images are stored per class in subdirs (format: n<number>)
-        split_files = os.listdir(self._data_path)
+        if not self.use_val:
+            split_files = os.listdir(self._data_path)
+        else:
+            split_files = os.listdir(os.path.join(self._data_path, "train"))
         if self.dataset_name == "imagenet":
             # imagenet format folder names
             self._class_ids = sorted(
@@ -90,46 +100,97 @@ class ImageFolder():
         # Map class ids to contiguous ids
         self._class_id_cont_id = {v: i for i, v in enumerate(self._class_ids)}
         # Construct the image db
-        self._imdb = []
-        for class_id in self._class_ids:
-            cont_id = self._class_id_cont_id[class_id]
-            im_dir = os.path.join(self._data_path, class_id)
-            for im_name in os.listdir(im_dir):
-                im_path = os.path.join(im_dir, im_name)
-                if is_image_file(im_path):
-                    self._imdb.append({"im_path": im_path, "class": cont_id})
-        logger.info("Number of images: {}".format(len(self._imdb)))
-        logger.info("Number of classes: {}".format(len(self._class_ids)))
-        # return self._imdb
+        if not self.use_val:
+            self._imdb = []
+            for class_id in self._class_ids:
+                cont_id = self._class_id_cont_id[class_id]
+                train_im_dir = os.path.join(self._data_path, class_id)
+                for im_name in os.listdir(train_im_dir):
+                    im_path = os.path.join(train_im_dir, im_name)
+                    if is_image_file(im_path):
+                        self._imdb.append({"im_path": im_path, "class": cont_id})
+            logger.info("Number of images: {}".format(len(self._imdb)))
+            logger.info("Number of classes: {}".format(len(self._class_ids)))
+        else:
+            self._train_imdb = []
+            self._val_imdb = []
+            train_path = os.path.join(self._data_path, "train")
+            val_path = os.path.join(self._data_path, "val")
+            for class_id in self._class_ids:
+                cont_id = self._class_id_cont_id[class_id]
+                train_im_dir = os.path.join(train_path, class_id)
+                for im_name in os.listdir(train_im_dir):
+                    im_path = os.path.join(train_im_dir, im_name)
+                    if is_image_file(im_path):
+                        self._train_imdb.append({"im_path": im_path, "class": cont_id})
+                val_im_dir = os.path.join(val_path, class_id)
+                for im_name in os.listdir(val_im_dir):
+                    im_path = os.path.join(val_im_dir, im_name)
+                    if is_image_file(im_path):
+                        self._val_imdb.append({"im_path": im_path, "class": cont_id})
+            logger.info("Number of classes: {}".format(len(self._class_ids)))
+            logger.info("Number of TRAIN images: {}".format(len(self._train_imdb)))
+            logger.info("Number of VAL images: {}".format(len(self._val_imdb)))
 
     def generate_data_loader(self):
-        indices = list(range(len(self._imdb)))
-        # Shuffle data
-        np.random.shuffle(indices)
-        data_loaders = []
-        pre_partition = 0.
-        pre_index = 0
-        for i, _split in enumerate(self._split):
-            _current_partition = pre_partition + _split
-            _current_index = int(len(self._imdb) * _current_partition)
-            _current_indices = indices[pre_index: _current_index]
-            assert not len(
-                _current_indices) == 0, "The length of indices is zero!"
-            dataset = ImageList_torch([self._imdb[j] for j in _current_indices],
-                                       self.msrc,  # add support for multisize_random_crop
-                                       _rgb_normalized_mean=self._rgb_normalized_mean,
-                                       _rgb_normalized_std=self._rgb_normalized_std, **self.transforms[i])
-            sampler = DistributedSampler(dataset) if cfg.NUM_GPUS > 1 else None
-            loader = self.loader(dataset,
-                                batch_size=self.batch_size[i],
+        if not self.use_val:
+            indices = list(range(len(self._imdb)))
+            # Shuffle data
+            np.random.shuffle(indices)
+            data_loaders = []
+            pre_partition = 0.
+            pre_index = 0
+            for i, _split in enumerate(self._split):
+                _current_partition = pre_partition + _split
+                _current_index = int(len(self._imdb) * _current_partition)
+                _current_indices = indices[pre_index: _current_index]
+                assert not len(_current_indices) == 0, "The length of indices is zero!"
+                dataset = ImageList_torch([self._imdb[j] for j in _current_indices],
+                                        self.msrc,  # add support for multisize_random_crop
+                                        _rgb_normalized_mean=self._rgb_normalized_mean,
+                                        _rgb_normalized_std=self._rgb_normalized_std,
+                                        **self.transforms[i])
+                sampler = DistributedSampler(dataset) if cfg.NUM_GPUS > 1 else None
+                loader = self.loader(dataset,
+                                    batch_size=self.batch_size[i],
+                                    shuffle=(False if sampler else True),
+                                    sampler=sampler,
+                                    num_workers=self.num_workers,
+                                    pin_memory=self.pin_memory)
+                data_loaders.append(loader)
+                pre_partition = _current_partition
+                pre_index = _current_index
+            return data_loaders
+        else:
+            train_dataset = ImageList_torch(
+                self._train_imdb,
+                self.msrc,
+                _rgb_normalized_mean=self._rgb_normalized_mean,
+                _rgb_normalized_std=self._rgb_normalized_std,
+                **self.transforms[0]
+            )
+            sampler = DistributedSampler(train_dataset) if cfg.NUM_GPUS > 1 else None
+            train_loader = self.loader(train_dataset,
+                                batch_size=self.batch_size[0],
                                 shuffle=(False if sampler else True),
                                 sampler=sampler,
                                 num_workers=self.num_workers,
                                 pin_memory=self.pin_memory)
-            data_loaders.append(loader)
-            pre_partition = _current_partition
-            pre_index = _current_index
-        return data_loaders
+            val_dataset = ImageList_torch(
+                self._val_imdb,
+                self.msrc,
+                _rgb_normalized_mean=self._rgb_normalized_mean,
+                _rgb_normalized_std=self._rgb_normalized_std,
+                **self.transforms[1]
+            )
+            sampler = DistributedSampler(val_dataset) if cfg.NUM_GPUS > 1 else None
+            valid_loader = self.loader(val_dataset,
+                                batch_size=self.batch_size[1],
+                                shuffle=(False if sampler else True),
+                                sampler=sampler,
+                                num_workers=self.num_workers,
+                                pin_memory=self.pin_memory)
+            return [train_loader, valid_loader]
 
 
 class ImageList_torch(torch.utils.data.Dataset):

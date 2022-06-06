@@ -6,8 +6,6 @@ config.load_configs()
 
 [train_loader, valid_loader] = construct_loader()
 
-print(cfg.LOADER.NUM_WORKERS)
-
 for i, (trn_X, trn_y) in enumerate(train_loader):
     print(trn_X.shape, trn_y.shape)
     if i==9:

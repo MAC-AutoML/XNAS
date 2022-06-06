@@ -23,6 +23,9 @@ _C.LOADER.DATAPATH = ""
 
 _C.LOADER.SPLIT = [0.8, 0.2]
 
+# whether using val dataset (imagenet only)
+_C.LOADER.USE_VAL = False
+
 _C.LOADER.NUM_CLASSES = 10
 
 _C.LOADER.NUM_WORKERS = 8

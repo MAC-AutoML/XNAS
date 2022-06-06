@@ -9,9 +9,9 @@ SPACE:
 LOADER:
   DATASET: 'imagenet'
   NUM_CLASSES: 1000
-  SPLIT: [0.5, 0.5]
-  BATCH_SIZE: 64
+  BATCH_SIZE: 128
   NUM_WORKERS: 4
+  USE_VAL: True
 SEARCH:
   MULTI_SIZES: [128,160,192,224]
   LOSS_FUN: 'cross_entropy_smooth'
@@ -31,7 +31,7 @@ OFA:
   # KD_PATH: "exp/OFA/teacher_model.pyth"
 OPTIM:
   MAX_EPOCH: 180
-  BASE_LR: 0.1625
+  BASE_LR: 0.325
   MIN_LR: 1.e-3
   WARMUP_EPOCH: 5
   WARMUP_FACTOR: 1.
