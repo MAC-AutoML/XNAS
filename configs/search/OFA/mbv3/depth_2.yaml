@@ -1,4 +1,4 @@
-NUM_GPUS: 1
+NUM_GPUS: 2
 SPACE:
   NAME: 'ofa_mbv3'
 LOADER:
@@ -6,6 +6,7 @@ LOADER:
   NUM_CLASSES: 1000
   SPLIT: [0.5, 0.5]
   BATCH_SIZE: 64
+  NUM_WORKERS: 4
 SEARCH:
   MULTI_SIZES: [128,160,192,224]
   LOSS_FUN: 'cross_entropy_smooth'

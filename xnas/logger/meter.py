@@ -178,9 +178,9 @@ class TrainMeter(object):
             "time_avg": self.iter_timer.average_time,
             "time_diff": self.iter_timer.diff,
             "eta": time_string(eta_sec),
-            "top1_err": self.mb_top1_err.get_win_median(),
-            "top5_err": self.mb_top5_err.get_win_median(),
-            "loss": self.loss.get_win_median(),
+            "top1_err": self.mb_top1_err.get_win_avg(),
+            "top5_err": self.mb_top5_err.get_win_avg(),
+            "loss": self.loss.get_win_avg(),
             "lr": self.lr,
             "mem": int(np.ceil(mem_usage)),
         }
@@ -264,8 +264,8 @@ class TestMeter(object):
             "iter": "{}/{}".format(cur_iter + 1, self.max_iter),
             "time_avg": self.iter_timer.average_time,
             "time_diff": self.iter_timer.diff,
-            "top1_err": self.mb_top1_err.get_win_median(),
-            "top5_err": self.mb_top5_err.get_win_median(),
+            "top1_err": self.mb_top1_err.get_win_avg(),
+            "top5_err": self.mb_top5_err.get_win_avg(),
             "mem": int(np.ceil(mem_usage)),
         }
         return iter_stats

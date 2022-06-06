@@ -64,16 +64,15 @@ class Trainer(Recorder):
         self.train_meter = meter.TrainMeter(len(self.train_loader))
         self.test_meter = meter.TestMeter(len(self.test_loader))
         self.best_err = 23*3*3*3
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() and cfg.NUM_GPUS else 'cpu')
-    
-    def train_epoch(self, cur_epoch):
+
+    def train_epoch(self, cur_epoch, rank=0):
         self.model.train()
         lr = self.lr_scheduler.get_last_lr()[0]
         cur_step = cur_epoch * len(self.train_loader)
         self.writer.add_scalar('train/lr', lr, cur_step)
         self.train_meter.iter_tic()
         for cur_iter, (inputs, labels) in enumerate(self.train_loader):
-            inputs, labels = inputs.to(self.device), labels.to(self.device, non_blocking=True)
+            inputs, labels = inputs.to(rank), labels.to(rank, non_blocking=True)
             preds = self.model(inputs)
             loss = self.criterion(preds, labels)
             self.optimizer.zero_grad()
@@ -102,11 +101,11 @@ class Trainer(Recorder):
             self.saving(cur_epoch)
 
     @torch.no_grad()
-    def test_epoch(self, cur_epoch):
+    def test_epoch(self, cur_epoch, rank=0):
         self.model.eval()
         self.test_meter.iter_tic()
         for cur_iter, (inputs, labels) in enumerate(self.test_loader):
-            inputs, labels = inputs.to(self.device), labels.to(self.device, non_blocking=True)
+            inputs, labels = inputs.to(rank), labels.to(rank, non_blocking=True)
             preds = self.model(inputs)
             top1_err, top5_err = meter.topk_errors(preds, labels, [1, 5])
             top1_err, top5_err = top1_err.item(), top5_err.item()
@@ -132,12 +131,10 @@ class Trainer(Recorder):
         """
         if cfg.SEARCH.WEIGHTS:
             ckpt_epoch, ckpt_dict = checkpoint.load_checkpoint(cfg.SEARCH.WEIGHTS, self.model)
-            logger.info("Resume checkpoint from epoch: {}".format(ckpt_epoch+1))
             return ckpt_epoch, ckpt_dict
         elif checkpoint.has_checkpoint():
             last_checkpoint = checkpoint.get_last_checkpoint(best=best)
             ckpt_epoch, ckpt_dict = checkpoint.load_checkpoint(last_checkpoint, self.model)
-            logger.info("Resume checkpoint from epoch: {}".format(ckpt_epoch+1))
             return ckpt_epoch, ckpt_dict
         else:
             return -1, -1
@@ -165,6 +162,7 @@ class Trainer(Recorder):
         """Load from checkpoint."""
         ckpt_epoch, ckpt_dict = self.resume()
         if ckpt_epoch != -1:
+            logger.info("Resume checkpoint from epoch: {}".format(ckpt_epoch+1))
             if self.optimizer is not None:
                 self.optimizer.load_state_dict(ckpt_dict['optimizer'])
             if self.lr_scheduler is not None:
@@ -194,7 +192,7 @@ class DartsTrainer(Trainer):
         self.a_optimizer = a_optim
         self.valid_loader = valid_loader    # DARTS uses valid_loader as both valid & test sets.
 
-    def train_epoch(self, cur_epoch, alpha_step=True):
+    def train_epoch(self, cur_epoch, alpha_step=True, rank=0):
         self.model.train()
         lr = self.lr_scheduler.get_last_lr()[0]
         cur_step = cur_epoch * len(self.train_loader)
@@ -202,7 +200,7 @@ class DartsTrainer(Trainer):
         self.train_meter.iter_tic()
         valid_loader_iter = iter(self.valid_loader)  # using valid_loader during darts optimization
         for cur_iter, (trn_X, trn_y) in enumerate(self.train_loader):
-            trn_X, trn_y = trn_X.to(self.device), trn_y.to(self.device, non_blocking=True)
+            trn_X, trn_y = trn_X.to(rank), trn_y.to(rank, non_blocking=True)
             # hook for two-phase optimizing
             if alpha_step:
                 try:
@@ -210,7 +208,7 @@ class DartsTrainer(Trainer):
                 except StopIteration:
                     valid_loader_iter = iter(self.valid_loader)
                     (val_X, val_y) = next(valid_loader_iter)
-                val_X, val_y = val_X.to(self.device), val_y.to(self.device, non_blocking=True)
+                val_X, val_y = val_X.to(rank), val_y.to(rank, non_blocking=True)
                 
                 # phase 2. architect step (alpha)
                 self.a_optimizer.zero_grad()
@@ -265,6 +263,7 @@ class DartsTrainer(Trainer):
     def darts_loading(self):
         ckpt_epoch, ckpt_dict = self.resume()
         if ckpt_epoch != -1:
+            logger.info("Resume checkpoint from epoch: {}".format(ckpt_epoch+1))
             self.optimizer.load_state_dict(ckpt_dict['w_optim'])
             self.a_optimizer.load_state_dict(ckpt_dict['a_optim'])
             self.lr_scheduler.load_state_dict(ckpt_dict['lr_scheduler'])
@@ -290,7 +289,7 @@ class OneShotTrainer(Trainer):
     def register_iter_sample(self, sampler):
         self.iter_sampler = sampler
 
-    def train_epoch(self, cur_epoch, sample=None):
+    def train_epoch(self, cur_epoch, sample=None, rank=0):
         """Sample path from supernet and train it."""
         self.model.train()
         lr = self.lr_scheduler.get_last_lr()[0]
@@ -298,7 +297,7 @@ class OneShotTrainer(Trainer):
         self.writer.add_scalar('train/lr', lr, cur_step)
         self.train_meter.iter_tic()
         for cur_iter, (inputs, labels) in enumerate(self.train_loader):
-            inputs, labels = inputs.to(self.device), labels.to(self.device, non_blocking=True)
+            inputs, labels = inputs.to(rank), labels.to(rank, non_blocking=True)
             # sample subnet
             if self.sample_type == 'iter':
                 sample = self.iter_sampler.suggest()
@@ -333,11 +332,11 @@ class OneShotTrainer(Trainer):
         return top1_err
 
     @torch.no_grad()
-    def test_epoch(self, cur_epoch, sample=None):
+    def test_epoch(self, cur_epoch, sample=None, rank=0):
         self.model.eval()
         self.test_meter.iter_tic()
         for cur_iter, (inputs, labels) in enumerate(self.test_loader):
-            inputs, labels = inputs.to(self.device), labels.to(self.device, non_blocking=True)
+            inputs, labels = inputs.to(rank), labels.to(rank, non_blocking=True)
             # sample subnet
             if self.sample_type == 'iter':
                 sample = self.iter_sampler.suggest()
@@ -363,12 +362,12 @@ class OneShotTrainer(Trainer):
         return top1_err
             
     @torch.no_grad()
-    def evaluate_epoch(self, sample):
+    def evaluate_epoch(self, sample, rank=0):
         """Return performance of the given sample (subnet)"""
         self.model.eval()
         # choice = self.evaluate_sampler.suggest()
         for cur_iter, (inputs, labels) in enumerate(self.test_loader):
-            inputs, labels = inputs.to(self.device), labels.to(self.device, non_blocking=True)
+            inputs, labels = inputs.to(rank), labels.to(rank, non_blocking=True)
             preds = self.model(inputs, sample)
             top1_err, top5_err = meter.topk_errors(preds, labels, [1, 5])
             top1_err, top5_err = top1_err.item(), top5_err.item()
@@ -387,14 +386,14 @@ class KDTrainer(Trainer):
         from xnas.runner.criterion import CrossEntropyLoss_soft_target
         self.celoss_st = CrossEntropyLoss_soft_target
     
-    def train_epoch(self, cur_epoch):
+    def train_epoch(self, cur_epoch, rank=0):
         self.model.train()
         lr = self.lr_scheduler.get_last_lr()[0]
         cur_step = cur_epoch * len(self.train_loader)
         self.writer.add_scalar('train/lr', lr, cur_step)
         self.train_meter.iter_tic()
         for cur_iter, (inputs, labels) in enumerate(self.train_loader):
-            inputs, labels = inputs.to(self.device), labels.to(self.device, non_blocking=True)
+            inputs, labels = inputs.to(rank), labels.to(rank, non_blocking=True)
             preds = self.model(inputs)
             loss = self.criterion(preds, labels)
             

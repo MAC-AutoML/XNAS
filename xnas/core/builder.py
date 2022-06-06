@@ -181,5 +181,3 @@ def setup_env():
         # Configure the CUDNN backend
         torch.backends.cudnn.benchmark = cfg.CUDNN_BENCH
 
-    # DP
-    return torch.device('cuda:0' if torch.cuda.is_available() and cfg.NUM_GPUS else 'cpu')
