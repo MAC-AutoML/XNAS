@@ -3,7 +3,6 @@
 import os
 import copy
 import random
-import logging
 
 import torch
 import torch.nn as nn
@@ -11,7 +10,7 @@ import torch.nn.functional as F
 
 import xnas.core.config as config
 import xnas.logger.meter as meter
-import xnas.logger.logging as log
+import xnas.logger.logging as logging
 from xnas.core.config import cfg
 from xnas.core.builder import *
 from xnas.logger.checkpoint import get_last_checkpoint
@@ -29,7 +28,7 @@ from xnas.spaces.OFA.utils import init_model, list_mean
 
 # Load config and check
 config.load_configs()
-logger = log.get_logger(__name__)
+logger = logging.get_logger(__name__)
 # Upper dir for supernet
 upper_dir = os.path.join(*cfg.OUT_DIR.split('/')[:-1]) 
 
@@ -157,9 +156,6 @@ class OFATrainer(KDTrainer):
         self.train_meter.iter_tic()
         self.train_loader.sampler.set_epoch(cur_epoch)  # DDP
         for cur_iter, (inputs, labels) in enumerate(self.train_loader):
-            # [debug]
-            if cur_iter > 20:
-                break
             inputs, labels = inputs.to(rank), labels.to(rank, non_blocking=True)
             
             # Adjust lr per iter
@@ -232,9 +228,6 @@ class OFATrainer(KDTrainer):
         self.model.eval()
         self.test_meter.iter_tic()
         for cur_iter, (inputs, labels) in enumerate(self.test_loader):
-            # [debug]
-            if cur_iter > 20:
-                break
             inputs, labels = inputs.to(rank), labels.to(rank, non_blocking=True)
             preds = self.model(inputs)
             top1_err, top5_err = meter.topk_errors(preds, labels, [1, 5])
