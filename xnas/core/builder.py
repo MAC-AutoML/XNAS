@@ -25,9 +25,8 @@ from xnas.runner.optimizer import optimizer_builder
 from xnas.runner.criterion import criterion_builder
 from xnas.runner.scheduler import lr_scheduler_builder
 
-
 __all__ = [
-    'construct_loader', 
+    'construct_loader',
     'optimizer_builder',
     'criterion_builder',
     'lr_scheduler_builder',
@@ -36,7 +35,6 @@ __all__ = [
     'evaluator_builder',
     'setup_env',
 ]
-
 
 # -------------------------------------------------------- #
 # Search Spaces Builder
@@ -53,7 +51,7 @@ from xnas.spaces.DropNAS.cnn import _DropNASCNN
 from xnas.spaces.OFA.MobileNetV3.ofa_cnn import _OFAMobileNetV3
 from xnas.spaces.OFA.ProxylessNet.ofa_cnn import _OFAProxylessNASNet
 from xnas.spaces.OFA.ResNets.ofa_cnn import _OFAResNet
-
+from xnas.spaces.NBmacro.cnn import _NBm_child_train, _NBm_sup_train
 
 SUPPORTED_SPACES = {
     "darts": _DartsCNN,
@@ -65,6 +63,7 @@ SUPPORTED_SPACES = {
     "gdas_nb201": _GDAS_nb201_CNN,
     "dropnas": _DropNASCNN,
     "spos": _SPOS_CNN,
+    "nbm": _NBm_sup_train(),
     "ofa_mbv3": _OFAMobileNetV3,
     "ofa_proxyless": _OFAProxylessNASNet,
     "ofa_resnet": _OFAResNet,
@@ -73,6 +72,7 @@ SUPPORTED_SPACES = {
     "infer_nb201": _infer_NASBench201,
     "infer_spos": _infer_SPOS_CNN,
 }
+
 
 def space_builder(**kwargs):
     err_str = "Model type '{}' not supported".format(cfg.SPACE.NAME)
@@ -130,6 +130,7 @@ SUPPORTED_EVALUATIONS = {
     "nasbench301": ["darts", "pdarts", "pcdarts", "drnas_darts", "dropnas"],
 }
 
+
 def evaluator_builder():
     """Evaluator builder.
 
@@ -152,10 +153,10 @@ def evaluator_builder():
     return None
 
 
-
 # -------------------------------------------------------- #
 
 logger = logging.get_logger(__name__)
+
 
 def setup_env():
     """Set up environment for training or testing."""
