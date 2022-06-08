@@ -1,7 +1,6 @@
 import torch.nn as nn
 from collections import OrderedDict
 import numpy as np
-import torch
 
 candidate_OP = ['id', 'ir_3x3_t3', 'ir_5x5_t6']
 OPS = OrderedDict()
@@ -45,7 +44,7 @@ class InvertedResidual(nn.Module):
         assert stride in [1, 2]
         hidden_dim = round(inp * t)
         if t == 1:
-            self.conv = nn.Sequential(
+            self.feature = nn.Sequential(
                 # dw
                 nn.Conv2d(hidden_dim, hidden_dim, k, stride, padding=k // 2, groups=hidden_dim,
                           bias=False),
@@ -56,7 +55,7 @@ class InvertedResidual(nn.Module):
                 nn.BatchNorm2d(oup, affine=self.affine)
             )
         else:
-            self.conv = nn.Sequential(
+            self.feature = nn.Sequential(
                 # pw
                 nn.Conv2d(inp, hidden_dim, 1, 1, 0, bias=False),
                 nn.BatchNorm2d(hidden_dim, affine=self.affine),
@@ -74,13 +73,13 @@ class InvertedResidual(nn.Module):
 
     def forward(self, x):
         if self.use_shortcut:
-            return self.conv(x) + x
-        return self.conv(x)
+            return self.feature(x) + x
+        return self.feature(x)
 
 
 class NBM(nn.Module):
     def __init__(self, num_classes=10, stages=[2, 3, 3], init_channels=32, supernet=True):
-        super(Network, self).__init__()
+        super(NBM, self).__init__()
         self.supernet = supernet
         if supernet:
             self.affine = False
@@ -113,15 +112,44 @@ class NBM(nn.Module):
         )
         self.classifier = nn.Linear(1280, num_classes)
 
-    def forward(self, x, arch):
+    def weights(self):
+        return self.parameters()
+
+    def forward(self, x, choice):
         if self.supernet == True:
-            arch = np.random.randint(3, size=8)
+            choice = np.random.randint(3, size=8)
         x = self.stem(x)
-        for i, j in enumerate(arch):
+        for i, j in enumerate(choice):
             x = self.choice_block[i][j](x)
         x = self.out(x)
         out = self.classifier(x.view(x.size(0), -1))
         return out
+
+    # def _initialize_weights(self):
+    #     for name, m in self.named_modules():
+    #         if isinstance(m, nn.Conv2d):
+    #             if 'first' in name:
+    #                 nn.init.normal_(m.weight, 0, 0.01)
+    #             else:
+    #                 nn.init.normal_(m.weight, 0, 1.0 / m.weight.shape[1])
+    #             if m.bias is not None:
+    #                 nn.init.constant_(m.bias, 0)
+    #         elif isinstance(m, nn.BatchNorm2d):
+    #             if m.weight is not None:
+    #                 nn.init.constant_(m.weight, 1)
+    #             if m.bias is not None:
+    #                 nn.init.constant_(m.bias, 0.0001)
+    #             nn.init.constant_(m.running_mean, 0)
+    #         elif isinstance(m, nn.BatchNorm1d):
+    #             nn.init.constant_(m.weight, 1)
+    #             if m.bias is not None:
+    #                 nn.init.constant_(m.bias, 0.0001)
+    #             nn.init.constant_(m.running_mean, 0)
+    #         elif isinstance(m, nn.Linear):
+    #             nn.init.normal_(m.weight, 0, 0.01)
+    #             if m.bias is not None:
+    #                 nn.init.constant_(m.bias, 0)
+
 
 
 def _NBm_sup_train():

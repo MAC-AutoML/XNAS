@@ -63,7 +63,7 @@ SUPPORTED_SPACES = {
     "gdas_nb201": _GDAS_nb201_CNN,
     "dropnas": _DropNASCNN,
     "spos": _SPOS_CNN,
-    "nbm": _NBm_sup_train(),
+    "nbm": _NBm_sup_train,
     "ofa_mbv3": _OFAMobileNetV3,
     "ofa_proxyless": _OFAProxylessNASNet,
     "ofa_resnet": _OFAResNet,
