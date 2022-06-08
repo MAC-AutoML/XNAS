@@ -1,4 +1,6 @@
-"""Single Path One-Shot"""
+"""
+    NBmacro: only (8 layers * 3 choices) + CIFAR10
+"""
 
 import xnas.core.config as config
 import xnas.logger.logging as logging
