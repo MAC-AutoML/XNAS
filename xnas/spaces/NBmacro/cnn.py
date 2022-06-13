@@ -81,6 +81,7 @@ class NBM(nn.Module):
     def __init__(self, num_classes=10, stages=[2, 3, 3], init_channels=32, supernet=True):
         super(NBM, self).__init__()
         self.supernet = supernet
+        self.stages = np.cumsum(stages)
         if supernet:
             self.affine = False
         else:
@@ -116,15 +117,26 @@ class NBM(nn.Module):
         return self.parameters()
 
     def forward(self, x, choice):
-        if self.supernet == True:
-            choice = np.random.randint(3, size=8)
+        # if self.supernet == True:
+        #     choice = np.random.randint(3, size=8)
         x = self.stem(x)
         for i, j in enumerate(choice):
             x = self.choice_block[i][j](x)
         x = self.out(x)
         out = self.classifier(x.view(x.size(0), -1))
         return out
-
+    def forward_with_features(self,x, choice):
+        x = self.stem(x)
+        cur_stages = 1
+        out_features = []
+        for i, j in enumerate(choice):
+            x = self.choice_block[i][j](x)
+            if cur_stages in self.stages:
+                out_features.append(x)
+            cur_stages += 1
+        x = self.out(x)
+        out = self.classifier(x.view(x.size(0), -1))
+        return out_features, out
     # def _initialize_weights(self):
     #     for name, m in self.named_modules():
     #         if isinstance(m, nn.Conv2d):
