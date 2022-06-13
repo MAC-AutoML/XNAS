@@ -1,6 +1,6 @@
 import json
 
-with open(r'.\nas-bench-macro_cifar10.json', 'r+', encoding='utf-8') as data_file:
+with open('xnas/evaluations/NASBenchmacro/nas-bench-macro_cifar10.json', 'r+', encoding='utf-8') as data_file:
     data = json.load(data_file)
 
 

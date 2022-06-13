@@ -181,4 +181,6 @@ def setup_env():
     else:
         # Configure the CUDNN backend
         torch.backends.cudnn.benchmark = cfg.CUDNN_BENCH
+    device = 'cuda:0'
+    return device
 

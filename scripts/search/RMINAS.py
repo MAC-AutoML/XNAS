@@ -1,3 +1,5 @@
+import pickle
+import sys
 import time
 import numpy as np
 
@@ -21,17 +23,24 @@ config.load_configs()
 logger = logging.get_logger(__name__)
 
 # RMINAS hyperparameters initialization
-nb201_api = None
 RF_space = None
+api = None
 
 def rminas_hp_builder():
-    global nb201_api, RF_space
+    global RF_space, api
     if cfg.SPACE.NAME == 'infer_nb201':
-        from nas_201_api import NASBench201API as api
-        nb201_api = api(cfg.BENCHMARK.NB201PATH)
+        from nas_201_api import NASBench201API
+        api = NASBench201API(cfg.BENCHMARK.NB201PATH)
         RF_space = 'nasbench201'
     elif cfg.SPACE.NAME == 'infer_darts':
         RF_space = 'darts'
+    elif cfg.SPACE.NAME == 'nbm':
+        RF_space = 'nbm'
+        from xnas.evaluations.NASBenchmacro.evaluate import Nbm_Eva, data
+        api = data
+            # for example : arch = '00000000'
+            # arch = ''
+            # Nbm_Eva(arch)
 
 
 def main():    
@@ -39,7 +48,7 @@ def main():
     
     rminas_hp_builder()
     
-    assert cfg.SPACE.NAME in ['infer_nb201', 'infer_darts']
+    assert cfg.SPACE.NAME in ['infer_nb201', 'infer_darts',"nbm"]
     assert cfg.LOADER.DATASET in ['cifar10', 'cifar100', 'imagenet', 'imagenet16_120'], 'dataset error'
 
     if cfg.LOADER.DATASET == 'cifar10':
@@ -76,26 +85,26 @@ def main():
         network = get_cell_based_tiny_net(net_config) 
         network.load_state_dict(result.get_net_param())
     
-    network.to(device)
+    network.cuda()
     
     """selecting well-performed data."""
     more_data_X, more_data_y = get_random_data(cfg.LOADER.BATCH_SIZE, cfg.LOADER.DATASET)
     with torch.no_grad():
-        ce_loss = torch.nn.CrossEntropyLoss(reduction='none').to(device)
+        ce_loss = torch.nn.CrossEntropyLoss(reduction='none').cuda()
         more_logits = network(more_data_X)
         _, indices = torch.topk(-ce_loss(more_logits, more_data_y).cpu().detach(), cfg.LOADER.BATCH_SIZE)
-    data_y = torch.Tensor([more_data_y[i] for i in indices]).long().to(device)
-    data_X = torch.Tensor([more_data_X[i].cpu().numpy() for i in indices]).to(device)
+    data_y = torch.Tensor([more_data_y[i] for i in indices]).long().cuda()
+    data_X = torch.Tensor([more_data_X[i].cpu().numpy() for i in indices]).cuda()
     with torch.no_grad():
         feature_res = network.feature_extractor(data_X)
     
-    RFS = RF_suggest(space=RF_space, logger=logger, api=nb201_api, thres_rate=cfg.RMINAS.RF_THRESRATE, seed=cfg.RNG_SEED)
+    RFS = RF_suggest(space=RF_space, logger=logger, api=api, thres_rate=cfg.RMINAS.RF_THRESRATE, seed=cfg.RNG_SEED)
 
     # loss function
     loss_fun_cka = RMI_loss(data_X.size()[0])
     loss_fun_cka = loss_fun_cka.requires_grad_()
-    loss_fun_cka.to(device)
-    loss_fun_log = torch.nn.CrossEntropyLoss().to(device)
+    loss_fun_cka.cuda()
+    loss_fun_log = torch.nn.CrossEntropyLoss().cuda()
         
     def train_arch(modelinfo):      
         if cfg.SPACE.NAME == 'infer_nb201':
@@ -103,48 +112,71 @@ def main():
             arch_config = {
                 'name': 'infer.tiny', 
                 'C': 16, 'N': 5, 
-                'arch_str':nb201_api.arch(modelinfo), 
+                'arch_str':api.arch(modelinfo), 
                 'num_classes': cfg.LOADER.NUM_CLASSES}
             net_config = dict2config(arch_config, None)
-            model = get_cell_based_tiny_net(net_config).to(device)
+            model = get_cell_based_tiny_net(net_config).cuda()
         elif cfg.SPACE.NAME == 'infer_darts':
             cfg.TRAIN.GENOTYPE = str(modelinfo)
-            model = space_builder().to(device)
+            model = space_builder().cuda()
+        elif cfg.SPACE.NAME == 'nbm':
+            model = space_builder().cuda()
+
+            optimizer = optimizer_builder("SGD", model.parameters())
+            # lr_scheduler = lr_scheduler_builder(optimizer)
+
+            # nbm_trainer = OneShotTrainer(
+            #     supernet=model,
+            #     criterion=criterion,
+            #     optimizer=optimizer,
+            #     lr_scheduler=lr_scheduler,
+            #     train_loader=train_loader,
+            #     test_loader=valid_loader,
+            #     sample_type='iter'
+            # )
         
         model.train()
         # weights optimizer
         optimizer = optimizer_builder("SGD", model.parameters())
-
+        epoch_losses = []
         for cur_epoch in range(1, cfg.OPTIM.MAX_EPOCH+1):
             optimizer.zero_grad()
             
-            features, logits = model.forward_with_features(data_X)
+            features, logits = model.forward_with_features(data_X, modelinfo)
             loss_cka = loss_fun_cka(features, feature_res)
             loss_logits = loss_fun_log(logits, data_y)
             loss = cfg.RMINAS.LOSS_BETA * loss_cka + (1-cfg.RMINAS.LOSS_BETA)*loss_logits
             loss.backward()
 
             optimizer.step()
-            
+            epoch_losses.append(loss.detach().cpu().item())
             if cur_epoch == cfg.OPTIM.MAX_EPOCH:
-                return loss.cpu().detach().numpy()
+                return loss.cpu().detach().numpy(), epoch_losses
     
     trained_arch_darts, trained_loss = [], []
     def train_procedure(sample):
         if cfg.SPACE.NAME == 'infer_nb201':
-            mixed_loss = train_arch(sample)
+            mixed_loss = train_arch(sample)[0]
             mixed_loss = np.inf if np.isnan(mixed_loss) else mixed_loss
             trained_loss.append(mixed_loss)
-            arch_arr = sampling.nb201genostr2array(nb201_api.arch(sample))
+            arch_arr = sampling.nb201genostr2array(api.arch(sample))
             RFS.trained_arch.append({'arch':arch_arr, 'loss':mixed_loss})
             RFS.trained_arch_index.append(sample)
         elif cfg.SPACE.NAME == 'infer_darts':
             sample_geno = geno_from_alpha(sampling.darts_sug2alpha(sample))  # type=Genotype
             trained_arch_darts.append(str(sample_geno))
-            mixed_loss = train_arch(sample_geno)
+            mixed_loss = train_arch(sample_geno)[0]
             mixed_loss = np.inf if np.isnan(mixed_loss) else mixed_loss
             trained_loss.append(mixed_loss)
             RFS.trained_arch.append({'arch':sample, 'loss':mixed_loss})
+        elif cfg.SPACE.NAME == 'nbm':
+            sample_geno = ''.join(sample.astype('str'))  # type=Genotype
+            trained_arch_darts.append((sample_geno))
+            mixed_loss, epoch_losses = train_arch(sample)
+            mixed_loss = np.inf if np.isnan(mixed_loss) else mixed_loss
+            trained_loss.append(mixed_loss)
+            RFS.trained_arch.append({'arch':sample, 'loss':mixed_loss,'gt':api[sample_geno]['mean_acc'],'losses':epoch_losses})
+            
         logger.info("sample: {}, loss:{}".format(sample, mixed_loss))
     
     start_time = time.time()
@@ -155,11 +187,25 @@ def main():
         train_procedure(sample)
     RFS.Warmup()
     logger.info('warmup time cost: {}'.format(str(time.time() - start_time)))
-    
+    # with open('./rmi_nbm.pkl','wb') as f:
+    #     pickle.dump(RFS.trained_arch,f)
+    # gt = np.array([_['gt'] for _ in RFS.trained_arch])
+    # losses = np.array([_['losses'] for _ in RFS.trained_arch])
+    # from scipy.stats import kendalltau
+    # kdts = []
+    # for epoch in range(losses.shape[-1]):
+    #     kdts.append(kendalltau(gt, -losses[:, epoch]).correlation)
+    # import matplotlib.pyplot as plt
+    # plt.plot(kdts)
+    # plt.xlabel('epoch')
+    # plt.ylabel('kdt')
+    # plt.savefig('rmi_nbm.png')
+    # sys.exit()
     # ====== RF Sampling ======
     sampling_time = time.time()
     sampling_cnt= 0
     while sampling_cnt < cfg.RMINAS.RF_SUCC:
+        print(sampling_cnt)
         sample = RFS.fitting_samples()
         train_procedure(sample)
         sampling_cnt += RFS.Fitting()
@@ -180,7 +226,12 @@ def main():
         op_alpha = torch.from_numpy(np.r_[op_sample, op_sample])
         op_geno = reformat_DARTS(geno_from_alpha(op_alpha))
         logger.info('Searched architecture@top50:\n{}'.format(str(op_geno)))
-
+    elif cfg.SPACE.NAME == 'nbm':
+        op_sample = RFS.optimal_arch(method='sum', top=50)
+        # op_alpha = torch.from_numpy(np.r_[op_sample, op_sample])
+        # op_geno = reformat_DARTS(geno_from_alpha(op_alpha))
+        logger.info('Searched architecture@top50:\n{}'.format(str(op_sample)))
+        print(api[op_sample]['mean_acc'])
 
 if __name__ == '__main__':
     main()
