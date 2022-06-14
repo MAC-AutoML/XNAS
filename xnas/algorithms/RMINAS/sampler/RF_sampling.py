@@ -30,7 +30,7 @@ class RF_suggest():
             self.num_estimator = 98
         elif self.space == 'mb':
             self.num_estimator = 140
-        elif self.space == 'nbm':
+        elif self.space == 'nasbenchmacro':
             self.api = api
             self.max_space = int(3**8)
             self.num_estimator = 30
@@ -72,7 +72,7 @@ class RF_suggest():
             return [self._single_sample() for _ in range(num_warmup)]
         elif self.space == 'mb':
             return [self._single_sample() for _ in range(num_warmup)]
-        elif self.space == 'nbm':
+        elif self.space == 'nasbenchmacro':
             return [self._single_sample() for _ in range(num_warmup)]
     
     def _single_sample(self, unique=True):
@@ -115,7 +115,7 @@ class RF_suggest():
                     j = np.random.randint(7)
                     c[i, j] = True
                 return c
-        elif self.space == 'nbm':
+        elif self.space == 'nasbenchmacro':
             if unique:
                 while True:
                     numeric_choice = np.random.randint(3,size=8)
@@ -170,7 +170,7 @@ class RF_suggest():
             best_id = np.argmax(self.model.predict_proba(_sample_archs)[:,1])
             best_arch = _sample_archs[best_id].reshape((20, 7))
             return best_arch
-        elif self.space == 'nbm':
+        elif self.space == 'nasbenchmacro':
             _sample_indexes = np.random.choice(self.max_space, size=self.batch, replace=False)
             chace_table = set(str(i['arch'].ravel()) for i in self.trained_arch)
             _sample_archs = []
@@ -297,7 +297,7 @@ class RF_suggest():
             op_arr = np.zeros((_tmp_np.size, 7))
             op_arr[np.arange(_tmp_np.size),_tmp_np] = 1
             return op_arr
-        elif self.space == 'nbm':
+        elif self.space == 'nasbenchmacro':
             assert method == 'sum', 'only sum is supported in mb.'
             estimate_archs = np.eye(3)[estimate_archs]
             all_sum = estimate_archs.sum(0)

@@ -51,7 +51,7 @@ from xnas.spaces.DropNAS.cnn import _DropNASCNN
 from xnas.spaces.OFA.MobileNetV3.ofa_cnn import _OFAMobileNetV3
 from xnas.spaces.OFA.ProxylessNet.ofa_cnn import _OFAProxylessNASNet
 from xnas.spaces.OFA.ResNets.ofa_cnn import _OFAResNet
-from xnas.spaces.NBmacro.cnn import _NBm_child_train, _NBm_sup_train
+from xnas.spaces.NASBenchMacro.cnn import _NBMacro_child_train, _NBMacro_sup_train
 
 SUPPORTED_SPACES = {
     "darts": _DartsCNN,
@@ -63,7 +63,7 @@ SUPPORTED_SPACES = {
     "gdas_nb201": _GDAS_nb201_CNN,
     "dropnas": _DropNASCNN,
     "spos": _SPOS_CNN,
-    "nbm": _NBm_sup_train,
+    "nasbenchmacro": _NBMacro_sup_train,
     "ofa_mbv3": _OFAMobileNetV3,
     "ofa_proxyless": _OFAProxylessNASNet,
     "ofa_resnet": _OFAResNet,
@@ -128,6 +128,7 @@ def SNG_builder(category):
 SUPPORTED_EVALUATIONS = {
     "nasbench201": ["nasbench201", "drnas_nb201", "gdas_nb201"],
     "nasbench301": ["darts", "pdarts", "pcdarts", "drnas_darts", "dropnas"],
+    "nasbenchmacro": ["nasbenchmacro"]
 }
 
 
@@ -150,6 +151,9 @@ def evaluator_builder():
         elif cfg.SEARCH.EVALUATION == "nasbench301":
             import xnas.evaluations.NASBench301 as nb301
             return nb301.evaluate
+        elif cfg.SEARCH.EVALUATION == "nasbenchmacro":
+            import xnas.evaluations.NASBenchMacro.evaluate as NBMevaluate
+            return NBMevaluate.evaluate
     return None
 
 
@@ -181,6 +185,6 @@ def setup_env():
     else:
         # Configure the CUDNN backend
         torch.backends.cudnn.benchmark = cfg.CUDNN_BENCH
-    device = 'cuda:0'
+    device = 'cuda:0'   # TODO: ddp support
     return device
 

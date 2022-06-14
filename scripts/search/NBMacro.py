@@ -1,5 +1,5 @@
 """
-    NBmacro: only (8 layers * 3 choices) + CIFAR10
+    NAS-Bench-Macro: only (8 layers * 3 choices) + CIFAR10
 """
 
 import xnas.core.config as config
@@ -59,7 +59,7 @@ def main():
     # best_arch, best_top1err = evaluate_sampler.final_best()
     # logger.info("Best arch: {} \nTop1 error: {}".format(best_arch, best_top1err))
 
-    # from xnas.evaluations.NASBenchmacro.evaluate import Nbm_Eva
+    # from xnas.evaluations.NASBenchMacro.evaluate import evaluate
     # # for example : arch = '00000000'
     # arch = ''
     # Nbm_Eva(arch)

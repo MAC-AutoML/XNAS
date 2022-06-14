@@ -164,12 +164,12 @@ class NBM(nn.Module):
 
 
 
-def _NBm_sup_train():
+def _NBMacro_sup_train():
     return NBM(
         supernet=True
     )
 
-def _NBm_child_train():
+def _NBMacro_child_train():
     return NBM(
         supernet=False
     )

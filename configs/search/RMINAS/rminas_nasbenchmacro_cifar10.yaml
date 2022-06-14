@@ -1,5 +1,5 @@
 SPACE:
-  NAME: 'nbm'
+  NAME: 'nasbenchmacro'
 LOADER:
   DATASET: 'cifar10'
   NUM_CLASSES: 10

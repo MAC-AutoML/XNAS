@@ -34,13 +34,13 @@ def rminas_hp_builder():
         RF_space = 'nasbench201'
     elif cfg.SPACE.NAME == 'infer_darts':
         RF_space = 'darts'
-    elif cfg.SPACE.NAME == 'nbm':
-        RF_space = 'nbm'
-        from xnas.evaluations.NASBenchmacro.evaluate import Nbm_Eva, data
+    elif cfg.SPACE.NAME == 'nasbenchmacro':
+        RF_space = 'nasbenchmacro'
+        from xnas.evaluations.NASBenchMacro.evaluate import evaluate, data
         api = data
             # for example : arch = '00000000'
             # arch = ''
-            # Nbm_Eva(arch)
+            # evaluate(arch)
 
 
 def main():    
@@ -48,7 +48,7 @@ def main():
     
     rminas_hp_builder()
     
-    assert cfg.SPACE.NAME in ['infer_nb201', 'infer_darts',"nbm"]
+    assert cfg.SPACE.NAME in ['infer_nb201', 'infer_darts',"nasbenchmacro"]
     assert cfg.LOADER.DATASET in ['cifar10', 'cifar100', 'imagenet', 'imagenet16_120'], 'dataset error'
 
     if cfg.LOADER.DATASET == 'cifar10':
@@ -119,9 +119,8 @@ def main():
         elif cfg.SPACE.NAME == 'infer_darts':
             cfg.TRAIN.GENOTYPE = str(modelinfo)
             model = space_builder().cuda()
-        elif cfg.SPACE.NAME == 'nbm':
+        elif cfg.SPACE.NAME == 'nasbenchmacro':
             model = space_builder().cuda()
-
             optimizer = optimizer_builder("SGD", model.parameters())
             # lr_scheduler = lr_scheduler_builder(optimizer)
 
@@ -169,7 +168,7 @@ def main():
             mixed_loss = np.inf if np.isnan(mixed_loss) else mixed_loss
             trained_loss.append(mixed_loss)
             RFS.trained_arch.append({'arch':sample, 'loss':mixed_loss})
-        elif cfg.SPACE.NAME == 'nbm':
+        elif cfg.SPACE.NAME == 'nasbenchmacro':
             sample_geno = ''.join(sample.astype('str'))  # type=Genotype
             trained_arch_darts.append((sample_geno))
             mixed_loss, epoch_losses = train_arch(sample)
@@ -226,7 +225,7 @@ def main():
         op_alpha = torch.from_numpy(np.r_[op_sample, op_sample])
         op_geno = reformat_DARTS(geno_from_alpha(op_alpha))
         logger.info('Searched architecture@top50:\n{}'.format(str(op_geno)))
-    elif cfg.SPACE.NAME == 'nbm':
+    elif cfg.SPACE.NAME == 'nasbenchmacro':
         op_sample = RFS.optimal_arch(method='sum', top=50)
         # op_alpha = torch.from_numpy(np.r_[op_sample, op_sample])
         # op_geno = reformat_DARTS(geno_from_alpha(op_alpha))
