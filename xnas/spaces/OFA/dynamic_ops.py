@@ -56,7 +56,7 @@ class DynamicSeparableConv2d(nn.Module):
                 param_name = "%dto%d" % (ks_larger, ks_small)
                 # noinspection PyArgumentList
                 scale_params["%s_matrix" % param_name] = Parameter(
-                    torch.eye(ks_small ** 2)
+                    torch.eye(ks_small ** 2), requires_grad=True
                 )
             for name, param in scale_params.items():
                 self.register_parameter(name, param)

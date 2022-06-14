@@ -51,8 +51,6 @@ class ImageFolder():
         if not self.use_val:
             assert sum(self.split) == 1, "Summation of split should be 1"
         
-        print(cfg.NUM_GPUS)
-        
         self.msrc = None
         self.loader = torch.utils.data.DataLoader
         # self.collate_fn = None

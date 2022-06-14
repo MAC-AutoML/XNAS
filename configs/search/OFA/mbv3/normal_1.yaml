@@ -3,7 +3,7 @@
 # https://github.com/skhu101/GM-NAS/blob/main/once-for-all-GM/train_ofa_net.py
 # --------------
 
-NUM_GPUS: 2
+NUM_GPUS: 4
 SPACE:
   NAME: 'ofa_mbv3'
 LOADER:

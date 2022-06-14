@@ -54,7 +54,8 @@ def save_checkpoint(model, epoch, checkpoint_dir=None, best=False, **kwargs):
         checkpoint_dir = get_checkpoint_dir()
     os.makedirs(checkpoint_dir, exist_ok=True)
     
-    sd = model.module.state_dict() if cfg.NUM_GPUS > 1 else model.state_dict()
+    ms = model.module if isinstance(model, torch.nn.parallel.DistributedDataParallel) else model
+    sd = ms.state_dict()
     checkpoint = {
         "epoch": epoch,
         "model_state": sd,
@@ -75,7 +76,7 @@ def load_checkpoint(checkpoint_file, model):
     # Load the checkpoint on CPU to avoid GPU mem spike
     checkpoint = torch.load(checkpoint_file, map_location="cpu")
     # Account for the DDP wrapper in the multi-gpu setting
-    ms = model.module if cfg.NUM_GPUS > 1 else model
+    ms = model.module if isinstance(model, torch.nn.parallel.DistributedDataParallel) else model
     ms.load_state_dict(checkpoint["model_state"])
     # Load the optimizer state (commonly not done when fine-tuning)
     others = {}
