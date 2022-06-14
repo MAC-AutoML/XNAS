@@ -28,12 +28,13 @@ def get_checkpoint_name(epoch, checkpoint_dir=None, best=False):
         return os.path.join(checkpoint_dir, name)
 
 
-def get_last_checkpoint(checkpoint_dir=None):
+def get_last_checkpoint(checkpoint_dir=None, best=False):
     """Retrieves the most recent checkpoint (highest epoch number)."""
     if checkpoint_dir is None:
         checkpoint_dir = get_checkpoint_dir()
     # Checkpoint file names are in lexicographic order
-    checkpoints = [f for f in os.listdir(checkpoint_dir) if _NAME_PREFIX in f]
+    filename = "best_" + _NAME_PREFIX if best else _NAME_PREFIX
+    checkpoints = [f for f in os.listdir(checkpoint_dir) if filename in f]
     last_checkpoint_name = sorted(checkpoints)[-1]
     return os.path.join(checkpoint_dir, last_checkpoint_name)
 
@@ -53,7 +54,8 @@ def save_checkpoint(model, epoch, checkpoint_dir=None, best=False, **kwargs):
         checkpoint_dir = get_checkpoint_dir()
     os.makedirs(checkpoint_dir, exist_ok=True)
     
-    sd = model.module.state_dict() if cfg.NUM_GPUS > 1 else model.state_dict()
+    ms = model.module if isinstance(model, torch.nn.parallel.DistributedDataParallel) else model
+    sd = ms.state_dict()
     checkpoint = {
         "epoch": epoch,
         "model_state": sd,
@@ -74,7 +76,7 @@ def load_checkpoint(checkpoint_file, model):
     # Load the checkpoint on CPU to avoid GPU mem spike
     checkpoint = torch.load(checkpoint_file, map_location="cpu")
     # Account for the DDP wrapper in the multi-gpu setting
-    ms = model.module if cfg.NUM_GPUS > 1 else model
+    ms = model.module if isinstance(model, torch.nn.parallel.DistributedDataParallel) else model
     ms.load_state_dict(checkpoint["model_state"])
     # Load the optimizer state (commonly not done when fine-tuning)
     others = {}

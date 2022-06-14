@@ -17,8 +17,8 @@ config.load_configs()
 logger = logging.get_logger(__name__)
 
 def main():
-    setup_env()
-    criterion = criterion_builder().cuda()
+    device = setup_env()
+    criterion = criterion_builder().to(device)
     evaluator = evaluator_builder()
 
     [train_loader, valid_loader] = construct_loader()
@@ -37,7 +37,7 @@ def main():
         )
 
         # init models
-        pdarts_controller = PDartsCNNController(search_space, criterion).cuda()
+        pdarts_controller = PDartsCNNController(search_space, criterion).to(device)
         architect = Architect(pdarts_controller, cfg.OPTIM.MOMENTUM, cfg.OPTIM.WEIGHT_DECAY)
 
         # init optimizers

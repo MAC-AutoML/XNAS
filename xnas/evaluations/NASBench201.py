@@ -14,8 +14,15 @@ except ImportError:
     exit(1)
 
 
-def evaluate(genotype, **kwargs):
-    result = api.query_by_arch(genotype)
+def index_to_genotype(index):
+    return api.arch(index)
+
+def evaluate(genotype, epoch=12, **kwargs):
+    """Require info from NAS-Bench-201 API.
+    
+    Implemented following the source code of DrNAS.
+    """
+    result = api.query_by_arch(genotype, str(epoch))
     (
         cifar10_train,
         cifar10_test,
@@ -27,6 +34,7 @@ def evaluate(genotype, **kwargs):
         imagenet16_test,
     ) = distill(result)
     
+    logger.info("Evaluate with NAS-Bench-201 (Bench epoch:{})".format(epoch))
     logger.info("cifar10 train %f test %f", cifar10_train, cifar10_test)
     logger.info("cifar100 train %f valid %f test %f", cifar100_train, cifar100_valid, cifar100_test)
     logger.info("imagenet16 train %f valid %f test %f", imagenet16_train, imagenet16_valid, imagenet16_test)
@@ -37,7 +45,7 @@ def evaluate(genotype, **kwargs):
         writer.add_scalars("nasbench201/cifar10", {"train": cifar10_train, "test": cifar10_test}, cur_epoch)
         writer.add_scalars("nasbench201/cifar100", {"train": cifar100_train, "valid": cifar100_valid, "test": cifar100_test}, cur_epoch)
         writer.add_scalars("nasbench201/imagenet16", {"train": imagenet16_train, "valid": imagenet16_valid, "test": imagenet16_test}, cur_epoch)
-
+    return result
 
 # distill 201api's results
 def distill(result):

@@ -124,17 +124,19 @@ class NetworkCIFAR(nn.Module):
         self.classifier = nn.Linear(C_prev, num_classes)
 
         self._initialize_alphas()
+        
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
         #### reg
         self.reg_type = reg_type
         self.reg_scale = reg_scale
-        self.anchor_normal = Dirichlet(torch.ones_like(self.alphas_normal).cuda())
-        self.anchor_reduce = Dirichlet(torch.ones_like(self.alphas_reduce).cuda())
+        self.anchor_normal = Dirichlet(torch.ones_like(self.alphas_normal).to(self.device))
+        self.anchor_reduce = Dirichlet(torch.ones_like(self.alphas_reduce).to(self.device))
 
     def new(self):
         model_new = NetworkCIFAR(
             self._C, self._num_classes, self._layers, self._criterion
-        ).cuda()
+        ).to(self.device)
         for x, y in zip(model_new.arch_parameters(), self.arch_parameters()):
             x.data.copy_(y.data)
         return model_new
@@ -228,10 +230,10 @@ class NetworkCIFAR(nn.Module):
         num_ops = len(PRIMITIVES)
 
         self.alphas_normal = Variable(
-            1e-3 * torch.randn(k, num_ops).cuda(), requires_grad=True
+            1e-3 * torch.randn(k, num_ops).to(self.device), requires_grad=True
         )
         self.alphas_reduce = Variable(
-            1e-3 * torch.randn(k, num_ops).cuda(), requires_grad=True
+            1e-3 * torch.randn(k, num_ops).to(self.device), requires_grad=True
         )
         self._arch_parameters = [
             self.alphas_normal,
@@ -356,11 +358,13 @@ class NetworkImageNet(nn.Module):
         self.classifier = nn.Linear(C_prev, num_classes)
 
         self._initialize_alphas()
+        
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     def new(self):
         model_new = NetworkImageNet(
             self._C, self._num_classes, self._layers, self._criterion
-        ).cuda()
+        ).to(self.device)
         for x, y in zip(model_new.arch_parameters(), self.arch_parameters()):
             x.data.copy_(y.data)
         return model_new
@@ -439,10 +443,10 @@ class NetworkImageNet(nn.Module):
         num_ops = len(PRIMITIVES)
 
         self.alphas_normal = Variable(
-            1e-3 * torch.randn(k, num_ops).cuda(), requires_grad=True
+            1e-3 * torch.randn(k, num_ops).to(self.device), requires_grad=True
         )
         self.alphas_reduce = Variable(
-            1e-3 * torch.randn(k, num_ops).cuda(), requires_grad=True
+            1e-3 * torch.randn(k, num_ops).to(self.device), requires_grad=True
         )
         self._arch_parameters = [
             self.alphas_normal,

@@ -47,6 +47,8 @@ class DropNAS_CNNController(nn.Module):
 
         # self.net = DropNASCNN(C_in=C_in, C=C, n_classes=n_classes, n_layers=n_layers)
         # self.net = DropNASCNN(input_size, C_in, C, n_classes, n_layers, n_nodes, stem_multiplier)
+        
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     def forward(self, x, drop_rate):
         self.masks_normal = self.generate_masks(self.alpha_normal, drop_rate)
@@ -119,7 +121,7 @@ class DropNAS_CNNController(nn.Module):
             drop_prob_para = (drop_rate) ** (1 / 4)
             drop_prob_nopara = (drop_rate) ** (1 / 4)
             mask = torch.Tensor([generate_mask(drop_prob_para, length=4) + generate_mask(drop_prob_nopara, length=4)
-                                 for _ in range(s1)]).cuda()  # mask for each node
+                                 for _ in range(s1)]).to(self.device)  # mask for each node
             # the length of the second mask list is set to 2 in the `1-skip` search space
             masks.append(mask)
 

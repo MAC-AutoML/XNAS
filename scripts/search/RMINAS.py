@@ -1,3 +1,5 @@
+import pickle
+import sys
 import time
 import numpy as np
 
@@ -21,32 +23,40 @@ config.load_configs()
 logger = logging.get_logger(__name__)
 
 # RMINAS hyperparameters initialization
-nb201_api = None
 RF_space = None
+api = None
 
 def rminas_hp_builder():
-    global nb201_api, RF_space
+    global RF_space, api
     if cfg.SPACE.NAME == 'infer_nb201':
-        from nas_201_api import NASBench201API as api
-        nb201_api = api(cfg.BENCHMARK.NB201PATH)
+        from nas_201_api import NASBench201API
+        api = NASBench201API(cfg.BENCHMARK.NB201PATH)
         RF_space = 'nasbench201'
     elif cfg.SPACE.NAME == 'infer_darts':
         RF_space = 'darts'
+    elif cfg.SPACE.NAME == 'nasbenchmacro':
+        RF_space = 'nasbenchmacro'
+        from xnas.evaluations.NASBenchMacro.evaluate import evaluate, data
+        api = data
+            # for example : arch = '00000000'
+            # arch = ''
+            # evaluate(arch)
 
 
 def main():    
-    setup_env()
+    device = setup_env()
     
     rminas_hp_builder()
     
-    assert cfg.SPACE.NAME in ['infer_nb201', 'infer_darts']
+    assert cfg.SPACE.NAME in ['infer_nb201', 'infer_darts',"nasbenchmacro"]
     assert cfg.LOADER.DATASET in ['cifar10', 'cifar100', 'imagenet', 'imagenet16_120'], 'dataset error'
 
     if cfg.LOADER.DATASET == 'cifar10':
         from xnas.algorithms.RMINAS.teacher_model.resnet20_cifar10.resnet import resnet20
         checkpoint_res = torch.load('xnas/algorithms/RMINAS/teacher_model/resnet20_cifar10/resnet20.th')
-        network = resnet20()
+        network = torch.nn.DataParallel(resnet20())
         network.load_state_dict(checkpoint_res['state_dict'])
+        network = network.module
 
     elif cfg.LOADER.DATASET == 'cifar100':
         from xnas.algorithms.RMINAS.teacher_model.resnet101_cifar100.resnet import resnet101
@@ -88,7 +98,7 @@ def main():
     with torch.no_grad():
         feature_res = network.feature_extractor(data_X)
     
-    RFS = RF_suggest(space=RF_space, logger=logger, api=nb201_api, thres_rate=cfg.RMINAS.RF_THRESRATE, seed=cfg.RNG_SEED)
+    RFS = RF_suggest(space=RF_space, logger=logger, api=api, thres_rate=cfg.RMINAS.RF_THRESRATE, seed=cfg.RNG_SEED)
 
     # loss function
     loss_fun_cka = RMI_loss(data_X.size()[0])
@@ -102,51 +112,71 @@ def main():
             arch_config = {
                 'name': 'infer.tiny', 
                 'C': 16, 'N': 5, 
-                'arch_str':nb201_api.arch(modelinfo), 
+                'arch_str':api.arch(modelinfo), 
                 'num_classes': cfg.LOADER.NUM_CLASSES}
             net_config = dict2config(arch_config, None)
             model = get_cell_based_tiny_net(net_config).cuda()
         elif cfg.SPACE.NAME == 'infer_darts':
             cfg.TRAIN.GENOTYPE = str(modelinfo)
             model = space_builder().cuda()
+        elif cfg.SPACE.NAME == 'nasbenchmacro':
+            model = space_builder().cuda()
+            optimizer = optimizer_builder("SGD", model.parameters())
+            # lr_scheduler = lr_scheduler_builder(optimizer)
+
+            # nbm_trainer = OneShotTrainer(
+            #     supernet=model,
+            #     criterion=criterion,
+            #     optimizer=optimizer,
+            #     lr_scheduler=lr_scheduler,
+            #     train_loader=train_loader,
+            #     test_loader=valid_loader,
+            #     sample_type='iter'
+            # )
         
         model.train()
-
         # weights optimizer
         optimizer = optimizer_builder("SGD", model.parameters())
-
+        epoch_losses = []
         for cur_epoch in range(1, cfg.OPTIM.MAX_EPOCH+1):
             optimizer.zero_grad()
             
-            features, logits = model.forward_with_features(data_X)
+            features, logits = model.forward_with_features(data_X, modelinfo)
             loss_cka = loss_fun_cka(features, feature_res)
             loss_logits = loss_fun_log(logits, data_y)
             loss = cfg.RMINAS.LOSS_BETA * loss_cka + (1-cfg.RMINAS.LOSS_BETA)*loss_logits
             loss.backward()
 
             optimizer.step()
-            
+            epoch_losses.append(loss.detach().cpu().item())
             if cur_epoch == cfg.OPTIM.MAX_EPOCH:
-                return loss.cpu().detach().numpy()
-    
+                return loss.cpu().detach().numpy(), epoch_losses
     
     trained_arch_darts, trained_loss = [], []
     def train_procedure(sample):
         if cfg.SPACE.NAME == 'infer_nb201':
-            mixed_loss = train_arch(sample)
+            mixed_loss = train_arch(sample)[0]
             mixed_loss = np.inf if np.isnan(mixed_loss) else mixed_loss
             trained_loss.append(mixed_loss)
-            arch_arr = sampling.nb201genostr2array(nb201_api.arch(sample))
+            arch_arr = sampling.nb201genostr2array(api.arch(sample))
             RFS.trained_arch.append({'arch':arch_arr, 'loss':mixed_loss})
             RFS.trained_arch_index.append(sample)
         elif cfg.SPACE.NAME == 'infer_darts':
             sample_geno = geno_from_alpha(sampling.darts_sug2alpha(sample))  # type=Genotype
             trained_arch_darts.append(str(sample_geno))
-            mixed_loss = train_arch(sample_geno)
+            mixed_loss = train_arch(sample_geno)[0]
             mixed_loss = np.inf if np.isnan(mixed_loss) else mixed_loss
             trained_loss.append(mixed_loss)
             RFS.trained_arch.append({'arch':sample, 'loss':mixed_loss})
-    
+        elif cfg.SPACE.NAME == 'nasbenchmacro':
+            sample_geno = ''.join(sample.astype('str'))  # type=Genotype
+            trained_arch_darts.append((sample_geno))
+            mixed_loss, epoch_losses = train_arch(sample)
+            mixed_loss = np.inf if np.isnan(mixed_loss) else mixed_loss
+            trained_loss.append(mixed_loss)
+            RFS.trained_arch.append({'arch':sample, 'loss':mixed_loss,'gt':api[sample_geno]['mean_acc'],'losses':epoch_losses})
+            
+        logger.info("sample: {}, loss:{}".format(sample, mixed_loss))
     
     start_time = time.time()
     # ====== Warmup ======
@@ -156,11 +186,25 @@ def main():
         train_procedure(sample)
     RFS.Warmup()
     logger.info('warmup time cost: {}'.format(str(time.time() - start_time)))
-    
+    # with open('./rmi_nbm.pkl','wb') as f:
+    #     pickle.dump(RFS.trained_arch,f)
+    # gt = np.array([_['gt'] for _ in RFS.trained_arch])
+    # losses = np.array([_['losses'] for _ in RFS.trained_arch])
+    # from scipy.stats import kendalltau
+    # kdts = []
+    # for epoch in range(losses.shape[-1]):
+    #     kdts.append(kendalltau(gt, -losses[:, epoch]).correlation)
+    # import matplotlib.pyplot as plt
+    # plt.plot(kdts)
+    # plt.xlabel('epoch')
+    # plt.ylabel('kdt')
+    # plt.savefig('rmi_nbm.png')
+    # sys.exit()
     # ====== RF Sampling ======
     sampling_time = time.time()
     sampling_cnt= 0
     while sampling_cnt < cfg.RMINAS.RF_SUCC:
+        print(sampling_cnt)
         sample = RFS.fitting_samples()
         train_procedure(sample)
         sampling_cnt += RFS.Fitting()
@@ -175,13 +219,18 @@ def main():
     logger.info('Actual training times: {}'.format(len(RFS.trained_arch_index)))
     if cfg.SPACE.NAME == 'infer_nb201':
         logger.info('Searched architecture:\n{}'.format(str(RFS.optimal_arch(method='sum', top=50))))
-        # logger.info('Searched architecture:\n{}'.format(str(RFS.optimal_arch(method='greedy', top=50))))
+        logger.info('Searched architecture:\n{}'.format(str(RFS.optimal_arch(method='greedy', top=50))))
     elif cfg.SPACE.NAME == 'infer_darts':
         op_sample = RFS.optimal_arch(method='sum', top=50)
         op_alpha = torch.from_numpy(np.r_[op_sample, op_sample])
         op_geno = reformat_DARTS(geno_from_alpha(op_alpha))
         logger.info('Searched architecture@top50:\n{}'.format(str(op_geno)))
-
+    elif cfg.SPACE.NAME == 'nasbenchmacro':
+        op_sample = RFS.optimal_arch(method='sum', top=50)
+        # op_alpha = torch.from_numpy(np.r_[op_sample, op_sample])
+        # op_geno = reformat_DARTS(geno_from_alpha(op_alpha))
+        logger.info('Searched architecture@top50:\n{}'.format(str(op_sample)))
+        print(api[op_sample]['mean_acc'])
 
 if __name__ == '__main__':
     main()

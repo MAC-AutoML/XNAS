@@ -1,8 +1,11 @@
 """Image transformations."""
 
+import time
+import random
 import numpy as np
 import torch
 import torchvision.transforms as transforms
+import torchvision.transforms.functional as F
 
 
 __all__ = [
@@ -167,3 +170,52 @@ class Cutout(object):
         mask = mask.expand_as(img)
         img *= mask
         return img
+
+
+class MultiSizeRandomCrop(transforms.RandomResizedCrop):
+    """Random multi-sized crop"""
+    
+    ACTIVE_SIZE = 224
+    CANDIDATE_SIZES = [224]
+    
+    def __init__(
+        self,
+        size_list,
+        continuous=True,
+        scale=(0.08, 1.0),
+        ratio=(3.0 / 4.0, 4.0 / 3.0),
+    ):
+        self.IMAGE_SIZE_SEG = 4
+        self.SIZE_LIST = size_list
+        self.CONTINUOUS = continuous
+        MultiSizeRandomCrop.ACTIVE_SIZE = max(self.SIZE_LIST)
+        super(MultiSizeRandomCrop, self).__init__(MultiSizeRandomCrop.ACTIVE_SIZE, scale, ratio)
+        MultiSizeRandomCrop.CANDIDATE_SIZES, _ = self.get_candidate_image_size()   # do not use weighted random sampling
+        self.sample_image_size()
+
+    def forward(self, img):
+        i, j, h, w = self.get_params(img, self.scale, self.ratio)
+        return F.resized_crop(
+            img, i, j, h, w,
+            (MultiSizeRandomCrop.ACTIVE_SIZE, MultiSizeRandomCrop.ACTIVE_SIZE),
+        )
+    
+    def get_candidate_image_size(self):
+        if self.CONTINUOUS:
+            min_size = min(self.SIZE_LIST)
+            max_size = max(self.SIZE_LIST)
+            candidate_sizes = []
+            for i in range(min_size, max_size + 1):
+                if i % self.IMAGE_SIZE_SEG == 0:
+                    candidate_sizes.append(i)
+        else:
+            candidate_sizes = self.SIZE_LIST
+
+        relative_probs = None   # weighted random choices
+        return candidate_sizes, relative_probs
+
+    @staticmethod
+    def sample_image_size():
+        _seed = time.time()
+        random.seed(_seed)
+        MultiSizeRandomCrop.ACTIVE_SIZE = random.choices(MultiSizeRandomCrop.CANDIDATE_SIZES)[0]

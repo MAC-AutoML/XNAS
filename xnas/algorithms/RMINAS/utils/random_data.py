@@ -1,9 +1,11 @@
+import torch
 import random
 from xnas.datasets.loader import get_normal_dataloader
 from xnas.datasets.imagenet import ImageFolder
 
 
 def get_random_data(batchsize, name):
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     if name == 'imagenet':
         train_loader, _ = ImageFolder(
             "./data/imagenet/ILSVRC2012_img_train/", 
@@ -18,6 +20,6 @@ def get_random_data(batchsize, name):
     for i, (more_data_X, more_data_y) in enumerate(train_loader):
         if i == target_i:
             break
-    more_data_X = more_data_X.cuda()
-    more_data_y = more_data_y.cuda()
+    more_data_X = more_data_X.to(device)
+    more_data_y = more_data_y.to(device)
     return more_data_X, more_data_y

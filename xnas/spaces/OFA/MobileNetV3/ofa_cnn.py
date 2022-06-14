@@ -27,6 +27,7 @@ class OFAMobileNetV3(MobileNetV3):
         ks_list=3,
         expand_ratio_list=6,
         depth_list=4,
+        kernel_trans=1
     ):
 
         self.width_mult = width_mult
@@ -103,6 +104,7 @@ class OFAMobileNetV3(MobileNetV3):
                     stride=stride,
                     act_func=act_func,
                     use_se=use_se,
+                    kernel_trans=kernel_trans,
                 )
                 if stride == 1 and feature_dim == output_channel:
                     shortcut = IdentityLayer(feature_dim, feature_dim)
@@ -158,6 +160,9 @@ class OFAMobileNetV3(MobileNetV3):
         x = x.view(x.size(0), -1)
         x = self.classifier(x)
         return x
+    
+    def weights(self):
+        return self.parameters()
 
     @property
     def module_str(self):
@@ -404,7 +409,7 @@ def _OFAMobileNetV3():
     )
     
     return OFAMobileNetV3(
-        n_classes=cfg.SEARCH.NUM_CLASSES,
+        n_classes=cfg.LOADER.NUM_CLASSES,
         bn_param=(0.1, 1e-5),
         dropout_rate=0.1,
         base_stage_width=None,

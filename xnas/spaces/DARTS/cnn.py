@@ -66,6 +66,7 @@ class DartsCNN(nn.Module):
                               'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5', 'none'] if len(basic_op_list) == 0 else basic_op_list
         self.non_op_idx = get_op_index(self.basic_op_list, NON_PARAMETER_OP)
         self.para_op_idx = get_op_index(self.basic_op_list, PARAMETER_OP)
+        self.none_idx = 7
         C_cur = stem_multiplier * C  # 3 * 16 = 48
         self.stem = nn.Sequential(
             nn.Conv2d(self.C_in, C_cur, 3, 1, 1, bias=False),
@@ -172,7 +173,7 @@ class AugmentCell(nn.Module):
 
     def __init__(self, genotype, C_prev_prev, C_prev, C, reduction, reduction_prev):
         super(AugmentCell, self).__init__()
-        print(C_prev_prev, C_prev, C)
+        # print(C_prev_prev, C_prev, C)
 
         if reduction_prev:
             self.preprocess0 = FactorizedReduce(C_prev_prev, C)
@@ -275,6 +276,8 @@ class NetworkCIFAR(nn.Module):
         super(NetworkCIFAR, self).__init__()
         self._layers = layers
         self._auxiliary = auxiliary
+        
+        self.genotype = gt.from_str(genotype)
 
         stem_multiplier = 3
         C_curr = stem_multiplier*C
@@ -292,7 +295,7 @@ class NetworkCIFAR(nn.Module):
                 reduction = True
             else:
                 reduction = False
-            cell = AugmentCell(genotype, C_prev_prev, C_prev, C_curr, reduction, reduction_prev)
+            cell = AugmentCell(self.genotype, C_prev_prev, C_prev, C_curr, reduction, reduction_prev)
             reduction_prev = reduction
             self.cells += [cell]
             C_prev_prev, C_prev = C_prev, cell.multiplier*C_curr
@@ -303,6 +306,9 @@ class NetworkCIFAR(nn.Module):
             self.auxiliary_head = AuxiliaryHeadCIFAR(C_to_auxiliary, num_classes)
         self.global_pooling = nn.AdaptiveAvgPool2d(1)
         self.classifier = nn.Linear(C_prev, num_classes)
+    
+    def weights(self):
+        return self.parameters()
 
     def forward(self, input):
         logits_aux = None
@@ -370,6 +376,9 @@ class NetworkImageNet(nn.Module):
             self.auxiliary_head = AuxiliaryHeadImageNet(C_to_auxiliary, num_classes)
         self.global_pooling = nn.AvgPool2d(7)
         self.classifier = nn.Linear(C_prev, num_classes)
+    
+    def weights(self):
+        return self.parameters()
 
     def forward(self, input):
         logits_aux = None

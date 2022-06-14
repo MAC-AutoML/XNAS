@@ -30,6 +30,11 @@ class RF_suggest():
             self.num_estimator = 98
         elif self.space == 'mb':
             self.num_estimator = 140
+        elif self.space == 'nasbenchmacro':
+            self.api = api
+            self.max_space = int(3**8)
+            self.num_estimator = 30
+            self.spaces = list(api.keys())
             
         self.model = RandomForestClassifier(n_estimators=self.num_estimator,random_state=seed)
     
@@ -66,6 +71,8 @@ class RF_suggest():
         elif self.space == 'darts':
             return [self._single_sample() for _ in range(num_warmup)]
         elif self.space == 'mb':
+            return [self._single_sample() for _ in range(num_warmup)]
+        elif self.space == 'nasbenchmacro':
             return [self._single_sample() for _ in range(num_warmup)]
     
     def _single_sample(self, unique=True):
@@ -108,6 +115,17 @@ class RF_suggest():
                     j = np.random.randint(7)
                     c[i, j] = True
                 return c
+        elif self.space == 'nasbenchmacro':
+            if unique:
+                while True:
+                    numeric_choice = np.random.randint(3,size=8)
+                    if str(numeric_choice) not in self.sampled_history:
+                        self.sampled_history.append(str(numeric_choice))
+                        return numeric_choice
+            else:
+                numeric_choice = np.random.randint(3,size=8)
+                return numeric_choice
+                
 
     def Warmup(self):
         self._update_lossthres()
@@ -151,6 +169,23 @@ class RF_suggest():
 #             print("sample {} archs/batch, cost time: {}".format(len(_sample_archs), time.time()-start_time))
             best_id = np.argmax(self.model.predict_proba(_sample_archs)[:,1])
             best_arch = _sample_archs[best_id].reshape((20, 7))
+            return best_arch
+        elif self.space == 'nasbenchmacro':
+            _sample_indexes = np.random.choice(self.max_space, size=self.batch, replace=False)
+            chace_table = set(str(i['arch'].ravel()) for i in self.trained_arch)
+            _sample_archs = []
+            for i in _sample_indexes:
+                if self.spaces[i] not in chace_table:
+                    _sample_archs.append(np.array(list(self.spaces[i])).astype(int))
+            # _sample_batch = np.array([self._single_sample(unique=True).ravel() for _ in range(self.batch)])
+            # _tmp_trained_arch = [str(i['arch'].ravel()) for i in self.trained_arch]
+            # _sample_archs = []
+            # for i in _sample_batch:
+            #     if str(i) not in _tmp_trained_arch:
+            #         _sample_archs.append(i)
+#             print("sample {} archs/batch, cost time: {}".format(len(_sample_archs), time.time()-start_time))
+            best_id = np.argmax(self.model.predict_proba(_sample_archs)[:,1])
+            best_arch = _sample_archs[best_id]
             return best_arch
             
     def Fitting(self):
@@ -262,3 +297,17 @@ class RF_suggest():
             op_arr = np.zeros((_tmp_np.size, 7))
             op_arr[np.arange(_tmp_np.size),_tmp_np] = 1
             return op_arr
+        elif self.space == 'nasbenchmacro':
+            assert method == 'sum', 'only sum is supported in mb.'
+            estimate_archs = np.eye(3)[estimate_archs]
+            all_sum = estimate_archs.sum(0)
+            
+            print(all_sum)
+            if use_softmax:
+                all_sum = softmax(all_sum)
+            sum_max = np.argmax(all_sum, axis=1)
+            print(sum_max)
+            _tmp_np = np.array(sum_max)
+            op_arr = np.zeros((_tmp_np.size, 3))
+            op_arr[np.arange(_tmp_np.size),_tmp_np] = 1
+            return op_arr.argmax(-1)

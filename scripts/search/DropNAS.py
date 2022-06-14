@@ -1,5 +1,6 @@
 """DropNAS searching"""
 
+from torch import device
 import torch.nn as nn
 
 import xnas.core.config as config
@@ -19,15 +20,15 @@ config.load_configs()
 logger = logging.get_logger(__name__)
 
 def main():
-    setup_env()
+    device = setup_env()
     search_space = space_builder()
-    criterion = criterion_builder().cuda()
+    criterion = criterion_builder().to(device)
     evaluator = evaluator_builder()
     
     [train_loader, valid_loader] = construct_loader()
     
     # init models
-    darts_controller = DropNAS_CNNController(search_space, criterion).cuda()
+    darts_controller = DropNAS_CNNController(search_space, criterion).to(device)
     
     # init optimizers
     w_optim = optimizer_builder("SGD", darts_controller.weights())
@@ -83,7 +84,7 @@ class DropNAS_Trainer(DartsTrainer):
         self.writer.add_scalar('train/lr', lr, cur_step)
         self.train_meter.iter_tic()
         for cur_iter, (trn_X, trn_y) in enumerate(self.train_loader):
-            trn_X, trn_y = trn_X.cuda(), trn_y.cuda(non_blocking=True)
+            trn_X, trn_y = trn_X.to(self.device), trn_y.to(self.device, non_blocking=True)
 
             # forward pass loss
             self.a_optimizer.zero_grad()

@@ -121,3 +121,9 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+#exp_out
+*.pkl
+*.png
+
+301model/

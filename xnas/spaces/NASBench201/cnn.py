@@ -3,7 +3,13 @@ import numpy as np
 import torch.nn as nn
 from copy import deepcopy
 
-from .ops import OPS, ResNetBasicblock
+from .ops import (
+    OPS, 
+    ResNetBasicblock, 
+    get_op_index,
+    NON_PARAMETER_OP,
+    PARAMETER_OP
+)
 
 
 # This module is used for NAS-Bench-201, represents a small search space with a complete DAG
@@ -154,8 +160,11 @@ class NASBench201CNN(nn.Module):
         self._C = C
         self._layerN = N
         self.max_nodes = max_nodes
-        self.basic_op_list = ['none', 'skip_connect', 'nor_conv_1x1', 'nor_conv_3x3', 'avg_pool_3x3'] \
+        self.basic_op_list = ['skip_connect', 'nor_conv_1x1', 'nor_conv_3x3', 'avg_pool_3x3', 'none'] \
             if len(basic_op_list) == 0 else basic_op_list
+        self.non_op_idx = get_op_index(self.basic_op_list, NON_PARAMETER_OP)
+        self.para_op_idx = get_op_index(self.basic_op_list, PARAMETER_OP)
+        self.none_idx = 4
         self.stem = nn.Sequential(
             nn.Conv2d(3, C, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(C))
@@ -204,6 +213,9 @@ class NASBench201CNN(nn.Module):
             else:
                 genotypes += '+' + sub_geno
         return genotypes
+
+    def weights(self):
+        return self.parameters()
 
     def forward(self, inputs, weight):
         feature = self.stem(inputs)
@@ -325,17 +337,17 @@ class TinyNetwork(nn.Module):
             name=self.__class__.__name__, **self.__dict__
         )
 
-    def feature_extractor(self, inputs):
-        features = []
-        feature = self.stem(inputs)
-        features.append(feature)
+    # def feature_extractor(self, inputs):
+    #     features = []
+    #     feature = self.stem(inputs)
+    #     features.append(feature)
 
-        for i, cell in enumerate(self.cells):
-            feature = cell(feature)
-            features.append(feature)
-        out = self.lastact(feature)
-        features.append(out)
-        return features
+    #     for i, cell in enumerate(self.cells):
+    #         feature = cell(feature)
+    #         features.append(feature)
+    #     out = self.lastact(feature)
+    #     features.append(out)
+    #     return features
 
     def forward(self, inputs):
         feature = self.stem(inputs)
@@ -357,7 +369,7 @@ class TinyNetwork(nn.Module):
 
         for i, cell in enumerate(self.cells):
             feature = cell(feature)
-            if i in 4:
+            if i == 4:
                 tensor1 = feature
             elif i == 10:
                 tensor2 = feature
@@ -374,7 +386,7 @@ class TinyNetwork(nn.Module):
 
         for i, cell in enumerate(self.cells):
             feature = cell(feature)
-            if i in 4:
+            if i == 4:
                 tensor1 = feature
             elif i == 10:
                 tensor2 = feature

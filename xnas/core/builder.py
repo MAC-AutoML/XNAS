@@ -25,9 +25,8 @@ from xnas.runner.optimizer import optimizer_builder
 from xnas.runner.criterion import criterion_builder
 from xnas.runner.scheduler import lr_scheduler_builder
 
-
 __all__ = [
-    'construct_loader', 
+    'construct_loader',
     'optimizer_builder',
     'criterion_builder',
     'lr_scheduler_builder',
@@ -36,7 +35,6 @@ __all__ = [
     'evaluator_builder',
     'setup_env',
 ]
-
 
 # -------------------------------------------------------- #
 # Search Spaces Builder
@@ -53,7 +51,7 @@ from xnas.spaces.DropNAS.cnn import _DropNASCNN
 from xnas.spaces.OFA.MobileNetV3.ofa_cnn import _OFAMobileNetV3
 from xnas.spaces.OFA.ProxylessNet.ofa_cnn import _OFAProxylessNASNet
 from xnas.spaces.OFA.ResNets.ofa_cnn import _OFAResNet
-
+from xnas.spaces.NASBenchMacro.cnn import _NBMacro_child_train, _NBMacro_sup_train
 
 SUPPORTED_SPACES = {
     "darts": _DartsCNN,
@@ -65,6 +63,7 @@ SUPPORTED_SPACES = {
     "gdas_nb201": _GDAS_nb201_CNN,
     "dropnas": _DropNASCNN,
     "spos": _SPOS_CNN,
+    "nasbenchmacro": _NBMacro_sup_train,
     "ofa_mbv3": _OFAMobileNetV3,
     "ofa_proxyless": _OFAProxylessNASNet,
     "ofa_resnet": _OFAResNet,
@@ -73,6 +72,7 @@ SUPPORTED_SPACES = {
     "infer_nb201": _infer_NASBench201,
     "infer_spos": _infer_SPOS_CNN,
 }
+
 
 def space_builder(**kwargs):
     err_str = "Model type '{}' not supported".format(cfg.SPACE.NAME)
@@ -106,7 +106,7 @@ def SNG_builder(category):
     elif cfg.SNG.NAME == 'MDENAS':
         return CategoricalMDENAS(category, cfg.SNG.THETA_LR)
     elif cfg.SNG.NAME == 'DDPNAS':
-        return CategoricalDDPNAS(category, cfg.SNG.PRUNING_STEP)
+        return CategoricalDDPNAS(category, cfg.SNG.PRUNING_STEP, theta_lr=cfg.SNG.THETA_LR, gamma=cfg.SNG.GAMMA)
     elif cfg.SNG.NAME == 'MIGO':
         return MIGO(categories=category,
                     step=cfg.SNG.PRUNING_STEP, lam=cfg.SNG.LAMBDA,
@@ -128,7 +128,9 @@ def SNG_builder(category):
 SUPPORTED_EVALUATIONS = {
     "nasbench201": ["nasbench201", "drnas_nb201", "gdas_nb201"],
     "nasbench301": ["darts", "pdarts", "pcdarts", "drnas_darts", "dropnas"],
+    "nasbenchmacro": ["nasbenchmacro"]
 }
+
 
 def evaluator_builder():
     """Evaluator builder.
@@ -149,13 +151,16 @@ def evaluator_builder():
         elif cfg.SEARCH.EVALUATION == "nasbench301":
             import xnas.evaluations.NASBench301 as nb301
             return nb301.evaluate
+        elif cfg.SEARCH.EVALUATION == "nasbenchmacro":
+            import xnas.evaluations.NASBenchMacro.evaluate as NBMevaluate
+            return NBMevaluate.evaluate
     return None
-
 
 
 # -------------------------------------------------------- #
 
 logger = logging.get_logger(__name__)
+
 
 def setup_env():
     """Set up environment for training or testing."""
@@ -180,3 +185,6 @@ def setup_env():
     else:
         # Configure the CUDNN backend
         torch.backends.cudnn.benchmark = cfg.CUDNN_BENCH
+    device = 'cuda:0'   # TODO: ddp support
+    return device
+

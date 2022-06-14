@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import torch.utils.data as data
 import torchvision.datasets as dset
@@ -34,7 +35,6 @@ def construct_loader(
     datapath = cfg.LOADER.DATAPATH
     
     assert (name in SUPPORTED_DATASETS) or (name in IMAGEFOLDER_FORMAT), "dataset not supported."
-    datapath = "./data/" + name if not datapath else datapath + name
 
     # expand batch_size to support different number during training & validating
     if isinstance(batch_size, int):
@@ -44,7 +44,7 @@ def construct_loader(
     assert len(batch_size) == len(split), "lengths of batch_size and split should be same."
     
     # check if randomresized crop is used only in ImageFolder type datasets
-    if isinstance(cfg.SEARCH.IMG_SIZE, list):
+    if len(cfg.SEARCH.MULTI_SIZES):
         assert name in IMAGEFOLDER_FORMAT, "RandomResizedCrop can only be used in ImageFolder currently."
     
     if name in SUPPORTED_DATASETS:
@@ -52,7 +52,7 @@ def construct_loader(
         train_data, _ = get_data(name, datapath, cutout_length, use_classes=use_classes, transforms=transforms)
         return split_dataloader(train_data, batch_size, split)
     elif name in IMAGEFOLDER_FORMAT:
-        return ImageFolder(
+        return ImageFolder( # using path of training data of ImageNet as `datapath`
             datapath, split, batch_size=batch_size,
             transforms=transforms,
         ).generate_data_loader()
@@ -64,6 +64,7 @@ def construct_loader(
 def get_data(name, root, cutout_length, download=True, use_classes=None, transforms=None):
     assert name in SUPPORTED_DATASETS, "dataset not support."
     assert cutout_length >= 0, "cutout_length should not be less than zero."
+    root = "./data/" + name if not root else os.path.join(root, name)
 
     if name == "cifar10":
         train_transform, valid_transform = transforms_cifar10(cutout_length) if transforms is None else transforms
@@ -150,18 +151,20 @@ def get_normal_dataloader(
     train_data, test_data = get_data(name, root, cutout_length, download, use_classes, transforms)
     
     # if loader.batch_size is a list for [train, val_1, ...], the first value will be used.
-    if isinstance(batch_size, list):
-        batch_size = batch_size[0]
+    if isinstance(train_batch, list):
+        train_batch = train_batch[0]
         
     train_loader = data.DataLoader(
         dataset=train_data,
         batch_size=train_batch,
+        shuffle=True,
         num_workers=cfg.LOADER.NUM_WORKERS,
         pin_memory=cfg.LOADER.PIN_MEMORY,
     )
     test_loader = data.DataLoader(
         dataset=test_data,
         batch_size=test_batch,
+        shuffle=False,
         num_workers=cfg.LOADER.NUM_WORKERS,
         pin_memory=cfg.LOADER.PIN_MEMORY,
     )

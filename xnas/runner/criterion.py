@@ -9,21 +9,27 @@ from xnas.core.config import cfg
 __all__ = ['criterion_builder']
 
 
-def smoothed_cross_entropy_loss(pred, target, label_smoothing=0.):
-    def _label_smooth(target, n_classes: int, label_smoothing):
-        # convert to one-hot
-        batch_size = target.size(0)
-        target = torch.unsqueeze(target, 1)
-        soft_target = torch.zeros((batch_size, n_classes), device=target.device)
-        soft_target.scatter_(1, target, 1)
-        # label smoothing
-        soft_target = soft_target * (1 - label_smoothing) + label_smoothing / n_classes
-        return soft_target
+def _label_smooth(target, n_classes: int, label_smoothing):
+    # convert to one-hot
+    batch_size = target.size(0)
+    target = torch.unsqueeze(target, 1)
+    soft_target = torch.zeros((batch_size, n_classes), device=target.device)
+    soft_target.scatter_(1, target, 1)
+    # label smoothing
+    soft_target = soft_target * (1 - label_smoothing) + label_smoothing / n_classes
+    return soft_target
 
+
+def CrossEntropyLoss_soft_target(pred, soft_target):
+    """CELoss with soft target, mainly used during KD"""
+    logsoftmax = nn.LogSoftmax(dim=1)
+    return torch.mean(torch.sum(-soft_target * logsoftmax(pred), dim=1))
+
+
+def CrossEntropyLoss_label_smoothed(pred, target, label_smoothing=0.):
     label_smoothing = cfg.SEARCH.LABEL_SMOOTH if label_smoothing == 0. else label_smoothing
     soft_target = _label_smooth(target, pred.size(1), label_smoothing)
-    logsoftmax = nn.LogSoftmax()
-    return torch.mean(torch.sum(-soft_target * logsoftmax(pred), 1))
+    return CrossEntropyLoss_soft_target(pred, soft_target)
 
 
 class MultiHeadCrossEntropyLoss(nn.Module):
@@ -44,7 +50,7 @@ class MultiHeadCrossEntropyLoss(nn.Module):
 
 SUPPORTED_CRITERIONS = {
     "cross_entropy": torch.nn.CrossEntropyLoss(),
-    "cross_entropy_smooth": smoothed_cross_entropy_loss,
+    "cross_entropy_smooth": CrossEntropyLoss_label_smoothed,
     "cross_entropy_multihead": MultiHeadCrossEntropyLoss()
 }
 

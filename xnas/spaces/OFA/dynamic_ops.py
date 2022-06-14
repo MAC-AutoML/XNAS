@@ -26,13 +26,14 @@ from xnas.spaces.OFA.ops import (
 class DynamicSeparableConv2d(nn.Module):
     KERNEL_TRANSFORM_MODE = 1  # None or 1
 
-    def __init__(self, max_in_channels, kernel_size_list, stride=1, dilation=1):
+    def __init__(self, max_in_channels, kernel_size_list, stride=1, dilation=1, kernel_trans=1):
         super(DynamicSeparableConv2d, self).__init__()
 
         self.max_in_channels = max_in_channels
         self.kernel_size_list = kernel_size_list
         self.stride = stride
         self.dilation = dilation
+        self.KERNEL_TRANSFORM_MODE = kernel_trans
 
         self.conv = nn.Conv2d(
             self.max_in_channels,
@@ -47,7 +48,7 @@ class DynamicSeparableConv2d(nn.Module):
         self._ks_set.sort()  # e.g., [3, 5, 7]
         if self.KERNEL_TRANSFORM_MODE is not None:
             # register scaling parameters
-            # 7to5_matrix, 5to3_matrix
+            # [!] 7to5_matrix, 5to3_matrix
             scale_params = {}
             for i in range(len(self._ks_set) - 1):
                 ks_small = self._ks_set[i]
@@ -55,7 +56,7 @@ class DynamicSeparableConv2d(nn.Module):
                 param_name = "%dto%d" % (ks_larger, ks_small)
                 # noinspection PyArgumentList
                 scale_params["%s_matrix" % param_name] = Parameter(
-                    torch.eye(ks_small ** 2)
+                    torch.eye(ks_small ** 2), requires_grad=True
                 )
             for name, param in scale_params.items():
                 self.register_parameter(name, param)
@@ -472,6 +473,7 @@ class DynamicMBConvLayer(nn.Module):
         stride=1,
         act_func="relu6",
         use_se=False,
+        kernel_trans=1,
     ):
         super(DynamicMBConvLayer, self).__init__()
 
@@ -512,7 +514,8 @@ class DynamicMBConvLayer(nn.Module):
                     (
                         "conv",
                         DynamicSeparableConv2d(
-                            max_middle_channel, self.kernel_size_list, self.stride
+                            max_middle_channel, self.kernel_size_list, self.stride,
+                            kernel_trans=kernel_trans
                         ),
                     ),
                     ("bn", DynamicBatchNorm2d(max_middle_channel)),

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://cdn.thrase.cn/xnas%2Fheader.png" width="200">
+<img src="https://cdn.thrase.cn/xnas/header.png" width="200">
 
 <p>
 	<a href="https://img.shields.io/badge/Python-%3E%3D3.7-blue"><img src="https://img.shields.io/badge/Python-%3E%3D3.7-blue"></a>
@@ -28,7 +28,25 @@ This project is now supported by PengCheng Lab.
 
 ## Overview
 
-Based on a common division of NAS, the project is organized by **search space, search algorithm**, and **evaluation strategy**. The project currently supports the content shown below.
+Based on a common division of NAS, the project is organized by **search space**, **search algorithm**, and **evaluation strategy**. The project currently supports the content shown below. Each row of the table represents a search algorithm and each column represents the search space.
+
+|             |    DARTS   |   NAS-Bench-201   |   SPOS   |   OFA   |   ~~NAS-Bench-101~~   |   ~~NAS-Bench-1Shot1~~   |
+| :---------: | :--------: | :--------: | :--------: | ---------- | ---------- | ---------- |
+|    **DARTS**    | C10<br />C100 | C10<br />C100<br />ImageNet16 |          |          |          |          |
+|  **PDARTS** | C10<br />ImageNet |          |          |          |          |          |
+|   **PCDARTS**   |          |          |          |          |          |          |
+|     **SNG**     |          |          |          |          |          |          |
+|    **ASNG** |          |          |          |          |          |          |
+|  **MDENAS** |          |          |          |          |          |          |
+|  **DDPNAS** |          |          |          |          |          |          |
+|   **MIGONAS**   |          |          |          |          |          |          |
+| **GridSearch** |          |          |          |          |          |          |
+|    **DrNAS**    |          |          |          |          |          |          |
+|  **RMINAS** | C10<br />ImageNet | C10<br />C100<br />ImageNet |          |          |          |          |
+|   **DropNAS**   |          |          |          |          |          |          |
+|    **SPOS** |          |          |          |          |          |          |
+|     **OFA**     |          |          |          |          |          |          |
+
 
 We also provide the interpretation of papers and experimental records for each algorithm. For more information, please refer to the links in the "**Docs**" column.
 
@@ -105,12 +123,14 @@ If you use this code in your own work, please use the following bibtex entries:
 ## License
 
 This project is released under the [MIT license](https://mit-license.org).
+XNAS also uses codes from these repos to build some modules:
+- [pycls](https://github.com/facebookresearch/pycls)
+- [pt.darts](https://github.com/khanrc/pt.darts)
+- [once-for-all](https://github.com/mit-han-lab/once-for-all)
 
 ## TODO
 
 - 迁移OFA代码
-- 补充101&201安装测试
-  - 检查201搜索空间
-  - 检查RMINAS
-- 补充模块测试案例
+- 补充101安装测试
+- NAS-Bench-Macro
 - 多显卡支持
