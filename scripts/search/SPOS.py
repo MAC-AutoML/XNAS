@@ -17,7 +17,7 @@ logger = logging.get_logger(__name__)
 def main():
     device = setup_env()
     criterion = criterion_builder().to(device)
-    [train_loader, valid_loader] = construct_loader()
+    [train_loader, valid_loader] = construct_loader(cutout_length=16)
     model = space_builder().to(device)
     optimizer = optimizer_builder("SGD", model.parameters())
     lr_scheduler = lr_scheduler_builder(optimizer)
