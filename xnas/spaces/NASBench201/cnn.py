@@ -153,6 +153,20 @@ class NAS201SearchCell(nn.Module):
             nodes.append(sum(inter_nodes))
         return nodes[-1]
 
+class SPOS_NAS201SearchCell(NAS201SearchCell):
+    # select the argmax
+    def forward(self, inputs, weightss):
+        nodes = [inputs]
+        for i in range(1, self.max_nodes):
+            inter_nodes = []
+            for j in range(i):
+                node_str = "{:}<-{:}".format(i, j)
+                weights = weightss[self.edge2index[node_str]]
+                inter_nodes.append(
+                    self.edges[node_str][weights](nodes[j])
+                )
+            nodes.append(sum(inter_nodes))
+        return nodes[-1]
 
 class NASBench201CNN(nn.Module):
     def __init__(self, C=16, N=5, max_nodes=4, num_classes=10, basic_op_list=[]):
@@ -230,6 +244,67 @@ class NASBench201CNN(nn.Module):
         logits = self.classifier(out)
         return logits
 
+class SPOS_nb201_CNN(NASBench201CNN):
+    def __init__(self, C=16, N=5, max_nodes=4, num_classes=10, basic_op_list=[]):
+        nn.Module.__init__(self)
+        self._C = C
+        self._layerN = N
+        self.max_nodes = max_nodes
+        self.basic_op_list = ['skip_connect', 'nor_conv_1x1', 'nor_conv_3x3', 'avg_pool_3x3', 'none'] \
+            if len(basic_op_list) == 0 else basic_op_list
+        self.non_op_idx = get_op_index(self.basic_op_list, NON_PARAMETER_OP)
+        self.para_op_idx = get_op_index(self.basic_op_list, PARAMETER_OP)
+        self.none_idx = 4
+        self.stem = nn.Sequential(
+            nn.Conv2d(3, C, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(C))
+
+        layer_channels = [C] * N + [C * 2] + \
+            [C * 2] * N + [C * 4] + [C * 4] * N
+        layer_reductions = [False] * N + [True] + \
+            [False] * N + [True] + [False] * N
+
+        C_prev, num_edge, edge2index = C, None, None
+        self.cells = nn.ModuleList()
+        for index, (C_curr, reduction) in enumerate(zip(layer_channels, layer_reductions)):
+            if reduction:
+                cell = ResNetBasicblock(C_prev, C_curr, 2)
+            else:
+                cell = SPOS_NAS201SearchCell(
+                    C_prev, C_curr, 1, self.max_nodes, self.basic_op_list)
+                if num_edge is None:
+                    num_edge, edge2index = cell.num_edges, cell.edge2index
+                else:
+                    assert num_edge == cell.num_edges and edge2index == cell.edge2index, 'invalid {:} vs. {:}.'.format(
+                        num_edge, cell.num_edges)
+            self.cells.append(cell)
+            C_prev = cell.out_dim
+        self._Layer = len(self.cells)
+        self.edge2index = edge2index
+        self.num_edges = num_edge
+        self.all_edges = self.num_edges
+        self.num_ops = len(self.basic_op_list)
+        self.lastact = nn.Sequential(
+            nn.BatchNorm2d(C_prev), nn.ReLU(inplace=True))
+        self.global_pooling = nn.AdaptiveAvgPool2d(1)
+        self.classifier = nn.Linear(C_prev, num_classes)
+        self.spos_all_edge_num = 3 * self._layerN * self.all_edges
+
+    def forward(self, inputs, weight):
+        feature = self.stem(inputs)
+        _it = 0
+        for i, cell in enumerate(self.cells):
+            if isinstance(cell, ResNetBasicblock):
+                feature = cell(feature)
+            else:
+                feature = cell(feature, weight[_it:_it+self.all_edges])
+                _it += self.all_edges
+        assert _it == self.spos_all_edge_num
+        out = self.lastact(feature)
+        out = self.global_pooling(out)
+        out = out.view(out.size(0), -1)
+        logits = self.classifier(out)
+        return logits
 
 # Infer cell for NAS-Bench-201
 class InferCell(nn.Module):
@@ -413,6 +488,16 @@ def _NASBench201():
         basic_op_list=cfg.SPACE.BASIC_OP
     )
 
+def _SPOS_nb201_CNN():
+    from xnas.core.config import cfg
+    return SPOS_nb201_CNN(
+        C=cfg.SPACE.CHANNELS,
+        N=cfg.SPACE.LAYERS,
+        max_nodes=cfg.SPACE.NODES,
+        num_classes=cfg.LOADER.NUM_CLASSES,
+        basic_op_list=cfg.SPACE.BASIC_OP
+    )
+    
 def _infer_NASBench201():
     from xnas.core.config import cfg
     return TinyNetwork(

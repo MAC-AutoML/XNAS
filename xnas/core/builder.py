@@ -43,7 +43,7 @@ __all__ = [
 from xnas.spaces.DARTS.cnn import _DartsCNN, _infer_DartsCNN
 from xnas.spaces.PDARTS.cnn import _PDartsCNN
 from xnas.spaces.PCDARTS.cnn import _PCDartsCNN
-from xnas.spaces.NASBench201.cnn import _NASBench201, _infer_NASBench201
+from xnas.spaces.NASBench201.cnn import _NASBench201, _infer_NASBench201, _SPOS_nb201_CNN
 from xnas.spaces.DrNAS.darts_cnn import _DrNAS_DARTS_CNN
 from xnas.spaces.DrNAS.nb201_cnn import _DrNAS_nb201_CNN, _GDAS_nb201_CNN
 from xnas.spaces.SPOS.cnn import _SPOS_CNN, _infer_SPOS_CNN
@@ -71,6 +71,7 @@ SUPPORTED_SPACES = {
     "infer_darts": _infer_DartsCNN,
     "infer_nb201": _infer_NASBench201,
     "infer_spos": _infer_SPOS_CNN,
+    "spos_nb201": _SPOS_nb201_CNN,
 }
 
 
@@ -126,7 +127,7 @@ def SNG_builder(category):
 # -------------------------------------------------------- #
 
 SUPPORTED_EVALUATIONS = {
-    "nasbench201": ["nasbench201", "drnas_nb201", "gdas_nb201"],
+    "nasbench201": ["nasbench201", "drnas_nb201", "gdas_nb201","spos_nb201" ],
     "nasbench301": ["darts", "pdarts", "pcdarts", "drnas_darts", "dropnas"],
     "nasbenchmacro": ["nasbenchmacro"]
 }
