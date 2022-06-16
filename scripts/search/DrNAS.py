@@ -34,7 +34,7 @@ def drnas_hp_builder():
     global ks, num_keeps, train_epochs, tau_step, tau_epoch, \
            PRUNING_FLAG, TAU_FLAG, UNROLL_FLAG
     if cfg.SPACE.NAME == 'drnas_darts':
-        assert cfg.SPACE.NAME in ["cifar10", "cifar100", "imagenet16", "imagenet"]
+        assert cfg.LOADER.DATASET in ["cifar10", "cifar100", "imagenet16", "imagenet"]
         # darts space ignores the "cfg.DRNAS.METHOD"
         ks = [6, 3] if cfg.LOADER.DATASET == 'imagenet' else [6, 4]
         num_keeps = [7, 4]
