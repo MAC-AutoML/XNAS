@@ -62,8 +62,7 @@ class DartsCNN(nn.Module):
         self.n_classes = n_classes  # 10
         self.n_layers = n_layers  # 8
         self.n_nodes = n_nodes  # 4
-        self.basic_op_list = ['max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3',
-                              'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5', 'none'] if len(basic_op_list) == 0 else basic_op_list
+        self.basic_op_list = DARTS_SPACE if len(basic_op_list) == 0 else basic_op_list
         self.non_op_idx = get_op_index(self.basic_op_list, NON_PARAMETER_OP)
         self.para_op_idx = get_op_index(self.basic_op_list, PARAMETER_OP)
         self.none_idx = 7
