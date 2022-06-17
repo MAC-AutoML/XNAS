@@ -8,7 +8,8 @@ from .ops import (
     ResNetBasicblock, 
     get_op_index,
     NON_PARAMETER_OP,
-    PARAMETER_OP
+    PARAMETER_OP,
+    NAS_BENCH_201
 )
 
 
@@ -174,8 +175,7 @@ class NASBench201CNN(nn.Module):
         self._C = C
         self._layerN = N
         self.max_nodes = max_nodes
-        self.basic_op_list = ['skip_connect', 'nor_conv_1x1', 'nor_conv_3x3', 'avg_pool_3x3', 'none'] \
-            if len(basic_op_list) == 0 else basic_op_list
+        self.basic_op_list = NAS_BENCH_201 if len(basic_op_list) == 0 else basic_op_list
         self.non_op_idx = get_op_index(self.basic_op_list, NON_PARAMETER_OP)
         self.para_op_idx = get_op_index(self.basic_op_list, PARAMETER_OP)
         self.none_idx = 4
@@ -250,8 +250,7 @@ class SPOS_nb201_CNN(NASBench201CNN):
         self._C = C
         self._layerN = N
         self.max_nodes = max_nodes
-        self.basic_op_list = ['skip_connect', 'nor_conv_1x1', 'nor_conv_3x3', 'avg_pool_3x3', 'none'] \
-            if len(basic_op_list) == 0 else basic_op_list
+        self.basic_op_list = NAS_BENCH_201 if len(basic_op_list) == 0 else basic_op_list
         self.non_op_idx = get_op_index(self.basic_op_list, NON_PARAMETER_OP)
         self.para_op_idx = get_op_index(self.basic_op_list, PARAMETER_OP)
         self.none_idx = 4
