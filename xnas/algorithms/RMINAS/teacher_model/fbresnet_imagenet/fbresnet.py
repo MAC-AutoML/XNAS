@@ -7,7 +7,7 @@ import math
 import torch.utils.model_zoo as model_zoo
 import torch
 
-WEIGHT_PATH = 'teacher_model/fbresnet_imagenet/fbresnet152.pth'
+WEIGHT_PATH = './xnas/algorithms/RMINAS/teacher_model/fbresnet_imagenet/fbresnet152.pth'
 
 __all__ = ['FBResNet',
            #'fbresnet18', 'fbresnet34', 'fbresnet50', 'fbresnet101',

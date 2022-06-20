@@ -47,9 +47,15 @@ class ImageFolder():
         self.num_workers = cfg.LOADER.NUM_WORKERS if num_workers is None else num_workers
         self.pin_memory = cfg.LOADER.PIN_MEMORY if pin_memory is None else pin_memory
         self.shuffle = shuffle
+        # expand batch_size to support different number during training & validating
+        if isinstance(batch_size, int):
+            batch_size = [batch_size, batch_size]
+        elif batch_size is None:
+            batch_size = [256, 256]
+        assert len(batch_size) == len(split), "lengths of batch_size and split should be same."
         self.batch_size = batch_size
         if not self.use_val:
-            assert sum(self.split) == 1, "Summation of split should be 1"
+            assert sum(self._split) == 1, "Summation of split should be 1"
         
         self.msrc = None
         self.loader = torch.utils.data.DataLoader
@@ -103,10 +109,9 @@ class ImageFolder():
             for class_id in self._class_ids:
                 cont_id = self._class_id_cont_id[class_id]
                 train_im_dir = os.path.join(self._data_path, class_id)
-                for im_name in os.listdir(train_im_dir):
+                for im_name in filter(is_image_file, os.listdir(train_im_dir)):
                     im_path = os.path.join(train_im_dir, im_name)
-                    if is_image_file(im_path):
-                        self._imdb.append({"im_path": im_path, "class": cont_id})
+                    self._imdb.append({"im_path": im_path, "class": cont_id})
             logger.info("Number of images: {}".format(len(self._imdb)))
             logger.info("Number of classes: {}".format(len(self._class_ids)))
         else:
@@ -209,8 +214,10 @@ class ImageList_torch(torch.utils.data.Dataset):
             random_flip=False):
         self._imdb = _list
         self.msrc = msrc
-        self._bgr_normalized_mean = _rgb_normalized_mean[::-1]
-        self._bgr_normalized_std = _rgb_normalized_std[::-1]
+        # self._bgr_normalized_mean = _rgb_normalized_mean[::-1]
+        # self._bgr_normalized_std = _rgb_normalized_std[::-1]
+        self._rgb_normalized_mean = _rgb_normalized_mean
+        self._rgb_normalized_std = _rgb_normalized_std
         self.crop = crop
         self.crop_size = crop_size
         self.min_crop = min_crop
@@ -234,7 +241,7 @@ class ImageList_torch(torch.utils.data.Dataset):
         if self.random_flip:
             transforms.append(torch_transforms.RandomHorizontalFlip())
         transforms.append(torch_transforms.ToTensor())
-        transforms.append(torch_transforms.Normalize(mean=self._bgr_normalized_mean, std=self._bgr_normalized_std))
+        transforms.append(torch_transforms.Normalize(mean=self._rgb_normalized_mean, std=self._rgb_normalized_std))
         self.transform = torch_transforms.Compose(transforms)
 
     def __getitem__(self, index):

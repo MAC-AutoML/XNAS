@@ -24,6 +24,8 @@ from xnas.datasets.loader import construct_loader
 from xnas.runner.optimizer import optimizer_builder
 from xnas.runner.criterion import criterion_builder
 from xnas.runner.scheduler import lr_scheduler_builder
+from xnas.spaces.ProxylessNAS.cnn import MobileNetV2
+from xnas.spaces.ProxylessNAS.super_proxyless import _SuperProxylessNASNets
 
 __all__ = [
     'construct_loader',
@@ -72,6 +74,8 @@ SUPPORTED_SPACES = {
     "infer_nb201": _infer_NASBench201,
     "infer_spos": _infer_SPOS_CNN,
     "spos_nb201": _SPOS_nb201_CNN,
+    # "proxyless": _SuperProxylessNASNets,
+    "proxyless": MobileNetV2,
 }
 
 

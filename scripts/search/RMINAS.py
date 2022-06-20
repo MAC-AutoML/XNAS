@@ -4,7 +4,7 @@ import time
 import numpy as np
 
 import torch
-
+from fvcore.nn import FlopCountAnalysis
 import xnas.core.config as config
 import xnas.logger.logging as logging
 from xnas.core.config import cfg
@@ -38,6 +38,8 @@ def rminas_hp_builder():
         RF_space = 'nasbenchmacro'
         from xnas.evaluations.NASBenchMacro.evaluate import evaluate, data
         api = data
+    elif cfg.SPACE.NAME == 'proxyless':
+        RF_space = 'proxyless'
             # for example : arch = '00000000'
             # arch = ''
             # evaluate(arch)
@@ -48,7 +50,7 @@ def main():
     
     rminas_hp_builder()
     
-    assert cfg.SPACE.NAME in ['infer_nb201', 'infer_darts',"nasbenchmacro"]
+    assert cfg.SPACE.NAME in ['infer_nb201', 'infer_darts',"nasbenchmacro", "proxyless"]
     assert cfg.LOADER.DATASET in ['cifar10', 'cifar100', 'imagenet', 'imagenet16_120'], 'dataset error'
 
     if cfg.LOADER.DATASET == 'cifar10':
@@ -64,7 +66,7 @@ def main():
         network.load_state_dict(torch.load('xnas/algorithms/RMINAS/teacher_model/resnet101_cifar100/resnet101.pth'))
 
     elif cfg.LOADER.DATASET == 'imagenet':
-        assert cfg.SPACE.NAME == 'infer_darts'
+        assert cfg.SPACE.NAME in ('infer_darts', 'proxyless')
         logger.warning('Our method does not directly search in ImageNet.')
         logger.warning('Only partial tests have been conducted, please use with caution.')
         import xnas.algorithms.RMINAS.teacher_model.fbresnet_imagenet.fbresnet as fbresnet
@@ -93,8 +95,8 @@ def main():
         ce_loss = torch.nn.CrossEntropyLoss(reduction='none').cuda()
         more_logits = network(more_data_X)
         _, indices = torch.topk(-ce_loss(more_logits, more_data_y).cpu().detach(), cfg.LOADER.BATCH_SIZE)
-    data_y = torch.Tensor([more_data_y[i] for i in indices]).long().cuda()
-    data_X = torch.Tensor([more_data_X[i].cpu().numpy() for i in indices]).cuda()
+    data_y = more_data_y.detach()
+    data_X = more_data_X.detach()
     with torch.no_grad():
         feature_res = network.feature_extractor(data_X)
     
@@ -107,6 +109,7 @@ def main():
     loss_fun_log = torch.nn.CrossEntropyLoss().cuda()
         
     def train_arch(modelinfo):      
+        flops = None
         if cfg.SPACE.NAME == 'infer_nb201':
             # get arch
             arch_config = {
@@ -122,6 +125,12 @@ def main():
         elif cfg.SPACE.NAME == 'nasbenchmacro':
             model = space_builder().cuda()
             optimizer = optimizer_builder("SGD", model.parameters())
+        elif cfg.SPACE.NAME == 'proxyless':
+            model = space_builder(stage_width_list=[16, 24, 40, 80, 96, 192, 320],depth_param=modelinfo[:6],ks=modelinfo[6:27][modelinfo[6:27]>0],expand_ratio=modelinfo[27:][modelinfo[27:]>0],dropout_rate=0).cuda()
+            optimizer = optimizer_builder("SGD", model.parameters())
+            with torch.no_grad():
+                tensor = (torch.rand(1, 3, 224, 224).cuda(),)
+                flops = FlopCountAnalysis(model, tensor).total()
             # lr_scheduler = lr_scheduler_builder(optimizer)
 
             # nbm_trainer = OneShotTrainer(
@@ -150,12 +159,14 @@ def main():
             optimizer.step()
             epoch_losses.append(loss.detach().cpu().item())
             if cur_epoch == cfg.OPTIM.MAX_EPOCH:
-                return loss.cpu().detach().numpy(), epoch_losses
+
+                return loss.cpu().detach().numpy(), {'epoch_losses':epoch_losses, 'flops':flops}
+
     
     trained_arch_darts, trained_loss = [], []
     def train_procedure(sample):
         if cfg.SPACE.NAME == 'infer_nb201':
-            mixed_loss = train_arch(sample)[0]
+            mixed_loss, epoch_losses = train_arch(sample)[0]
             mixed_loss = np.inf if np.isnan(mixed_loss) else mixed_loss
             trained_loss.append(mixed_loss)
             arch_arr = sampling.nb201genostr2array(api.arch(sample))
@@ -164,17 +175,25 @@ def main():
         elif cfg.SPACE.NAME == 'infer_darts':
             sample_geno = geno_from_alpha(sampling.darts_sug2alpha(sample))  # type=Genotype
             trained_arch_darts.append(str(sample_geno))
-            mixed_loss = train_arch(sample_geno)[0]
+            mixed_loss, epoch_losses = train_arch(sample_geno)[0]
             mixed_loss = np.inf if np.isnan(mixed_loss) else mixed_loss
             trained_loss.append(mixed_loss)
             RFS.trained_arch.append({'arch':sample, 'loss':mixed_loss})
         elif cfg.SPACE.NAME == 'nasbenchmacro':
             sample_geno = ''.join(sample.astype('str'))  # type=Genotype
             trained_arch_darts.append((sample_geno))
-            mixed_loss, epoch_losses = train_arch(sample)
+            mixed_loss, info = train_arch(sample)
             mixed_loss = np.inf if np.isnan(mixed_loss) else mixed_loss
             trained_loss.append(mixed_loss)
-            RFS.trained_arch.append({'arch':sample, 'loss':mixed_loss,'gt':api[sample_geno]['mean_acc'],'losses':epoch_losses})
+            RFS.trained_arch.append({'arch':sample, 'loss':mixed_loss,'gt':api[sample_geno]['mean_acc'],'losses':info["epoch_losses"]})
+        elif cfg.SPACE.NAME == 'proxyless':
+            sample_geno = ''.join(sample.astype('str'))  # type=Genotype
+            trained_arch_darts.append((sample_geno))
+            mixed_loss, info = train_arch(sample)
+            mixed_loss = np.inf if np.isnan(mixed_loss) else mixed_loss
+            trained_loss.append(mixed_loss)
+            RFS.trained_arch.append({'arch':sample, 'loss':mixed_loss,'gt':info["flops"],'losses':info["epoch_losses"]})
+
             
         logger.info("sample: {}, loss:{}".format(sample, mixed_loss))
     
@@ -185,21 +204,6 @@ def main():
     for sample in warmup_samples:
         train_procedure(sample)
     RFS.Warmup()
-    logger.info('warmup time cost: {}'.format(str(time.time() - start_time)))
-    # with open('./rmi_nbm.pkl','wb') as f:
-    #     pickle.dump(RFS.trained_arch,f)
-    # gt = np.array([_['gt'] for _ in RFS.trained_arch])
-    # losses = np.array([_['losses'] for _ in RFS.trained_arch])
-    # from scipy.stats import kendalltau
-    # kdts = []
-    # for epoch in range(losses.shape[-1]):
-    #     kdts.append(kendalltau(gt, -losses[:, epoch]).correlation)
-    # import matplotlib.pyplot as plt
-    # plt.plot(kdts)
-    # plt.xlabel('epoch')
-    # plt.ylabel('kdt')
-    # plt.savefig('rmi_nbm.png')
-    # sys.exit()
     # ====== RF Sampling ======
     sampling_time = time.time()
     sampling_cnt= 0
@@ -230,6 +234,12 @@ def main():
         # op_alpha = torch.from_numpy(np.r_[op_sample, op_sample])
         # op_geno = reformat_DARTS(geno_from_alpha(op_alpha))
         logger.info('Searched architecture@top50:\n{}'.format(str(op_sample)))
+        print(api[op_sample]['mean_acc'])
+    elif cfg.SPACE.NAME == 'proxyless':
+        op_sample = RFS.optimal_arch(method='sum', top=100)
+        # op_alpha = torch.from_numpy(np.r_[op_sample, op_sample])
+        # op_geno = reformat_DARTS(geno_from_alpha(op_alpha))
+        logger.info('Searched architecture@top100:\n{}'.format(str(op_sample)))
         print(api[op_sample]['mean_acc'])
 
 if __name__ == '__main__':
