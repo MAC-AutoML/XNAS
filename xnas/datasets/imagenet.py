@@ -28,8 +28,9 @@ class ImageFolder():
     def __init__(
             self,
             datapath,
-            split,
-            batch_size=None,
+            batch_size,
+            split=None,
+            use_val=False,
             dataset_name='imagenet',
             _rgb_normalized_mean=None,
             _rgb_normalized_std=None,
@@ -41,9 +42,9 @@ class ImageFolder():
         datapath = './data/imagenet/' if not datapath else datapath
         assert os.path.exists(datapath), "Data path '{}' not found".format(datapath)
         
-        self.use_val = cfg.LOADER.USE_VAL
-        self._data_path, self._split, self.dataset_name = datapath, split, dataset_name
-        self._rgb_normalized_mean, self._rgb_normalized_std = _rgb_normalized_mean, _rgb_normalized_std
+        self.use_val = use_val
+        self.data_path, self.split, self.dataset_name = datapath, split, dataset_name
+        self.rgb_normalized_mean, self.rgb_normalized_std = _rgb_normalized_mean, _rgb_normalized_std
         self.num_workers = cfg.LOADER.NUM_WORKERS if num_workers is None else num_workers
         self.pin_memory = cfg.LOADER.PIN_MEMORY if pin_memory is None else pin_memory
         self.shuffle = shuffle
@@ -68,7 +69,7 @@ class ImageFolder():
         else:
             self.transforms = transforms
         if not self.use_val:
-            assert len(self.transforms) == len(self._split), "Length of split and transforms should be equal"
+            assert len(self.transforms) == len(self.split), "Length of split and transforms should be equal"
         else:
             assert len(self.transforms) == 2
         
@@ -86,15 +87,15 @@ class ImageFolder():
     def _construct_imdb(self):
         # Images are stored per class in subdirs (format: n<number>)
         if not self.use_val:
-            split_files = os.listdir(self._data_path)
+            split_files = os.listdir(self.data_path)
         else:
-            split_files = os.listdir(os.path.join(self._data_path, "train"))
+            split_files = os.listdir(os.path.join(self.data_path, "train"))
         if self.dataset_name == "imagenet":
             # imagenet format folder names
             self._class_ids = sorted(
                 f for f in split_files if re.match(r"^n[0-9]+$", f))
-            self._rgb_normalized_mean = [0.485, 0.456, 0.406]
-            self._rgb_normalized_std = [0.229, 0.224, 0.225]
+            self.rgb_normalized_mean = [0.485, 0.456, 0.406]
+            self.rgb_normalized_std = [0.229, 0.224, 0.225]
         elif self.dataset_name == 'custom':
             self._class_ids = sorted(
                 f for f in split_files if not f[0] == '.')
@@ -108,8 +109,8 @@ class ImageFolder():
             self._imdb = []
             for class_id in self._class_ids:
                 cont_id = self._class_id_cont_id[class_id]
-                train_im_dir = os.path.join(self._data_path, class_id)
-                for im_name in filter(is_image_file, os.listdir(train_im_dir)):
+                train_im_dir = os.path.join(self.data_path, class_id)
+                for im_name in os.listdir(train_im_dir):
                     im_path = os.path.join(train_im_dir, im_name)
                     self._imdb.append({"im_path": im_path, "class": cont_id})
             logger.info("Number of images: {}".format(len(self._imdb)))
@@ -117,8 +118,8 @@ class ImageFolder():
         else:
             self._train_imdb = []
             self._val_imdb = []
-            train_path = os.path.join(self._data_path, "train")
-            val_path = os.path.join(self._data_path, "val")
+            train_path = os.path.join(self.data_path, "train")
+            val_path = os.path.join(self.data_path, "val")
             for class_id in self._class_ids:
                 cont_id = self._class_id_cont_id[class_id]
                 train_im_dir = os.path.join(train_path, class_id)
@@ -143,15 +144,15 @@ class ImageFolder():
             data_loaders = []
             pre_partition = 0.
             pre_index = 0
-            for i, _split in enumerate(self._split):
+            for i, _split in enumerate(self.split):
                 _current_partition = pre_partition + _split
                 _current_index = int(len(self._imdb) * _current_partition)
                 _current_indices = indices[pre_index: _current_index]
                 assert not len(_current_indices) == 0, "The length of indices is zero!"
                 dataset = ImageList_torch([self._imdb[j] for j in _current_indices],
                                         self.msrc,  # add support for multisize_random_crop
-                                        _rgb_normalized_mean=self._rgb_normalized_mean,
-                                        _rgb_normalized_std=self._rgb_normalized_std,
+                                        _rgb_normalized_mean=self.rgb_normalized_mean,
+                                        _rgb_normalized_std=self.rgb_normalized_std,
                                         **self.transforms[i])
                 sampler = DistributedSampler(dataset) if cfg.NUM_GPUS > 1 else None
                 loader = self.loader(dataset,
@@ -168,8 +169,8 @@ class ImageFolder():
             train_dataset = ImageList_torch(
                 self._train_imdb,
                 self.msrc,
-                _rgb_normalized_mean=self._rgb_normalized_mean,
-                _rgb_normalized_std=self._rgb_normalized_std,
+                _rgb_normalized_mean=self.rgb_normalized_mean,
+                _rgb_normalized_std=self.rgb_normalized_std,
                 **self.transforms[0]
             )
             sampler = DistributedSampler(train_dataset) if cfg.NUM_GPUS > 1 else None
@@ -182,8 +183,8 @@ class ImageFolder():
             val_dataset = ImageList_torch(
                 self._val_imdb,
                 self.msrc,
-                _rgb_normalized_mean=self._rgb_normalized_mean,
-                _rgb_normalized_std=self._rgb_normalized_std,
+                _rgb_normalized_mean=self.rgb_normalized_mean,
+                _rgb_normalized_std=self.rgb_normalized_std,
                 **self.transforms[1]
             )
             sampler = DistributedSampler(val_dataset) if cfg.NUM_GPUS > 1 else None
@@ -214,8 +215,6 @@ class ImageList_torch(torch.utils.data.Dataset):
             random_flip=False):
         self._imdb = _list
         self.msrc = msrc
-        # self._bgr_normalized_mean = _rgb_normalized_mean[::-1]
-        # self._bgr_normalized_std = _rgb_normalized_std[::-1]
         self._rgb_normalized_mean = _rgb_normalized_mean
         self._rgb_normalized_std = _rgb_normalized_std
         self.crop = crop
