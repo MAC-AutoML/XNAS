@@ -9,6 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import xnas.core.config as config
+from xnas.datasets.loader import get_normal_dataloader
 import xnas.logger.meter as meter
 import xnas.logger.logging as logging
 from xnas.core.config import cfg
@@ -44,7 +45,7 @@ def main(local_rank, world_size):
     # Loss function
     criterion = criterion_builder()
     # Data loaders
-    [train_loader, valid_loader] = construct_loader()
+    [train_loader, valid_loader] = get_normal_dataloader()
     # Optimizers
     net_params = [
         # parameters with weight decay
@@ -241,10 +242,10 @@ class OFATrainer(KDTrainer):
             self.test_meter.update_stats(top1_err, top5_err, inputs.size(0) * cfg.NUM_GPUS)
             self.test_meter.log_iter_stats(cur_epoch, cur_iter)
             self.test_meter.iter_tic()
-        top1_err = self.test_meter.mb_top1_err.get_win_median()
-        top5_err = self.test_meter.mb_top5_err.get_win_median()
-        # self.writer.add_scalar('val/top1_error', self.test_meter.mb_top1_err.get_win_median(), cur_epoch)
-        # self.writer.add_scalar('val/top5_error', self.test_meter.mb_top5_err.get_win_median(), cur_epoch)
+        top1_err = self.test_meter.mb_top1_err.get_win_avg()
+        top5_err = self.test_meter.mb_top5_err.get_win_avg()
+        # self.writer.add_scalar('val/top1_error', self.test_meter.mb_top1_err.get_win_avg(), cur_epoch)
+        # self.writer.add_scalar('val/top5_error', self.test_meter.mb_top5_err.get_win_avg(), cur_epoch)
         # Log epoch stats
         self.test_meter.log_epoch_stats(cur_epoch)
         # self.test_meter.reset()
@@ -320,8 +321,8 @@ class OFATrainer(KDTrainer):
         logger.info("Average@all_subnets top1_err:{} top5_err:{}".format(list_mean(top1errs), list_mean(top5errs)))
             
         # Saving best model
-        if self.best_err > top1_err:
-            self.best_err = top1_err
+        if self.best_err > list_mean(top1errs):
+            self.best_err = list_mean(top1errs)
             self.saving(cur_epoch, best=True)
 
 
@@ -331,6 +332,5 @@ if __name__ == '__main__':
     
     if torch.cuda.is_available():
         cfg.NUM_GPUS = torch.cuda.device_count()
-        print(cfg.NUM_GPUS)
     
     mp.spawn(main, nprocs=cfg.NUM_GPUS, args=(cfg.NUM_GPUS,), join=True)

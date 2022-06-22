@@ -1,4 +1,4 @@
-OUT_NAME="OFA_trail_25"
+OUT_NAME="OFA_trial_25"
 TASKS="normal_1 kernel_1 depth_1 depth_2 expand_1 expand_2"
 
 for loop in $TASKS

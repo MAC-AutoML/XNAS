@@ -1,0 +1,89 @@
+NUM_GPUS: 4
+RNG_SEED: 2
+SPACE: 
+  NAME: 'bignas'
+LOADER:
+  DATASET: 'imagenet'
+  NUM_CLASSES: 1000
+  BATCH_SIZE: 128
+  NUM_WORKERS: 4
+  USE_VAL: True
+  TRANSFORM: "auto_augment_tf"
+SEARCH:
+  IM_SIZE: 224
+BIGNAS:
+  BN_MOMENTUM: 0.1
+  BN_EPS: 1.e-5
+  POST_BN_CALIBRATION_BATCH_NUM: 64
+  ACTIVE_SUBNET:  # subnet for evaluation
+    RESOLUTION: 192
+    WIDTH: [16, 16, 24, 32, 64, 112, 192, 216, 1792]
+    KERNEL_SIZE: [3, 3, 3, 3, 3, 3, 3]
+    EXPAND_RATIO: [1, 4, 4, 4, 4, 6, 6]
+    DEPTH: [1, 3, 3, 3, 3, 3, 1]
+  SUPERNET_CFG:
+    use_v3_head: True
+    resolutions: [192, 224, 256, 288]
+    first_conv: 
+      c: [16, 24]
+      act_func: 'swish'
+      s: 2
+    mb1:
+      c: [16, 24]
+      d: [1, 2]
+      k: [3, 5]
+      t: [1]
+      s: 1
+      act_func: 'swish'
+      se: False
+    mb2:
+      c: [24, 32]
+      d: [3, 4, 5]
+      k: [3, 5]
+      t: [4, 5, 6]
+      s: 2
+      act_func: 'swish'
+      se: False
+    mb3:
+      c: [32, 40] 
+      d: [3, 4, 5, 6]
+      k: [3, 5]
+      t: [4, 5, 6]
+      s: 2
+      act_func: 'swish'
+      se: True
+    mb4:
+      c: [64, 72] 
+      d: [3, 4, 5, 6]
+      k: [3, 5]
+      t: [4, 5, 6]
+      s: 2
+      act_func: 'swish'
+      se: False
+    mb5:
+      c: [112, 120, 128] 
+      d: [3, 4, 5, 6, 7, 8]
+      k: [3, 5]
+      t: [4, 5, 6]
+      s: 1
+      act_func: 'swish'
+      se: True
+    mb6:
+      c: [192, 200, 208, 216] 
+      d: [3, 4, 5, 6, 7, 8]
+      k: [3, 5]
+      t: [6]
+      s: 2
+      act_func: 'swish'
+      se: True
+    mb7:
+      c: [216, 224] 
+      d: [1, 2]
+      k: [3, 5]
+      t: [6]
+      s: 1
+      act_func: 'swish'
+      se: True
+    last_conv:
+      c: [1792, 1984]
+      act_func: 'swish'

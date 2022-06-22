@@ -488,36 +488,18 @@ class DynamicMBConvLayer(nn.Module):
         self.use_se = use_se
 
         # build modules
-        max_middle_channel = make_divisible(
-            round(max(self.in_channel_list) * max(self.expand_ratio_list)))
+        max_middle_channel = make_divisible(round(max(self.in_channel_list) * max(self.expand_ratio_list)))
         if max(self.expand_ratio_list) == 1:
             self.inverted_bottleneck = None
         else:
-            self.inverted_bottleneck = nn.Sequential(
-                OrderedDict(
-                    [
-                        (
-                            "conv",
-                            DynamicConv2d(
-                                max(self.in_channel_list), max_middle_channel
-                            ),
-                        ),
-                        ("bn", DynamicBatchNorm2d(max_middle_channel)),
-                        ("act", build_activation(self.act_func)),
-                    ]
-                )
-            )
+            self.inverted_bottleneck = nn.Sequential(OrderedDict([
+                    ("conv", DynamicConv2d(max(self.in_channel_list), max_middle_channel)),
+                    ("bn", DynamicBatchNorm2d(max_middle_channel)),
+                    ("act", build_activation(self.act_func)),
+            ]))
 
-        self.depth_conv = nn.Sequential(
-            OrderedDict(
-                [
-                    (
-                        "conv",
-                        DynamicSeparableConv2d(
-                            max_middle_channel, self.kernel_size_list, self.stride,
-                            kernel_trans=kernel_trans
-                        ),
-                    ),
+        self.depth_conv = nn.Sequential(OrderedDict([
+                    ("conv", DynamicSeparableConv2d(max_middle_channel, self.kernel_size_list, stride=self.stride, kernel_trans=kernel_trans)),
                     ("bn", DynamicBatchNorm2d(max_middle_channel)),
                     ("act", build_activation(self.act_func)),
                 ]
