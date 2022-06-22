@@ -26,6 +26,7 @@ def construct_loader(
         cutout_length=0,
         use_classes=None,
         transforms=None,
+        **kwargs
     ):
     """Construct NAS dataloaders with train&valid subsets."""
     
@@ -52,10 +53,11 @@ def construct_loader(
         train_data, _ = get_data(name, datapath, cutout_length, use_classes=use_classes, transforms=transforms)
         return split_dataloader(train_data, batch_size, split)
     elif name in IMAGEFOLDER_FORMAT:
-        assert cfg.LOADER.USE_VAL is False, "do not get normal dataloaders."
+        assert cfg.LOADER.USE_VAL is False, "do not using VAL dataset."
+        aug_type = cfg.LOADER.TRANSFORM
         return ImageFolder( # using path of training data of ImageNet as `datapath`
             datapath, batch_size=batch_size, split=split,
-            use_val=False, transforms=transforms,
+            use_val=False, augment_type=aug_type, **kwargs
         ).generate_data_loader()
     else:
         print("dataset not supported.")
@@ -140,12 +142,13 @@ def get_normal_dataloader(
     cutout_length=0,
     use_classes=None,
     transforms=None,
+    **kwargs
 ):
     name=cfg.LOADER.DATASET if name is None else name
     train_batch=cfg.LOADER.BATCH_SIZE if train_batch is None else train_batch
     name=cfg.LOADER.DATASET
-    root=cfg.LOADER.DATAPATH
-    test_batch=cfg.TEST.BATCH_SIZE
+    datapath=cfg.LOADER.DATAPATH
+    test_batch=cfg.LOADER.BATCH_SIZE if cfg.TEST.BATCH_SIZE == -1 else cfg.TEST.BATCH_SIZE
     
     assert (name in SUPPORTED_DATASETS) or (name in IMAGEFOLDER_FORMAT), "dataset not supported."
     assert isinstance(train_batch, int), "normal dataloader using single training batch-size, not list."
@@ -155,7 +158,7 @@ def get_normal_dataloader(
 
     if name in SUPPORTED_DATASETS:
         # get normal dataloaders with train&test subsets.
-        train_data, test_data = get_data(name, root, cutout_length, use_classes=use_classes, transforms=transforms)
+        train_data, test_data = get_data(name, datapath, cutout_length, use_classes=use_classes, transforms=transforms)
         
         train_loader = data.DataLoader(
             dataset=train_data,
@@ -174,12 +177,11 @@ def get_normal_dataloader(
         return train_loader, test_loader
     elif name in IMAGEFOLDER_FORMAT:
         assert cfg.LOADER.USE_VAL is True, "getting normal dataloader."
+        aug_type = cfg.LOADER.TRANSFORM
         return ImageFolder( # using path of training data of ImageNet as `datapath`
-            root, batch_size=[train_batch, test_batch],
-            use_val=True,
-            transforms=transforms,
+            datapath, batch_size=[train_batch, test_batch],
+            use_val=True, augment_type=aug_type, **kwargs
         ).generate_data_loader()
-
 
 def split_dataloader(data_, batch_size, split):
     assert 0 not in split, "illegal split list with zero."

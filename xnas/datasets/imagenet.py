@@ -1,100 +1,67 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-#
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
 """ImageNet dataset."""
 
-import math
 import os
 import re
 
 import numpy as np
 import torch
 import torch.utils.data
-import torchvision.transforms as torch_transforms
 from PIL import Image
 from torch.utils.data.distributed import DistributedSampler
 
 import xnas.logger.logging as logging
 from xnas.core.config import cfg
-from xnas.datasets.transforms import MultiSizeRandomCrop
+from xnas.datasets.transforms_imagenet import get_data_transform
 
 
 logger = logging.get_logger(__name__)
 
 
 class ImageFolder():
-    def __init__(
-            self,
-            datapath,
-            batch_size,
-            split=None,
-            use_val=False,
-            dataset_name='imagenet',
-            _rgb_normalized_mean=None,
-            _rgb_normalized_std=None,
-            transforms=None,
-            num_workers=None,
-            pin_memory=None,
-            shuffle=True
-        ):
+    """New ImageFolder
+    Support ImageNet only currently.
+    """
+    def __init__(self, datapath, batch_size, split=None, use_val=False, augment_type='default', **kwargs):
         datapath = './data/imagenet/' if not datapath else datapath
         assert os.path.exists(datapath), "Data path '{}' not found".format(datapath)
         
         self.use_val = use_val
-        self.data_path, self.split, self.dataset_name = datapath, split, dataset_name
-        self.rgb_normalized_mean, self.rgb_normalized_std = _rgb_normalized_mean, _rgb_normalized_std
-        self.num_workers = cfg.LOADER.NUM_WORKERS if num_workers is None else num_workers
-        self.pin_memory = cfg.LOADER.PIN_MEMORY if pin_memory is None else pin_memory
-        self.shuffle = shuffle
+        self.data_path = datapath
+        self.split = split
         self.batch_size = batch_size
+        self.num_workers = cfg.LOADER.NUM_WORKERS
+        self.pin_memory = cfg.LOADER.PIN_MEMORY
+        self.augment_type = augment_type
+        self.kwargs = kwargs
+        
         if not self.use_val:
-            assert sum(self.split) == 1, "Summation of split should be 1"
+            assert sum(self.split) == 1, "Summation of split should be 1."
         
-        self.msrc = None
-        self.loader = torch.utils.data.DataLoader
-        # self.collate_fn = None
-        
-        if transforms is None:
-            im_size = cfg.SEARCH.IM_SIZE if len(cfg.SEARCH.MULTI_SIZES)==0 else cfg.SEARCH.MULTI_SIZES
-            self.transforms = [{'crop': 'random', 'crop_size': im_size, 'min_crop': 0.08, 'random_flip': True},
-                               {'crop': 'center', 'crop_size': cfg.TEST.IM_SIZE, 'min_crop': -1, 'random_flip': False}]  # NOTE: min_crop is not used here.
+        # setting default loader if not using MultiSizeRandomCrop
+        if len(cfg.SEARCH.MULTI_SIZES) == 0:
+            self.loader = torch.utils.data.DataLoader
         else:
-            self.transforms = transforms
-        if not self.use_val:
-            assert len(self.transforms) == len(self.split), "Length of split and transforms should be equal"
-        else:
-            assert len(self.transforms) == 2
-        
-        # Check if using multisize_random_crop
-        if len(cfg.SEARCH.MULTI_SIZES):
             from xnas.datasets.utils.msrc_loader import msrc_DataLoader
-            self.msrc = MultiSizeRandomCrop(cfg.SEARCH.MULTI_SIZES)
             self.loader = msrc_DataLoader
-            logger.info("Using Random MultiSize Crop, continuous={} candidate im_sizes={}".format(self.msrc.CONTINUOUS, self.msrc.CANDIDATE_SIZES))
+            logger.info("Using MultiSize RandomCrop, continuous={} candidate im_sizes={}".format(self.msrc.CONTINUOUS, self.msrc.CANDIDATE_SIZES))
 
-        # Read all dataset
+        # Acquiring transforms
+        logger.info("Constructing transforms")
+        self.train_transform, self.test_transform = self._build_transfroms()
+        
+        # Read all datasets
         logger.info("Constructing ImageFolder")
         self._construct_imdb()
-
+    
     def _construct_imdb(self):
         # Images are stored per class in subdirs (format: n<number>)
         if not self.use_val:
             split_files = os.listdir(self.data_path)
         else:
             split_files = os.listdir(os.path.join(self.data_path, "train"))
-        if self.dataset_name == "imagenet":
-            # imagenet format folder names
-            self._class_ids = sorted(
-                f for f in split_files if re.match(r"^n[0-9]+$", f))
-            self.rgb_normalized_mean = [0.485, 0.456, 0.406]
-            self.rgb_normalized_std = [0.229, 0.224, 0.225]
-        elif self.dataset_name == 'custom':
-            self._class_ids = sorted(
-                f for f in split_files if not f[0] == '.')
-        else:
-            raise NotImplementedError
+        # imagenet format folder names
+        self._class_ids = sorted(
+            f for f in split_files if re.match(r"^n[0-9]+$", f))
 
         # Map class ids to contiguous ids
         self._class_id_cont_id = {v: i for i, v in enumerate(self._class_ids)}
@@ -130,7 +97,11 @@ class ImageFolder():
             logger.info("Number of classes: {}".format(len(self._class_ids)))
             logger.info("Number of TRAIN images: {}".format(len(self._train_imdb)))
             logger.info("Number of VAL images: {}".format(len(self._val_imdb)))
-
+    
+    def _build_transfroms(self):
+        # KWARGS for 'auto_augment_tf': policy='v0', interpolation='bilinear'
+        return get_data_transform(augment=self.augment_type, **self.kwargs)
+    
     def generate_data_loader(self):
         if not self.use_val:
             indices = list(range(len(self._imdb)))
@@ -144,16 +115,17 @@ class ImageFolder():
                 _current_index = int(len(self._imdb) * _current_partition)
                 _current_indices = indices[pre_index: _current_index]
                 assert not len(_current_indices) == 0, "The length of indices is zero!"
-                dataset = ImageList_torch([self._imdb[j] for j in _current_indices],
-                                        self.msrc,  # add support for multisize_random_crop
-                                        _rgb_normalized_mean=self.rgb_normalized_mean,
-                                        _rgb_normalized_std=self.rgb_normalized_std,
-                                        **self.transforms[i])
+                dataset = ImageList_torch(
+                    [self._imdb[j] for j in _current_indices],
+                    # using the first split only as training dataset
+                    transform=self.train_transform if i==0 else self.test_transform
+                )
                 sampler = DistributedSampler(dataset) if cfg.NUM_GPUS > 1 else None
                 loader = self.loader(dataset,
                                     batch_size=self.batch_size[i],
                                     shuffle=(False if sampler else True),
                                     sampler=sampler,
+                                    drop_last=(True if i==0 else False),
                                     num_workers=self.num_workers,
                                     pin_memory=self.pin_memory)
                 data_loaders.append(loader)
@@ -161,36 +133,26 @@ class ImageFolder():
                 pre_index = _current_index
             return data_loaders
         else:
-            train_dataset = ImageList_torch(
-                self._train_imdb,
-                self.msrc,
-                _rgb_normalized_mean=self.rgb_normalized_mean,
-                _rgb_normalized_std=self.rgb_normalized_std,
-                **self.transforms[0]
-            )
-            sampler = DistributedSampler(train_dataset) if cfg.NUM_GPUS > 1 else None
+            train_dataset = ImageList_torch(self._train_imdb, self.train_transform)
+            train_sampler = DistributedSampler(train_dataset) if cfg.NUM_GPUS > 1 else None
             train_loader = self.loader(train_dataset,
-                                batch_size=self.batch_size[0],
-                                shuffle=(False if sampler else True),
-                                sampler=sampler,
-                                num_workers=self.num_workers,
-                                pin_memory=self.pin_memory)
-            val_dataset = ImageList_torch(
-                self._val_imdb,
-                self.msrc,
-                _rgb_normalized_mean=self.rgb_normalized_mean,
-                _rgb_normalized_std=self.rgb_normalized_std,
-                **self.transforms[1]
-            )
-            sampler = DistributedSampler(val_dataset) if cfg.NUM_GPUS > 1 else None
+                                        batch_size=self.batch_size[0],
+                                        shuffle=(False if train_sampler else True),
+                                        sampler=train_sampler,
+                                        drop_last=True,
+                                        num_workers=self.num_workers,
+                                        pin_memory=self.pin_memory)
+            
+            val_dataset = ImageList_torch(self._val_imdb, self.test_transform)
+            val_sampler = DistributedSampler(val_dataset) if cfg.NUM_GPUS > 1 else None
             valid_loader = self.loader(val_dataset,
-                                batch_size=self.batch_size[1],
-                                shuffle=(False if sampler else True),
-                                sampler=sampler,
-                                num_workers=self.num_workers,
-                                pin_memory=self.pin_memory)
+                                        batch_size=self.batch_size[1],
+                                        shuffle=(False if val_sampler else True),
+                                        sampler=val_sampler,
+                                        drop_last=False,
+                                        num_workers=self.num_workers,
+                                        pin_memory=self.pin_memory)
             return [train_loader, valid_loader]
-
 
 class ImageList_torch(torch.utils.data.Dataset):
     '''
@@ -198,45 +160,10 @@ class ImageList_torch(torch.utils.data.Dataset):
         From https://github.com/pytorch/vision/issues/81
     '''
 
-    def __init__(
-            self,
-            _list,
-            msrc=None,
-            _rgb_normalized_mean=None,
-            _rgb_normalized_std=None,
-            crop='random',
-            crop_size=224,
-            min_crop=0.08,
-            random_flip=False):
-        self._imdb = _list
-        self.msrc = msrc
-        self._rgb_normalized_mean = _rgb_normalized_mean
-        self._rgb_normalized_std = _rgb_normalized_std
-        self.crop = crop
-        self.crop_size = crop_size
-        self.min_crop = min_crop
-        self.random_flip = random_flip
+    def __init__(self, list, transform):
+        self._imdb = list
+        self.transform = transform
         self.loader = pil_loader
-        self._construct_transforms()
-
-    def _construct_transforms(self):
-        transforms = []
-        if self.crop == "random":
-            if isinstance(self.crop_size, int):
-                transforms.append(torch_transforms.RandomResizedCrop(self.crop_size, scale=(self.min_crop, 1.0)))
-            elif isinstance(self.crop_size, list):
-                # using MultiSizeRandomCrop
-                transforms.append(self.msrc)
-        elif self.crop == "center":
-            transforms.append(torch_transforms.Resize(math.ceil(self.crop_size / 0.875)))   # assert crop_size==224
-            transforms.append(torch_transforms.CenterCrop(self.crop_size))
-        # TODO: color augmentation support
-        # transforms.append(torch_transforms.ColorJitter(brightness=0.4, contrast=0.4,saturation=0.4, hue=0.2))
-        if self.random_flip:
-            transforms.append(torch_transforms.RandomHorizontalFlip())
-        transforms.append(torch_transforms.ToTensor())
-        transforms.append(torch_transforms.Normalize(mean=self._rgb_normalized_mean, std=self._rgb_normalized_std))
-        self.transform = torch_transforms.Compose(transforms)
 
     def __getitem__(self, index):
         impath = self._imdb[index]["im_path"]
