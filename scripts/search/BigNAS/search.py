@@ -163,10 +163,6 @@ def test_epoch(subnet, test_loader, test_meter):
     test_meter.reset(True)
     test_meter.iter_tic()
     for cur_iter, (inputs, labels) in enumerate(test_loader):
-        # [debug]
-        if cur_iter > 20:
-            break
-            
         inputs, labels = inputs.cuda(), labels.cuda(non_blocking=True)
         preds = subnet(inputs)
         top1_err, top5_err = meter.topk_errors(preds, labels, [1, 5])

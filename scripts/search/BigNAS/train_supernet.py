@@ -108,10 +108,6 @@ class BigNASTrainer(Trainer):
         self.train_meter.iter_tic()
         self.train_loader.sampler.set_epoch(cur_epoch)  # DDP
         for cur_iter, (inputs, labels) in enumerate(self.train_loader):
-            # [debug]
-            if cur_iter > 20:
-                break
-            
             inputs, labels = inputs.to(rank), labels.to(rank, non_blocking=True)
             
             # Adjust lr per iter
@@ -183,10 +179,6 @@ class BigNASTrainer(Trainer):
         self.test_meter.reset(True)
         self.test_meter.iter_tic()
         for cur_iter, (inputs, labels) in enumerate(self.test_loader):
-            # [debug]
-            if cur_iter > 20:
-                break
-            
             inputs, labels = inputs.to(rank), labels.to(rank, non_blocking=True)
             preds = subnet(inputs)
             top1_err, top5_err = meter.topk_errors(preds, labels, [1, 5])
