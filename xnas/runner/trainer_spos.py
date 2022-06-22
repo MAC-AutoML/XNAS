@@ -114,9 +114,9 @@ class Trainer(Recorder):
             self.test_meter.update_stats(top1_err, top5_err, inputs.size(0) * cfg.NUM_GPUS)
             self.test_meter.log_iter_stats(cur_epoch, cur_iter)
             self.test_meter.iter_tic()
-        top1_err = self.test_meter.mb_top1_err.get_win_median()
-        self.writer.add_scalar('val/top1_error', self.test_meter.mb_top1_err.get_win_median(), cur_epoch)
-        self.writer.add_scalar('val/top5_error', self.test_meter.mb_top5_err.get_win_median(), cur_epoch)
+        top1_err = self.test_meter.mb_top1_err.get_win_avg()
+        self.writer.add_scalar('val/top1_error', self.test_meter.mb_top1_err.get_win_avg(), cur_epoch)
+        self.writer.add_scalar('val/top5_error', self.test_meter.mb_top5_err.get_win_avg(), cur_epoch)
         # Log epoch stats
         self.test_meter.log_epoch_stats(cur_epoch)
         self.test_meter.reset()
@@ -381,10 +381,9 @@ class OneShotTrainer(Trainer):
             self.test_meter.update_stats(top1_err, top5_err, inputs.size(0) * cfg.NUM_GPUS)
             self.test_meter.log_iter_stats(cur_epoch, cur_iter)
             self.test_meter.iter_tic()
-        top1_err = self.test_meter.mb_top1_err.get_win_median()
-        top1_err_avg = self.test_meter.mb_top1_err.get_global_avg()
-        self.writer.add_scalar('val/top1_error', self.test_meter.mb_top1_err.get_win_median(), cur_epoch)
-        self.writer.add_scalar('val/top5_error', self.test_meter.mb_top5_err.get_win_median(), cur_epoch)
+        top1_err = self.test_meter.mb_top1_err.get_win_avg()
+        self.writer.add_scalar('val/top1_error', self.test_meter.mb_top1_err.get_win_avg(), cur_epoch)
+        self.writer.add_scalar('val/top5_error', self.test_meter.mb_top5_err.get_win_avg(), cur_epoch)
         # Log epoch stats
         self.test_meter.log_epoch_stats(cur_epoch)
         self.test_meter.reset()
@@ -392,7 +391,7 @@ class OneShotTrainer(Trainer):
         if self.best_err > top1_err:
             self.best_err = top1_err
             self.saving(cur_epoch, best=True)
-        return top1_err_avg
+        return top1_err
             
     @torch.no_grad()
     def evaluate_epoch(self, sample):
@@ -405,7 +404,7 @@ class OneShotTrainer(Trainer):
             top1_err, top5_err = meter.topk_errors(preds, labels, [1, 5])
             top1_err, top5_err = top1_err.item(), top5_err.item()
             self.evaluate_meter.update_stats(top1_err, top5_err, inputs.size(0) * cfg.NUM_GPUS)
-        top1_err = self.evaluate_meter.mb_top1_err.get_win_median()
+        top1_err = self.evaluate_meter.mb_top1_err.get_win_avg()
         # self.evaluate_sampler.record(choice, top1_err)
         self.evaluate_meter.reset()
         return top1_err

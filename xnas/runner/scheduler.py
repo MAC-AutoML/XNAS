@@ -85,13 +85,14 @@ class GradualWarmupScheduler(_LRScheduler):
 def _calc_learning_rate(
     init_lr, n_epochs, epoch, n_iter=None, iter=0,
 ):
-    if cfg.SEARCH.LOSS_FUN.startswith("cross_entropy"):
+    if cfg.OPTIM.LR_POLICY == "cos":
         t_total = n_epochs * n_iter
         t_cur = epoch * n_iter + iter
         lr = 0.5 * init_lr * (1 + math.cos(math.pi * t_cur / t_total))
     else:
-        raise ValueError("do not support: {}".format(cfg.SEARCH.LOSS_FUN))
+        raise ValueError("do not support: {}".format(cfg.OPTIM.LR_POLICY))
     return lr
+
 
 def _warmup_adjust_learning_rate(
         init_lr, n_epochs, epoch, n_iter, iter=0, warmup_lr=0
@@ -101,6 +102,7 @@ def _warmup_adjust_learning_rate(
         t_total = n_epochs * n_iter
         new_lr = T_cur / t_total * (init_lr - warmup_lr) + warmup_lr
         return new_lr
+
 
 def adjust_learning_rate_per_batch(epoch, n_iter=None, iter=0, warmup=False):
     """adjust learning of a given optimizer and return the new learning rate"""

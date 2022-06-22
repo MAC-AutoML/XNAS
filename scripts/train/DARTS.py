@@ -97,9 +97,9 @@ class Darts_Retrainer(Trainer):
             self.test_meter.update_stats(top1_err, top5_err, inputs.size(0) * cfg.NUM_GPUS)
             self.test_meter.log_iter_stats(cur_epoch, cur_iter)
             self.test_meter.iter_tic()
-        top1_err = self.test_meter.mb_top1_err.get_win_median()
-        self.writer.add_scalar('val/top1_error', self.test_meter.mb_top1_err.get_win_median(), cur_epoch)
-        self.writer.add_scalar('val/top5_error', self.test_meter.mb_top5_err.get_win_median(), cur_epoch)
+        top1_err = self.test_meter.mb_top1_err.get_win_avg()
+        self.writer.add_scalar('val/top1_error', self.test_meter.mb_top1_err.get_win_avg(), cur_epoch)
+        self.writer.add_scalar('val/top5_error', self.test_meter.mb_top5_err.get_win_avg(), cur_epoch)
         # Log epoch stats
         self.test_meter.log_epoch_stats(cur_epoch)
         self.test_meter.reset()
