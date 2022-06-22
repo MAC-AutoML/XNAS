@@ -25,6 +25,7 @@ from xnas.runner.optimizer import optimizer_builder
 from xnas.runner.criterion import criterion_builder
 from xnas.runner.scheduler import lr_scheduler_builder
 
+
 __all__ = [
     'construct_loader',
     'optimizer_builder',
@@ -48,6 +49,7 @@ from xnas.spaces.DrNAS.darts_cnn import _DrNAS_DARTS_CNN
 from xnas.spaces.DrNAS.nb201_cnn import _DrNAS_nb201_CNN, _GDAS_nb201_CNN
 from xnas.spaces.SPOS.cnn import _SPOS_CNN, _infer_SPOS_CNN
 from xnas.spaces.DropNAS.cnn import _DropNASCNN
+from xnas.spaces.ProxylessNAS.cnn import _MobileNetV2
 from xnas.spaces.OFA.MobileNetV3.ofa_cnn import _OFAMobileNetV3
 from xnas.spaces.OFA.ProxylessNet.ofa_cnn import _OFAProxylessNASNet
 from xnas.spaces.OFA.ResNets.ofa_cnn import _OFAResNet
@@ -78,6 +80,9 @@ SUPPORTED_SPACES = {
     "infer_spos": _infer_SPOS_CNN,
     "infer_attentivenas": _infer_AttentiveNAS_CNN,
     # "infer_bignas": _infer_BigNAS_CNN,
+    "spos_nb201": _SPOS_nb201_CNN,
+    # "proxyless": _SuperProxylessNASNets,
+    "proxyless": _MobileNetV2,
 }
 
 

@@ -1,4 +1,5 @@
 import json
+import numpy as np
 import torch.nn as nn
 
 from xnas.spaces.OFA.ops import (
@@ -57,6 +58,7 @@ class ProxylessNASNet(WSConv_Network):
         x = self.global_avg_pool(x)
         x = self.classifier(x)
         return x
+    
 
     @property
     def module_str(self):
@@ -162,30 +164,33 @@ class MobileNetV2(ProxylessNASNet):
         inverted_residual_setting = [
             # t, c, n, s
             [1, 16, 1, 1],
-            [None, 24, 2, 2],
-            [None, 32, 3, 2],
-            [None, 64, 4, 2],
-            [None, 96, 3, 1],
-            [None, 160, 3, 2],
-            [None, 320, 1, 1],
+            [0, 24, 2, 2],
+            [0, 32, 3, 2],
+            [0, 64, 4, 2],
+            [0, 96, 3, 1],
+            [0, 160, 3, 2],
+            [0, 320, 1, 1],
         ]
 
         if depth_param is not None:
-            assert isinstance(depth_param, int)
+            assert len(depth_param) == 6
+            # assert isinstance(depth_param, )
             for i in range(1, len(inverted_residual_setting) - 1):
-                inverted_residual_setting[i][2] = depth_param
+                inverted_residual_setting[i][2] = depth_param[i-1]
 
         if stage_width_list is not None:
+            assert len(stage_width_list) == 7
             for i in range(len(inverted_residual_setting)):
                 inverted_residual_setting[i][1] = stage_width_list[i]
 
-        if expand_ratio is not None:
-            for i in range(len(inverted_residual_setting)):
-                inverted_residual_setting[i][0] = expand_ratio[i]
+        # if expand_ratio is not None:
+        #     for i in range(len(inverted_residual_setting)):
+        #         inverted_residual_setting[i][0] = expand_ratio[i]
 
-        ks = val2list(ks, sum([n for _, _, n, _ in inverted_residual_setting]) - 1)
+        # ks = val2list(ks, sum([n for _, _, n, _ in inverted_residual_setting]) - 1)
         _pt = 0
 
+        self.feature_idx = np.cumsum(depth_param)[[1, 3]]
         # first conv layer
         first_conv = ConvLayer(
             3,
@@ -207,15 +212,17 @@ class MobileNetV2(ProxylessNASNet):
                     stride = 1
                 if t == 1: # only used for first block
                     kernel_size = 3
+                    er = 1
                 else:
-                    kernel_size = ks[_pt]
+                    kernel_size = ks[_pt].item()
+                    er = expand_ratio[_pt].item()
                     _pt += 1
                 mobile_inverted_conv = MBConvLayer(
                     in_channels=input_channel,
                     out_channels=output_channel,
                     kernel_size=kernel_size,
                     stride=stride,
-                    expand_ratio=t,
+                    expand_ratio=er,
                 )
                 if stride == 1:
                     if input_channel == output_channel:
@@ -244,3 +251,21 @@ class MobileNetV2(ProxylessNASNet):
 
         # set bn param
         self.set_bn_param(*bn_param)
+        
+    def forward_with_features(self, x, *args, **kwargs):
+        x = self.first_conv(x)
+        features = []
+        for i, block in enumerate(self.blocks):
+            if i in (self.feature_idx):
+                features.append(x)
+            x = block(x)
+        if self.feature_mix_layer is not None:
+            x = self.feature_mix_layer(x)
+        features.append(x)
+        assert len(features) == 3
+        x = self.global_avg_pool(x)
+        logits = self.classifier(x)
+        return features, logits
+
+def _MobileNetV2():
+    return MobileNetV2()
