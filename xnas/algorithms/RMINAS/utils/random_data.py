@@ -8,9 +8,9 @@ def get_random_data(batchsize, name):
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     if name == 'imagenet':
         train_loader, _ = ImageFolder(
-            "./data/imagenet/ILSVRC2012_img_train/", 
-            [0.5, 0.5], 
-            batchsize*16,
+            datapath="./data/imagenet/ILSVRC2012_img_train/", 
+            batch_size=batchsize*16,
+            split=[0.5, 0.5], 
         ).generate_data_loader()
     else:
         train_loader, _ = get_normal_dataloader(name, batchsize*16)
