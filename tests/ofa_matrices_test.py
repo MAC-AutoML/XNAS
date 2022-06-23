@@ -2,7 +2,7 @@ import os
 import torch
 
 def test_local():
-    root = '/home/xfey/XNAS/exp/search/OFA_trail_25/kernel_1/checkpoints/'
+    root = '/home/xfey/XNAS/exp/search/OFA_trial_25/kernel_1/checkpoints/'
     filename_prefix = 'model_epoch_'
     filename_postfix = '.pyth'
 

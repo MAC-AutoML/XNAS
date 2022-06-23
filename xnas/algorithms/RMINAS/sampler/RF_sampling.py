@@ -35,7 +35,8 @@ class RF_suggest():
             self.max_space = int(3**8)
             self.num_estimator = 30
             self.spaces = list(api.keys())
-            
+        elif self.space == 'proxyless':
+            self.num_estimator = 100
         self.model = RandomForestClassifier(n_estimators=self.num_estimator,random_state=seed)
     
     def _update_lossthres(self):
@@ -73,6 +74,8 @@ class RF_suggest():
         elif self.space == 'mb':
             return [self._single_sample() for _ in range(num_warmup)]
         elif self.space == 'nasbenchmacro':
+            return [self._single_sample() for _ in range(num_warmup)]
+        elif self.space == 'proxyless':
             return [self._single_sample() for _ in range(num_warmup)]
     
     def _single_sample(self, unique=True):
@@ -125,6 +128,28 @@ class RF_suggest():
             else:
                 numeric_choice = np.random.randint(3,size=8)
                 return numeric_choice
+        elif self.space == 'proxyless':
+            def gen_sample():
+                depth = np.array(np.random.randint(1, 4+1, size=5).tolist() + [1])
+                anchors = depth+[0,4,8,12,16,20]
+                ks = np.random.choice([3,5,7], size=21)
+                expand_ratios = np.random.choice([3,6], size=21)
+                ed = 4
+                for anchor in anchors:
+                    ks[anchor:ed] = 0
+                    expand_ratios[anchor:ed] = 0
+                    ed += 4
+                sample = np.concatenate([depth, ks, expand_ratios])
+                return sample
+            if unique:
+                while True:
+                    sample = gen_sample()
+                    if sample.tobytes() not in self.sampled_history:
+                        self.sampled_history.append(sample.tobytes())
+                        return sample
+            else:
+                sample = gen_sample()
+                return sample
                 
 
     def Warmup(self):
@@ -177,6 +202,18 @@ class RF_suggest():
             for i in _sample_indexes:
                 if self.spaces[i] not in chace_table:
                     _sample_archs.append(np.array(list(self.spaces[i])).astype(int))
+        elif self.space == 'proxyless':
+            _sample_batch = np.array([self._single_sample(unique=False).ravel() for _ in range(self.batch)])
+            _tmp_trained_arch = [(i['arch'].tobytes()) for i in self.trained_arch]
+            _sample_archs = []
+            for i in _sample_batch:
+                if (i).tobytes() not in _tmp_trained_arch:
+                    _sample_archs.append(i)
+#             print("sample {} archs/batch, cost time: {}".format(len(_sample_archs), time.time()-start_time))
+            best_id = np.argmax(self.model.predict_proba(_sample_archs)[:,1])
+            best_arch = _sample_archs[best_id]
+            return best_arch
+        
             # _sample_batch = np.array([self._single_sample(unique=True).ravel() for _ in range(self.batch)])
             # _tmp_trained_arch = [str(i['arch'].ravel()) for i in self.trained_arch]
             # _sample_archs = []
@@ -311,3 +348,12 @@ class RF_suggest():
             op_arr = np.zeros((_tmp_np.size, 3))
             op_arr[np.arange(_tmp_np.size),_tmp_np] = 1
             return op_arr.argmax(-1)
+        elif self.space == 'proxyless':
+            assert method == 'sum', 'only sum is supported in mb.'
+            depth = estimate_archs[:, :6]
+            best_depth = np.eye(4)[depth].argmax(-1)+1
+            ks = estimate_archs[:, 6:27]//2 # {3, 5, 7}
+            best_ks = np.eye(3)[ks].argmax(-1) * 2 + 3
+            er = estimate_archs[:, 27:]//3 # {3, 6}
+            best_er = np.eye(2)[er].agrmax(-1) * 3 + 3
+            return np.concatenate([best_depth, best_ks, best_er])

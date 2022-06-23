@@ -32,20 +32,22 @@ Based on a common division of NAS, the project is organized by **search space**,
 
 |             |    DARTS   |   NAS-Bench-201   |   SPOS   |   OFA   |   ~~NAS-Bench-101~~   |   ~~NAS-Bench-1Shot1~~   |
 | :---------: | :--------: | :--------: | :--------: | ---------- | ---------- | ---------- |
-|    **DARTS**    | C10<br />C100 | C10<br />C100<br />ImageNet16 |          |          |          |          |
-|  **PDARTS** | C10<br />ImageNet |          |          |          |          |          |
-|   **PCDARTS**   |          |          |          |          |          |          |
-|     **SNG**     |          |          |          |          |          |          |
-|    **ASNG** |          |          |          |          |          |          |
-|  **MDENAS** |          |          |          |          |          |          |
-|  **DDPNAS** |          |          |          |          |          |          |
-|   **MIGONAS**   |          |          |          |          |          |          |
-| **GridSearch** |          |          |          |          |          |          |
-|    **DrNAS**    |          |          |          |          |          |          |
-|  **RMINAS** | C10<br />ImageNet | C10<br />C100<br />ImageNet |          |          |          |          |
-|   **DropNAS**   |          |          |          |          |          |          |
-|    **SPOS** |          |          |          |          |          |          |
-|     **OFA**     |          |          |          |          |          |          |
+|    **DARTS**    | ☑︎ | ☑︎ |          |          |          |          |
+|  **PDARTS** | ☑︎ | ☑︎ |          |          |          |          |
+|   **PCDARTS**   | ☑︎ | ☑︎ |          |          |          |          |
+|     **SNG**     | ☑︎ |          |          |          |          |          |
+|    **ASNG** | ☑︎ |          |          |          |          |          |
+|  **MDENAS** | ☑︎ |          |          |          |          |          |
+|  **DDPNAS** | ☑︎ | ☑︎ |          |          |          |          |
+|   **MIGONAS**   | ☑︎ |          |          |          |          |          |
+| **GridSearch** | ☑︎ |          |          |          |          |          |
+|    **DrNAS**    | ☑︎ | ☑︎ |          |          |          |          |
+|    **SNAS**    | ☑︎ | ☑︎ |          |          |          |          |
+|    **GDAS**    | ☑︎ | ☑︎ |          |          |          |          |
+|  **RMINAS** | ☑︎ | ☑︎ |          |          |          |          |
+|   **DropNAS**   | ☑︎ |          |          |          |          |          |
+|    **SPOS** |          |          | ☑︎ |          |          |          |
+|     **OFA**     |          |          |          | ☑︎ |          |          |
 
 
 We also provide the interpretation of papers and experimental records for each algorithm. For more information, please refer to the links in the "**Docs**" column.

@@ -140,14 +140,14 @@ class MobileNetV2(ProxylessNASNet):
         width_mult=1.0,
         bn_param=(0.1, 1e-3),
         dropout_rate=0.2,
-        ks=None,
-        expand_ratio=None,
+        ks=None, # a list only include {3, 5, 7}
+        expand_ratio=None, # in proxyless space only 3 or 6
         depth_param=None,
         stage_width_list=None,
     ):
 
         ks = 3 if ks is None else ks
-        expand_ratio = 6 if expand_ratio is None else expand_ratio
+        expand_ratio = [6]*6 if expand_ratio is None else expand_ratio
 
         input_channel = 32
         last_channel = 1280
@@ -162,12 +162,12 @@ class MobileNetV2(ProxylessNASNet):
         inverted_residual_setting = [
             # t, c, n, s
             [1, 16, 1, 1],
-            [expand_ratio, 24, 2, 2],
-            [expand_ratio, 32, 3, 2],
-            [expand_ratio, 64, 4, 2],
-            [expand_ratio, 96, 3, 1],
-            [expand_ratio, 160, 3, 2],
-            [expand_ratio, 320, 1, 1],
+            [None, 24, 2, 2],
+            [None, 32, 3, 2],
+            [None, 64, 4, 2],
+            [None, 96, 3, 1],
+            [None, 160, 3, 2],
+            [None, 320, 1, 1],
         ]
 
         if depth_param is not None:
@@ -178,6 +178,10 @@ class MobileNetV2(ProxylessNASNet):
         if stage_width_list is not None:
             for i in range(len(inverted_residual_setting)):
                 inverted_residual_setting[i][1] = stage_width_list[i]
+
+        if expand_ratio is not None:
+            for i in range(len(inverted_residual_setting)):
+                inverted_residual_setting[i][0] = expand_ratio[i]
 
         ks = val2list(ks, sum([n for _, _, n, _ in inverted_residual_setting]) - 1)
         _pt = 0
@@ -201,7 +205,7 @@ class MobileNetV2(ProxylessNASNet):
                     stride = s
                 else:
                     stride = 1
-                if t == 1:
+                if t == 1: # only used for first block
                     kernel_size = 3
                 else:
                     kernel_size = ks[_pt]

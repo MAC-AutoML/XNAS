@@ -113,8 +113,7 @@ class PCDartsCNN(nn.Module):
         self.n_classes = n_classes  # 10
         self.n_layers = n_layers  # 8
         self.n_nodes = n_nodes  # 4
-        self.basic_op_list = ['none','max_pool_3x3', 'avg_pool_3x3', 'skip_connect', 'sep_conv_3x3',
-                              'sep_conv_5x5', 'dil_conv_3x3', 'dil_conv_5x5' ] if len(basic_op_list) == 0 else basic_op_list
+        self.basic_op_list = DARTS_SPACE if len(basic_op_list) == 0 else basic_op_list
         C_cur = stem_multiplier * C  # 3 * 16 = 48
         self.stem = nn.Sequential(
             nn.Conv2d(self.C_in, C_cur, 3, 1, 1, bias=False),

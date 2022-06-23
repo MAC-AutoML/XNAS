@@ -96,7 +96,7 @@ def main():
     #     load_last_stage_ckpt(cfg.OFA.TASK, cfg.OFA.PHASE)
     #     ofa_trainer.resume()    # only load the state_dict of model
 
-    # cfg.SEARCH.WEIGHTS = '/home/xfey/XNAS/exp/search/OFA_trail_25/kernel_1/checkpoints/model_epoch_0110.pyth'
+    # cfg.SEARCH.WEIGHTS = '/home/xfey/XNAS/exp/search/OFA_trial_25/kernel_1/checkpoints/model_epoch_0110.pyth'
     cfg.SEARCH.WEIGHTS = '/home/xfey/XNAS/tests/weights/ofa_D4_E6_K357'
     ofa_trainer.resume()
 
@@ -137,10 +137,10 @@ class OFATrainer(KDTrainer):
             self.test_meter.update_stats(top1_err, top5_err, inputs.size(0) * cfg.NUM_GPUS)
             self.test_meter.log_iter_stats(cur_epoch, cur_iter)
             self.test_meter.iter_tic()
-        top1_err = self.test_meter.mb_top1_err.get_win_median()
-        top5_err = self.test_meter.mb_top5_err.get_win_median()
-        # self.writer.add_scalar('val/top1_error', self.test_meter.mb_top1_err.get_win_median(), cur_epoch)
-        # self.writer.add_scalar('val/top5_error', self.test_meter.mb_top5_err.get_win_median(), cur_epoch)
+        top1_err = self.test_meter.mb_top1_err.get_win_avg()
+        top5_err = self.test_meter.mb_top5_err.get_win_avg()
+        # self.writer.add_scalar('val/top1_error', self.test_meter.mb_top1_err.get_win_avg(), cur_epoch)
+        # self.writer.add_scalar('val/top5_error', self.test_meter.mb_top5_err.get_win_avg(), cur_epoch)
         # Log epoch stats
         self.test_meter.log_epoch_stats(cur_epoch)
         # self.test_meter.reset()

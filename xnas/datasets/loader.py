@@ -26,21 +26,22 @@ def construct_loader(
         cutout_length=0,
         use_classes=None,
         transforms=None,
+        **kwargs
     ):
     """Construct NAS dataloaders with train&valid subsets."""
     
     split = cfg.LOADER.SPLIT
     name = cfg.LOADER.DATASET
-    batch_size = cfg.LOADER.BATCH_SIZE 
+    batch_size = cfg.LOADER.BATCH_SIZE
     datapath = cfg.LOADER.DATAPATH
     
     assert (name in SUPPORTED_DATASETS) or (name in IMAGEFOLDER_FORMAT), "dataset not supported."
 
     # expand batch_size to support different number during training & validating
     if isinstance(batch_size, int):
-        batch_size = [batch_size, batch_size]
+        batch_size = [batch_size] * len(split)
     elif batch_size is None:
-        batch_size = [256, 256]
+        batch_size = [256] * len(split)
     assert len(batch_size) == len(split), "lengths of batch_size and split should be same."
     
     # check if randomresized crop is used only in ImageFolder type datasets
@@ -52,9 +53,11 @@ def construct_loader(
         train_data, _ = get_data(name, datapath, cutout_length, use_classes=use_classes, transforms=transforms)
         return split_dataloader(train_data, batch_size, split)
     elif name in IMAGEFOLDER_FORMAT:
+        assert cfg.LOADER.USE_VAL is False, "do not using VAL dataset."
+        aug_type = cfg.LOADER.TRANSFORM
         return ImageFolder( # using path of training data of ImageNet as `datapath`
-            datapath, split, batch_size=batch_size,
-            transforms=transforms,
+            datapath, batch_size=batch_size, split=split,
+            use_val=False, augment_type=aug_type, **kwargs
         ).generate_data_loader()
     else:
         print("dataset not supported.")
@@ -137,39 +140,48 @@ def get_normal_dataloader(
     name=None,
     train_batch=None,
     cutout_length=0,
-    download=True,
     use_classes=None,
     transforms=None,
+    **kwargs
 ):
     name=cfg.LOADER.DATASET if name is None else name
     train_batch=cfg.LOADER.BATCH_SIZE if train_batch is None else train_batch
     name=cfg.LOADER.DATASET
-    root=cfg.LOADER.DATAPATH
-    test_batch=cfg.TEST.BATCH_SIZE
+    datapath=cfg.LOADER.DATAPATH
+    test_batch=cfg.LOADER.BATCH_SIZE if cfg.TEST.BATCH_SIZE == -1 else cfg.TEST.BATCH_SIZE
     
-    # get normal dataloaders with train&test subsets.
-    train_data, test_data = get_data(name, root, cutout_length, download, use_classes, transforms)
-    
-    # if loader.batch_size is a list for [train, val_1, ...], the first value will be used.
-    if isinstance(train_batch, list):
-        train_batch = train_batch[0]
-        
-    train_loader = data.DataLoader(
-        dataset=train_data,
-        batch_size=train_batch,
-        shuffle=True,
-        num_workers=cfg.LOADER.NUM_WORKERS,
-        pin_memory=cfg.LOADER.PIN_MEMORY,
-    )
-    test_loader = data.DataLoader(
-        dataset=test_data,
-        batch_size=test_batch,
-        shuffle=False,
-        num_workers=cfg.LOADER.NUM_WORKERS,
-        pin_memory=cfg.LOADER.PIN_MEMORY,
-    )
-    return train_loader, test_loader
+    assert (name in SUPPORTED_DATASETS) or (name in IMAGEFOLDER_FORMAT), "dataset not supported."
+    assert isinstance(train_batch, int), "normal dataloader using single training batch-size, not list."
+    # check if randomresized crop is used only in ImageFolder type datasets
+    if len(cfg.SEARCH.MULTI_SIZES):
+        assert name in IMAGEFOLDER_FORMAT, "RandomResizedCrop can only be used in ImageFolder currently."
 
+    if name in SUPPORTED_DATASETS:
+        # get normal dataloaders with train&test subsets.
+        train_data, test_data = get_data(name, datapath, cutout_length, use_classes=use_classes, transforms=transforms)
+        
+        train_loader = data.DataLoader(
+            dataset=train_data,
+            batch_size=train_batch,
+            shuffle=True,
+            num_workers=cfg.LOADER.NUM_WORKERS,
+            pin_memory=cfg.LOADER.PIN_MEMORY,
+        )
+        test_loader = data.DataLoader(
+            dataset=test_data,
+            batch_size=test_batch,
+            shuffle=False,
+            num_workers=cfg.LOADER.NUM_WORKERS,
+            pin_memory=cfg.LOADER.PIN_MEMORY,
+        )
+        return train_loader, test_loader
+    elif name in IMAGEFOLDER_FORMAT:
+        assert cfg.LOADER.USE_VAL is True, "getting normal dataloader."
+        aug_type = cfg.LOADER.TRANSFORM
+        return ImageFolder( # using path of training data of ImageNet as `datapath`
+            datapath, batch_size=[train_batch, test_batch],
+            use_val=True, augment_type=aug_type, **kwargs
+        ).generate_data_loader()
 
 def split_dataloader(data_, batch_size, split):
     assert 0 not in split, "illegal split list with zero."

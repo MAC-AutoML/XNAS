@@ -1,0 +1,100 @@
+NUM_GPUS: 4
+RNG_SEED: 0
+SPACE: 
+  NAME: 'attentivenas'
+LOADER:
+  DATASET: 'imagenet'
+  NUM_CLASSES: 1000
+  BATCH_SIZE: 64  # 32*8 in total
+  NUM_WORKERS: 4
+  USE_VAL: True
+  TRANSFORM: "auto_augment_tf"
+OPTIM:
+  GRAD_CLIP: 1.
+  WARMUP_EPOCH: 5
+  MAX_EPOCH: 360
+  WEIGHT_DECAY: 1.e-5
+  BASE_LR: 0.2
+  NESTEROV: True
+SEARCH:
+  LOSS_FUN: "cross_entropy_smooth"
+  LABEL_SMOOTH: 0.1
+TRAIN:
+  DROP_PATH_PROB: 0.2
+ATTENTIVENAS:
+  SANDWICH_NUM: 4   # max + 2*middle + min
+  DROP_CONNECT: 0.2
+  BN_MOMENTUM: 0.
+  BN_EPS: 1.e-5
+  POST_BN_CALIBRATION_BATCH_NUM: 64
+  SAMPLER:
+    METHOD: 'bestup'
+    MAP_PATH: 'xnas/algorithms/AttentiveNAS/flops_archs_off_table.map'
+    DISCRETIZE_STEP: 25
+    NUM_TRIALS: 3
+  SUPERNET_CFG:
+    use_v3_head: True
+    resolutions: [192, 224, 256, 288]
+    first_conv: 
+      c: [16, 24]
+      act_func: 'swish'
+      s: 2
+    mb1:
+      c: [16, 24]
+      d: [1, 2]
+      k: [3, 5]
+      t: [1]
+      s: 1
+      act_func: 'swish'
+      se: False
+    mb2:
+      c: [24, 32]
+      d: [3, 4, 5]
+      k: [3, 5]
+      t: [4, 5, 6]
+      s: 2
+      act_func: 'swish'
+      se: False
+    mb3:
+      c: [32, 40] 
+      d: [3, 4, 5, 6]
+      k: [3, 5]
+      t: [4, 5, 6]
+      s: 2
+      act_func: 'swish'
+      se: True
+    mb4:
+      c: [64, 72] 
+      d: [3, 4, 5, 6]
+      k: [3, 5]
+      t: [4, 5, 6]
+      s: 2
+      act_func: 'swish'
+      se: False
+    mb5:
+      c: [112, 120, 128] 
+      d: [3, 4, 5, 6, 7, 8]
+      k: [3, 5]
+      t: [4, 5, 6]
+      s: 1
+      act_func: 'swish'
+      se: True
+    mb6:
+      c: [192, 200, 208, 216] 
+      d: [3, 4, 5, 6, 7, 8]
+      k: [3, 5]
+      t: [6]
+      s: 2
+      act_func: 'swish'
+      se: True
+    mb7:
+      c: [216, 224] 
+      d: [1, 2]
+      k: [3, 5]
+      t: [6]
+      s: 1
+      act_func: 'swish'
+      se: True
+    last_conv:
+      c: [1792, 1984]
+      act_func: 'swish'

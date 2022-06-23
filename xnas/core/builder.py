@@ -25,6 +25,7 @@ from xnas.runner.optimizer import optimizer_builder
 from xnas.runner.criterion import criterion_builder
 from xnas.runner.scheduler import lr_scheduler_builder
 
+
 __all__ = [
     'construct_loader',
     'optimizer_builder',
@@ -43,14 +44,17 @@ __all__ = [
 from xnas.spaces.DARTS.cnn import _DartsCNN, _infer_DartsCNN
 from xnas.spaces.PDARTS.cnn import _PDartsCNN
 from xnas.spaces.PCDARTS.cnn import _PCDartsCNN
-from xnas.spaces.NASBench201.cnn import _NASBench201, _infer_NASBench201
+from xnas.spaces.NASBench201.cnn import _NASBench201, _infer_NASBench201, _SPOS_nb201_CNN
 from xnas.spaces.DrNAS.darts_cnn import _DrNAS_DARTS_CNN
 from xnas.spaces.DrNAS.nb201_cnn import _DrNAS_nb201_CNN, _GDAS_nb201_CNN
 from xnas.spaces.SPOS.cnn import _SPOS_CNN, _infer_SPOS_CNN
 from xnas.spaces.DropNAS.cnn import _DropNASCNN
+from xnas.spaces.ProxylessNAS.cnn import _MobileNetV2
 from xnas.spaces.OFA.MobileNetV3.ofa_cnn import _OFAMobileNetV3
 from xnas.spaces.OFA.ProxylessNet.ofa_cnn import _OFAProxylessNASNet
 from xnas.spaces.OFA.ResNets.ofa_cnn import _OFAResNet
+from xnas.spaces.BigNAS.cnn import _BigNAS_CNN, _infer_BigNAS_CNN
+from xnas.spaces.AttentiveNAS.cnn import _AttentiveNAS_CNN, _infer_AttentiveNAS_CNN
 from xnas.spaces.NASBenchMacro.cnn import _NBMacro_child_train, _NBMacro_sup_train
 
 SUPPORTED_SPACES = {
@@ -63,14 +67,22 @@ SUPPORTED_SPACES = {
     "gdas_nb201": _GDAS_nb201_CNN,
     "dropnas": _DropNASCNN,
     "spos": _SPOS_CNN,
+    "spos_nb201": _SPOS_nb201_CNN,
     "nasbenchmacro": _NBMacro_sup_train,
     "ofa_mbv3": _OFAMobileNetV3,
     "ofa_proxyless": _OFAProxylessNASNet,
     "ofa_resnet": _OFAResNet,
-    # models for inference
+    "attentivenas": _AttentiveNAS_CNN,
+    "bignas": _BigNAS_CNN,
+    # ===== models for inference =====
     "infer_darts": _infer_DartsCNN,
     "infer_nb201": _infer_NASBench201,
     "infer_spos": _infer_SPOS_CNN,
+    "infer_attentivenas": _infer_AttentiveNAS_CNN,
+    "infer_bignas": _infer_BigNAS_CNN,
+    "spos_nb201": _SPOS_nb201_CNN,
+    # "proxyless": _SuperProxylessNASNets,
+    "proxyless": _MobileNetV2,
 }
 
 
@@ -126,7 +138,7 @@ def SNG_builder(category):
 # -------------------------------------------------------- #
 
 SUPPORTED_EVALUATIONS = {
-    "nasbench201": ["nasbench201", "drnas_nb201", "gdas_nb201"],
+    "nasbench201": ["nasbench201", "drnas_nb201", "gdas_nb201","spos_nb201" ],
     "nasbench301": ["darts", "pdarts", "pcdarts", "drnas_darts", "dropnas"],
     "nasbenchmacro": ["nasbenchmacro"]
 }

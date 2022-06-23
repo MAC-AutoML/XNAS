@@ -37,6 +37,9 @@ _C.LOADER.PIN_MEMORY = True
 # _C.LOADER.BATCH_SIZE = [256, 128]
 _C.LOADER.BATCH_SIZE = 256
 
+# augment type using by ImageNet only
+# chosen from ['default', 'auto_augment_tf']
+_C.LOADER.TRANSFORM = "default"
 
 
 # ------------------------------------------------------------------------------------ #
@@ -150,7 +153,9 @@ _C.TEST = CfgNode(new_allowed=True)
 
 _C.TEST.IM_SIZE = 224
 
-_C.TEST.BATCH_SIZE = 128
+# using specific batchsize for testing
+# using search.batch_size if this value keeps -1
+_C.TEST.BATCH_SIZE = -1
 
 
 

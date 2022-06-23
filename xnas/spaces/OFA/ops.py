@@ -7,6 +7,7 @@ from xnas.spaces.OFA.utils import (
     min_divisible_value,
     get_same_padding,
     make_divisible,
+    drop_connect,
 )
 
 
@@ -46,11 +47,31 @@ def build_activation(act_func, inplace=True):
         return Hswish(inplace=inplace)
     elif act_func == "h_sigmoid":
         return Hsigmoid(inplace=inplace)
+    elif act_func == 'swish':
+        return MemoryEfficientSwish()
     elif act_func is None or act_func == "none":
         return None
     else:
         raise ValueError("do not support: %s" % act_func)
 
+
+class SwishImplementation(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, i):
+        result = i * torch.sigmoid(i)
+        ctx.save_for_backward(i)
+        return result
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        i = ctx.saved_tensors[0]
+        sigmoid_i = torch.sigmoid(i)
+        return grad_output * (sigmoid_i * (1 + i * (1 - sigmoid_i)))
+
+class MemoryEfficientSwish(nn.Module):
+    def forward(self, x):
+        return SwishImplementation.apply(x)
+    
 
 class Hswish(nn.Module):
     def __init__(self, inplace=True):
@@ -637,27 +658,20 @@ class MBConvLayer(nn.Module):
         if self.expand_ratio == 1:
             self.inverted_bottleneck = None
         else:
-            self.inverted_bottleneck = nn.Sequential(
-                OrderedDict(
-                    [
-                        (
-                            "conv",
-                            nn.Conv2d(
-                                self.in_channels, feature_dim, 1, 1, 0, bias=False
-                            ),
-                        ),
-                        ("bn", nn.BatchNorm2d(feature_dim)),
-                        ("act", build_activation(self.act_func, inplace=True)),
-                    ]
-                )
-            )
+            self.inverted_bottleneck = nn.Sequential(OrderedDict([
+                ("conv", nn.Conv2d(self.in_channels, feature_dim, 1, 1, 0, bias=False)),
+                ("bn", nn.BatchNorm2d(feature_dim)),
+                ("act", build_activation(self.act_func, inplace=True)),
+            ]))
 
         pad = get_same_padding(self.kernel_size)
-        groups = (
+        active_groups = (
             feature_dim
             if self.groups is None
             else min_divisible_value(feature_dim, self.groups)
         )
+        # assert feature_dim % self.groups == 0
+        # active_groups = feature_dim // self.groups
         depth_conv_modules = [
             (
                 "conv",
@@ -667,7 +681,7 @@ class MBConvLayer(nn.Module):
                     kernel_size,
                     stride,
                     pad,
-                    groups=groups,
+                    groups=active_groups,
                     bias=False,
                 ),
             ),
@@ -739,19 +753,26 @@ class MBConvLayer(nn.Module):
 
 
 class ResidualBlock(nn.Module):
-    def __init__(self, conv, shortcut):
+    def __init__(self, conv, shortcut, drop_connect_rate=0):
         super(ResidualBlock, self).__init__()
 
         self.conv = conv
+        self.mobile_inverted_conv = self.conv   # BigNAS
         self.shortcut = shortcut
+        self.drop_connect_rate = drop_connect_rate
 
     def forward(self, x):
+        in_channel = x.size(1)
         if self.conv is None or isinstance(self.conv, ZeroLayer):
             res = x
         elif self.shortcut is None or isinstance(self.shortcut, ZeroLayer):
             res = self.conv(x)
         else:
-            res = self.conv(x) + self.shortcut(x)
+            im = self.shortcut(x)
+            x = self.conv(x)
+            if self.drop_connect_rate > 0 and in_channel == im.size(1) and self.shortcut.reduction == 1:
+                x = drop_connect(x, p=self.drop_connect_rate, training=self.training)
+            res = x + im
         return res
 
     @property
@@ -955,3 +976,52 @@ class ResNetBottleneckBlock(nn.Module):
     @staticmethod
     def build_from_config(config):
         return ResNetBottleneckBlock(**config)
+
+
+class ShortcutLayer(nn.Module):
+    """
+        NOTE:
+        This class implements similar functionality to `IdentityLayer`, 
+        but adds and removes part of the implementation.
+    """
+    
+    def __init__(self, in_channels, out_channels, reduction=1):
+        super(ShortcutLayer, self).__init__()
+
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.reduction = reduction
+
+        self.conv = nn.Conv2d(in_channels, out_channels, 1, 1, 0, bias=False)
+
+    def forward(self, x):
+        if self.reduction > 1:
+            padding = 0 if x.size(-1) % 2 == 0 else 1
+            x = F.avg_pool2d(x, self.reduction, padding=padding)
+        if self.in_channels != self.out_channels:
+            x = self.conv(x)
+        return x
+
+    @property
+    def module_str(self):
+        if self.in_channels == self.out_channels and self.reduction == 1:
+            conv_str = 'IdentityShortcut'
+        else:
+            if self.reduction == 1:
+                conv_str = '%d-%d_Shortcut' % (self.in_channels, self.out_channels)
+            else:
+                conv_str = '%d-%d_R%d_Shortcut' % (self.in_channels, self.out_channels, self.reduction)
+        return conv_str
+
+    @property
+    def config(self):
+        return {
+            'name': ShortcutLayer.__name__,
+            'in_channels': self.in_channels,
+            'out_channels': self.out_channels,
+            'reduction': self.reduction,
+        }
+
+    @staticmethod
+    def build_from_config(config):
+        return ShortcutLayer(**config)

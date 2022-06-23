@@ -18,7 +18,7 @@ def main():
     device = setup_env()
     criterion = criterion_builder().to(device)
     [train_loader, valid_loader] = construct_loader()
-    model = space_builder().to(device)
+    model = space_builder().cuda() #to(device)
     optimizer = optimizer_builder("SGD", model.parameters())
     lr_scheduler = lr_scheduler_builder(optimizer)
     
