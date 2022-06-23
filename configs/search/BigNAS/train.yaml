@@ -5,7 +5,7 @@ SPACE:
 LOADER:
   DATASET: 'imagenet'
   NUM_CLASSES: 1000
-  BATCH_SIZE: 32
+  BATCH_SIZE: 48
   NUM_WORKERS: 4
   USE_VAL: True
   TRANSFORM: "auto_augment_tf"
@@ -14,7 +14,7 @@ OPTIM:
   WARMUP_EPOCH: 5
   MAX_EPOCH: 360
   WEIGHT_DECAY: 1.e-5
-  BASE_LR: 0.1
+  BASE_LR: 0.15
   NESTEROV: True
 SEARCH:
   LOSS_FUN: "cross_entropy_smooth"

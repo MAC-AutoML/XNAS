@@ -18,7 +18,7 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-# AttentiveNAS
+# BigNAS
 from xnas.runner.trainer import Trainer
 from xnas.runner.scheduler import adjust_learning_rate_per_batch
 from xnas.spaces.OFA.utils import list_mean

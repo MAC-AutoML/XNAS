@@ -1,7 +1,7 @@
 NUM_GPUS: 4
 RNG_SEED: 2
 SPACE: 
-  NAME: 'bignas'
+  NAME: 'infer_bignas'
 LOADER:
   DATASET: 'imagenet'
   NUM_CLASSES: 1000

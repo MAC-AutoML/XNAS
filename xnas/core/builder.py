@@ -79,7 +79,7 @@ SUPPORTED_SPACES = {
     "infer_nb201": _infer_NASBench201,
     "infer_spos": _infer_SPOS_CNN,
     "infer_attentivenas": _infer_AttentiveNAS_CNN,
-    # "infer_bignas": _infer_BigNAS_CNN,
+    "infer_bignas": _infer_BigNAS_CNN,
     "spos_nb201": _SPOS_nb201_CNN,
     # "proxyless": _SuperProxylessNASNets,
     "proxyless": _MobileNetV2,

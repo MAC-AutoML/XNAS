@@ -104,8 +104,8 @@ class MBConvLayer(nn.Module):
         if self.use_se:
             layer_str = "SE_" + layer_str
         layer_str += "_O%d" % self.out_channels
-        if self.groups is not None:
-            layer_str += "_G%d" % self.groups
+        if self.channels_per_group is not None:
+            layer_str += "_G%d" % self.channels_per_group
         if isinstance(self.point_linear.bn, nn.GroupNorm):
             layer_str += "_GN%d" % self.point_linear.bn.num_groups
         elif isinstance(self.point_linear.bn, nn.BatchNorm2d):
@@ -125,7 +125,7 @@ class MBConvLayer(nn.Module):
             "mid_channels": self.mid_channels,
             "act_func": self.act_func,
             "use_se": self.use_se,
-            "groups": self.groups,
+            "channeles_per_group": self.channels_per_group,
         }
 
     @staticmethod
