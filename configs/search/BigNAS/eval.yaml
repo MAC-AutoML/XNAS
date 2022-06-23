@@ -1,4 +1,4 @@
-NUM_GPUS: 4
+NUM_GPUS: 1
 RNG_SEED: 2
 SPACE: 
   NAME: 'infer_bignas'
@@ -11,6 +11,7 @@ LOADER:
   TRANSFORM: "auto_augment_tf"
 SEARCH:
   IM_SIZE: 224
+  WEIGHTS: "exp/search/test/checkpoints/best_model_epoch_0009.pyth"
 BIGNAS:
   BN_MOMENTUM: 0.1
   BN_EPS: 1.e-5

@@ -637,7 +637,7 @@ def _infer_BigNAS_CNN():
         (bn_momentum, bn_eps),
     )
     # namespace changed: pareto_models.supernet_checkpoint_path
-    supernet.load_weights_from_pretrained_models(cfg.SEARCH.WEIGHT)
+    supernet.load_weights_from_pretrained_models(cfg.SEARCH.WEIGHTS)
     # namespace created: active_subnet.*
     supernet.set_active_subnet(
         resolution=cfg.BIGNAS.ACTIVE_SUBNET.RESOLUTION,
