@@ -85,10 +85,17 @@ class GradualWarmupScheduler(_LRScheduler):
 def _calc_learning_rate(
     init_lr, n_epochs, epoch, n_iter=None, iter=0,
 ):
+    epoch -= cfg.OPTIM.WARMUP_EPOCH
     if cfg.OPTIM.LR_POLICY == "cos":
         t_total = n_epochs * n_iter
         t_cur = epoch * n_iter + iter
         lr = 0.5 * init_lr * (1 + math.cos(math.pi * t_cur / t_total))
+    elif cfg.OPTIM.LR_POLICY == "step":
+        # Rule of BigNAS: decay learning rate by 0.97 every 2.4 epochs
+        # t_total = n_epochs * n_iter
+        # t_cur = epoch * n_iter + iter
+        t_cur_epoch = epoch + iter / n_iter
+        lr = (0.97 ** (t_cur_epoch / 2.4)) * init_lr
     else:
         raise ValueError("do not support: {}".format(cfg.OPTIM.LR_POLICY))
     return lr

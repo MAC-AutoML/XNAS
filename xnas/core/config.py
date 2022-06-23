@@ -71,7 +71,7 @@ _C.OPTIM.BASE_LR = 0.1
 _C.OPTIM.MIN_LR = 1.e-3
 
 
-# Learning rate policy select from {'cos', 'exp', 'steps'}
+# Learning rate policy select from {'cos', 'exp', 'step'}
 _C.OPTIM.LR_POLICY = "cos"
 # Steps for 'steps' policy (in epochs)
 _C.OPTIM.STEPS = [30, 60, 90]
