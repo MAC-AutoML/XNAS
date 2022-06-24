@@ -20,6 +20,8 @@ OPTIM:
 SEARCH:
   LOSS_FUN: "cross_entropy_smooth"
   LABEL_SMOOTH: 0.1
+TEST:
+  IM_SIZE: 224
 TRAIN:
   DROP_PATH_PROB: 0.2
 BIGNAS:

@@ -12,6 +12,8 @@ LOADER:
 SEARCH:
   IM_SIZE: 224
   WEIGHTS: "exp/search/test/checkpoints/best_model_epoch_0009.pyth"
+TEST:
+  IM_SIZE: 224
 BIGNAS:
   CONSTRAINT_FLOPS: 6.e+8  # 600M
   NUM_MUTATE: 200
