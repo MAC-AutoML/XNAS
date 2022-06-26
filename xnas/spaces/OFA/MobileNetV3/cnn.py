@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+import numpy as np
 import torch
 import torch.nn as nn
 from copy import deepcopy
@@ -248,7 +250,7 @@ class MobileNetV3(WSConv_Network):
                 mb_conv = MBConvLayer(
                     feature_dim,
                     out_channel,
-                    k,
+                    int(k),
                     stride,
                     expand_ratio,
                     mid_channel,
@@ -288,21 +290,31 @@ class MobileNetV3(WSConv_Network):
     def adjust_cfg(
         cfg, ks=None, expand_ratio=None, depth_param=None, stage_width_list=None
     ):
-        for i, (stage_id, block_config_list) in enumerate(cfg.items()):
-            for block_config in block_config_list:
-                if ks is not None and stage_id != "0":
-                    block_config[0] = ks
-                if expand_ratio is not None and stage_id != "0":
-                    block_config[-1] = expand_ratio
-                    block_config[1] = None
-                    if stage_width_list is not None:
-                        block_config[2] = stage_width_list[i]
+        if depth_param is not None and not isinstance(depth_param, Iterable):
+            depth_param = [depth_param] * 5
+            total_depth = sum(depth_param)
+        if ks is not None and not isinstance(ks, Iterable):
+            ks = [ks] * total_depth
+        if expand_ratio is not None and not isinstance(expand_ratio, Iterable):
+            expand_ratio = [expand_ratio] * total_depth
+        depth_cnt = 0
+        for i, (stage_id, block_config_list) in enumerate(sorted(cfg.items(), key=lambda x:int(x[0]))):
             if depth_param is not None and stage_id != "0":
                 new_block_config_list = [block_config_list[0]]
                 new_block_config_list += [
-                    deepcopy(block_config_list[-1]) for _ in range(depth_param - 1)
+                    deepcopy(block_config_list[-1]) for _ in range(depth_param[i-1] - 1)
                 ]
                 cfg[stage_id] = new_block_config_list
+            for block_config in cfg[stage_id]:
+                if stage_id != "0":
+                    if ks is not None:
+                        block_config[0] = ks[depth_cnt]
+                    if expand_ratio is not None:
+                        block_config[-1] = expand_ratio[depth_cnt]
+                        block_config[1] = None
+                        if stage_width_list is not None:
+                            block_config[2] = stage_width_list[i]
+                    depth_cnt += 1
         return cfg
 
     def load_state_dict(self, state_dict, **kwargs):
@@ -325,13 +337,21 @@ class MobileNetV3Large(MobileNetV3):
         width_mult=1.0,
         bn_param=(0.1, 1e-5),
         dropout_rate=0.2,
-        ks=None,
-        expand_ratio=None,
-        depth_param=None,
+        ks=None, # chosen from {3, 5, 7}
+        expand_ratio=None, # chosen from {3,4,6}
+        depth_param=None, # chosen from {2,3,4}
         stage_width_list=None,
     ):
         input_channel = 16
         last_channel = 1280
+        
+        if depth_param is not None and not isinstance(depth_param, Iterable):
+            depth_param = [depth_param] * 5
+            total_depth = sum(depth_param)
+        if ks is not None and not isinstance(ks, Iterable):
+            ks = [ks] * total_depth
+        if expand_ratio is not None and not isinstance(expand_ratio, Iterable):
+            expand_ratio = [expand_ratio] * total_depth
 
         input_channel = make_divisible(input_channel * width_mult)
         last_channel = (
@@ -372,6 +392,9 @@ class MobileNetV3Large(MobileNetV3):
         }
 
         cfg = self.adjust_cfg(cfg, ks, expand_ratio, depth_param, stage_width_list)
+        depth_param = [len(_[1]) for _ in sorted(cfg.items(), key=lambda x:int(x[0]))][1:]
+        assert len(depth_param) == 5
+        self.feature_idx = np.cumsum(depth_param)[[1, 3]]+1 # + stage-0
         # width multiplier on mobile setting, change `exp: 1` and `c: 2`
         for stage_id, block_config_list in cfg.items():
             for block_config in block_config_list:
@@ -393,3 +416,22 @@ class MobileNetV3Large(MobileNetV3):
         )
         # set bn param
         self.set_bn_param(*bn_param)
+
+    def forward_with_features(self, x, *args, **kwargs):
+        x = self.first_conv(x)
+        features = []
+        for i, block in enumerate(self.blocks):
+            if i in (self.feature_idx):
+                features.append(x)
+            x = block(x)
+        x = self.final_expand_layer(x)
+        features.append(x)
+        assert len(features) == 3
+        x = self.global_avg_pool(x)  # global average pooling
+        x = self.feature_mix_layer(x)
+        x = x.view(x.size(0), -1)
+        logits = self.classifier(x)
+        return features, logits
+    
+def _MobileNetV3(*args, **kwargs):
+    return MobileNetV3Large(*args, **kwargs)

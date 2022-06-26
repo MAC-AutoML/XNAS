@@ -267,5 +267,5 @@ class MobileNetV2(ProxylessNASNet):
         logits = self.classifier(x)
         return features, logits
 
-def _MobileNetV2():
-    return MobileNetV2()
+def _MobileNetV2(*args, **kwargs):
+    return MobileNetV2(*args, **kwargs)

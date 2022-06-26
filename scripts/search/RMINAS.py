@@ -40,6 +40,8 @@ def rminas_hp_builder():
         api = data
     elif cfg.SPACE.NAME == 'proxyless':
         RF_space = 'proxyless'
+    elif cfg.SPACE.NAME == 'mobilenetV3':
+        RF_space = 'mobilenetV3'
             # for example : arch = '00000000'
             # arch = ''
             # evaluate(arch)
@@ -50,7 +52,7 @@ def main():
     
     rminas_hp_builder()
     
-    assert cfg.SPACE.NAME in ['infer_nb201', 'infer_darts',"nasbenchmacro", "proxyless"]
+    assert cfg.SPACE.NAME in ['infer_nb201', 'infer_darts',"nasbenchmacro", "proxyless", "mobilenetV3"]
     assert cfg.LOADER.DATASET in ['cifar10', 'cifar100', 'imagenet', 'imagenet16_120'], 'dataset error'
 
     if cfg.LOADER.DATASET == 'cifar10':
@@ -66,7 +68,7 @@ def main():
         network.load_state_dict(torch.load('xnas/algorithms/RMINAS/teacher_model/resnet101_cifar100/resnet101.pth'))
 
     elif cfg.LOADER.DATASET == 'imagenet':
-        assert cfg.SPACE.NAME in ('infer_darts', 'proxyless')
+        assert cfg.SPACE.NAME in ('infer_darts', 'proxyless', 'mobilenetV3')
         logger.warning('Our method does not directly search in ImageNet.')
         logger.warning('Only partial tests have been conducted, please use with caution.')
         import xnas.algorithms.RMINAS.teacher_model.fbresnet_imagenet.fbresnet as fbresnet
@@ -127,6 +129,12 @@ def main():
             optimizer = optimizer_builder("SGD", model.parameters())
         elif cfg.SPACE.NAME == 'proxyless':
             model = space_builder(stage_width_list=[16, 24, 40, 80, 96, 192, 320],depth_param=modelinfo[:6],ks=modelinfo[6:27][modelinfo[6:27]>0],expand_ratio=modelinfo[27:][modelinfo[27:]>0],dropout_rate=0).cuda()
+            optimizer = optimizer_builder("SGD", model.parameters())
+            with torch.no_grad():
+                tensor = (torch.rand(1, 3, 224, 224).cuda(),)
+                flops = FlopCountAnalysis(model, tensor).total()
+        elif cfg.SPACE.NAME == 'mobilenetV3':
+            model = space_builder(depth_param=modelinfo[:5],ks=modelinfo[5:25][modelinfo[5:25]>0],expand_ratio=modelinfo[25:][modelinfo[25:]>0],dropout_rate=0).cuda()
             optimizer = optimizer_builder("SGD", model.parameters())
             with torch.no_grad():
                 tensor = (torch.rand(1, 3, 224, 224).cuda(),)
@@ -193,6 +201,13 @@ def main():
             mixed_loss = np.inf if np.isnan(mixed_loss) else mixed_loss
             trained_loss.append(mixed_loss)
             RFS.trained_arch.append({'arch':sample, 'loss':mixed_loss,'gt':info["flops"],'losses':info["epoch_losses"]})
+        elif cfg.SPACE.NAME == 'mobilenetV3':
+            sample_geno = ''.join(sample.astype('str'))  # type=Genotype
+            trained_arch_darts.append((sample_geno))
+            mixed_loss, info = train_arch(sample)
+            mixed_loss = np.inf if np.isnan(mixed_loss) else mixed_loss
+            trained_loss.append(mixed_loss)
+            RFS.trained_arch.append({'arch':sample, 'loss':mixed_loss,'gt':info["flops"],'losses':info["epoch_losses"]})
 
             
         logger.info("sample: {}, loss:{}".format(sample, mixed_loss))
@@ -240,7 +255,11 @@ def main():
         # op_alpha = torch.from_numpy(np.r_[op_sample, op_sample])
         # op_geno = reformat_DARTS(geno_from_alpha(op_alpha))
         logger.info('Searched architecture@top100:\n{}'.format(str(op_sample)))
-        print(api[op_sample]['mean_acc'])
+    elif cfg.SPACE.NAME == 'mobilenetV3':
+        op_sample = RFS.optimal_arch(method='sum', top=100)
+        # op_alpha = torch.from_numpy(np.r_[op_sample, op_sample])
+        # op_geno = reformat_DARTS(geno_from_alpha(op_alpha))
+        logger.info('Searched architecture@top100:\n{}'.format(str(op_sample)))
 
 if __name__ == '__main__':
     main()

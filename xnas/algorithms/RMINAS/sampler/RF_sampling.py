@@ -1,3 +1,4 @@
+import pickle
 import numpy as np
 import copy
 import time
@@ -36,6 +37,8 @@ class RF_suggest():
             self.num_estimator = 30
             self.spaces = list(api.keys())
         elif self.space == 'proxyless':
+            self.num_estimator = 100
+        elif self.space == 'mobilenetV3':
             self.num_estimator = 100
         self.model = RandomForestClassifier(n_estimators=self.num_estimator,random_state=seed)
     
@@ -76,6 +79,8 @@ class RF_suggest():
         elif self.space == 'nasbenchmacro':
             return [self._single_sample() for _ in range(num_warmup)]
         elif self.space == 'proxyless':
+            return [self._single_sample() for _ in range(num_warmup)]
+        elif self.space == 'mobilenetV3':
             return [self._single_sample() for _ in range(num_warmup)]
     
     def _single_sample(self, unique=True):
@@ -139,6 +144,27 @@ class RF_suggest():
                     ks[anchor:ed] = 0
                     expand_ratios[anchor:ed] = 0
                     ed += 4
+                sample = np.concatenate([depth, ks, expand_ratios])
+                return sample
+            if unique:
+                while True:
+                    sample = gen_sample()
+                    if sample.tobytes() not in self.sampled_history:
+                        self.sampled_history.append(sample.tobytes())
+                        return sample
+        elif self.space == 'mobilenetV3':
+            def gen_sample():
+                block_num = 5
+                max_depth = 4
+                depth = np.array(np.random.choice([2,3,max_depth], size=block_num).tolist())
+                anchors = depth+np.arange(0, max_depth*block_num, max_depth)
+                ks = np.random.choice([3,5,7], size=max_depth*block_num)
+                expand_ratios = np.random.choice([3,4,6], size=max_depth*block_num)
+                ed = max_depth
+                for anchor in anchors:
+                    ks[anchor:ed] = 0
+                    expand_ratios[anchor:ed] = 0
+                    ed += max_depth
                 sample = np.concatenate([depth, ks, expand_ratios])
                 return sample
             if unique:
@@ -213,17 +239,18 @@ class RF_suggest():
             best_id = np.argmax(self.model.predict_proba(_sample_archs)[:,1])
             best_arch = _sample_archs[best_id]
             return best_arch
-        
-            # _sample_batch = np.array([self._single_sample(unique=True).ravel() for _ in range(self.batch)])
-            # _tmp_trained_arch = [str(i['arch'].ravel()) for i in self.trained_arch]
-            # _sample_archs = []
-            # for i in _sample_batch:
-            #     if str(i) not in _tmp_trained_arch:
-            #         _sample_archs.append(i)
+        elif self.space == 'mobilenetV3':
+            _sample_batch = np.array([self._single_sample(unique=False).ravel() for _ in range(self.batch)])
+            _tmp_trained_arch = [(i['arch'].tobytes()) for i in self.trained_arch]
+            _sample_archs = []
+            for i in _sample_batch:
+                if (i).tobytes() not in _tmp_trained_arch:
+                    _sample_archs.append(i)
 #             print("sample {} archs/batch, cost time: {}".format(len(_sample_archs), time.time()-start_time))
             best_id = np.argmax(self.model.predict_proba(_sample_archs)[:,1])
             best_arch = _sample_archs[best_id]
             return best_arch
+
             
     def Fitting(self):
         # Called after adding data into trained_arch list.
@@ -350,10 +377,39 @@ class RF_suggest():
             return op_arr.argmax(-1)
         elif self.space == 'proxyless':
             assert method == 'sum', 'only sum is supported in mb.'
-            depth = estimate_archs[:, :6]
-            best_depth = np.eye(4)[depth].argmax(-1)+1
+            estimate_archs = np.array(estimate_archs)
+            depth = estimate_archs[:, :6] # 1,2,3,4
+            best_depth = np.eye(4)[depth-1].argmax(-1)+1
             ks = estimate_archs[:, 6:27]//2 # {3, 5, 7}
-            best_ks = np.eye(3)[ks].argmax(-1) * 2 + 3
+            best_ks = np.eye(3)[ks-1].argmax(-1) * 2 + 3
             er = estimate_archs[:, 27:]//3 # {3, 6}
-            best_er = np.eye(2)[er].agrmax(-1) * 3 + 3
-            return np.concatenate([best_depth, best_ks, best_er])
+            best_er = np.eye(2)[er-1].agrmax(-1) * 3 + 3
+            ed = 4
+            anchors = best_depth+[0,4,8,12,16,20]
+            for anchor in anchors:
+                best_ks[anchor:ed] = 0
+                best_er[anchor:ed] = 0
+                ed += 4
+            sample = np.concatenate([best_depth, best_ks, best_er])
+            return sample
+        elif self.space == 'mobilenetV3':
+            with open('./tmp.pkl', 'wb') as f:
+                pickle.dump(estimate_archs, f)
+            estimate_archs = np.array(estimate_archs)
+            assert method == 'sum', 'only sum is supported in mb.'
+            depth = estimate_archs[:, :5] # 2,3,4
+            best_depth = np.eye(3)[depth-2].argmax(-1) + 2
+            ks = estimate_archs[:, 5:5*4]//2 # {3, 5, 7}
+            best_ks = np.eye(3)[ks-1].argmax(-1) * 2 + 3
+            er = estimate_archs[:, 20:]-3 # {3, 4, 6}
+            best_er = np.eye(4)[er].agrmax(-1) + 3
+            max_depth = 4
+            block_num = 5
+            anchors = best_depth+np.arange(0, max_depth*block_num, max_depth)
+            ed = max_depth
+            for anchor in anchors:
+                best_ks[anchor:ed] = 0
+                best_er[anchor:ed] = 0
+                ed += max_depth
+            sample = np.concatenate([best_depth, best_ks, best_er])
+            return sample

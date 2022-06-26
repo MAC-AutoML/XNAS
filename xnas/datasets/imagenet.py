@@ -28,6 +28,11 @@ class ImageFolder():
         self.use_val = use_val
         self.data_path = datapath
         self.split = split
+        if isinstance(batch_size, int):
+            batch_size = [batch_size, batch_size]
+        elif batch_size is None:
+            batch_size = [256, 256]
+        assert len(batch_size) == len(split), "lengths of batch_size and split should be same."
         self.batch_size = batch_size
         self.num_workers = cfg.LOADER.NUM_WORKERS
         self.pin_memory = cfg.LOADER.PIN_MEMORY

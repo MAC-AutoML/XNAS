@@ -50,6 +50,7 @@ from xnas.spaces.DrNAS.nb201_cnn import _DrNAS_nb201_CNN, _GDAS_nb201_CNN
 from xnas.spaces.SPOS.cnn import _SPOS_CNN, _infer_SPOS_CNN
 from xnas.spaces.DropNAS.cnn import _DropNASCNN
 from xnas.spaces.ProxylessNAS.cnn import _MobileNetV2
+from xnas.spaces.OFA.MobileNetV3.cnn import _MobileNetV3
 from xnas.spaces.OFA.MobileNetV3.ofa_cnn import _OFAMobileNetV3
 from xnas.spaces.OFA.ProxylessNet.ofa_cnn import _OFAProxylessNASNet
 from xnas.spaces.OFA.ResNets.ofa_cnn import _OFAResNet
@@ -83,6 +84,7 @@ SUPPORTED_SPACES = {
     "spos_nb201": _SPOS_nb201_CNN,
     # "proxyless": _SuperProxylessNASNets,
     "proxyless": _MobileNetV2,
+    "mobilenetV3": _MobileNetV3,
 }
 
 
