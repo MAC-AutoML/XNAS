@@ -379,11 +379,11 @@ class RF_suggest():
             assert method == 'sum', 'only sum is supported in mb.'
             estimate_archs = np.array(estimate_archs)
             depth = estimate_archs[:, :6] # 1,2,3,4
-            best_depth = np.eye(4)[depth-1].argmax(-1)+1
+            best_depth = np.eye(4)[depth-1].sum(0).argmax(-1)+1
             ks = estimate_archs[:, 6:27]//2 # {3, 5, 7}
-            best_ks = np.eye(3)[ks-1].argmax(-1) * 2 + 3
+            best_ks = np.eye(3)[ks-1].sum(0).argmax(-1) * 2 + 3
             er = estimate_archs[:, 27:]//3 # {3, 6}
-            best_er = np.eye(2)[er-1].agrmax(-1) * 3 + 3
+            best_er = np.eye(2)[er-1].sum(0).agrmax(-1) * 3 + 3
             ed = 4
             anchors = best_depth+[0,4,8,12,16,20]
             for anchor in anchors:
@@ -398,11 +398,11 @@ class RF_suggest():
             estimate_archs = np.array(estimate_archs)
             assert method == 'sum', 'only sum is supported in mb.'
             depth = estimate_archs[:, :5] # 2,3,4
-            best_depth = np.eye(3)[depth-2].argmax(-1) + 2
-            ks = estimate_archs[:, 5:5*4]//2 # {3, 5, 7}
-            best_ks = np.eye(3)[ks-1].argmax(-1) * 2 + 3
-            er = estimate_archs[:, 20:]-3 # {3, 4, 6}
-            best_er = np.eye(4)[er].agrmax(-1) + 3
+            best_depth = np.eye(3)[depth-2].sum(0).argmax(-1) + 2
+            ks = estimate_archs[:, 5:25]//2 # {3, 5, 7}
+            best_ks = np.eye(3)[ks-1].sum(0).argmax(-1) * 2 + 3
+            er = estimate_archs[:, 25:]-3 # {3, 4, 6}
+            best_er = np.eye(4)[er].sum(0).argmax(-1) + 3
             max_depth = 4
             block_num = 5
             anchors = best_depth+np.arange(0, max_depth*block_num, max_depth)
@@ -413,3 +413,4 @@ class RF_suggest():
                 ed += max_depth
             sample = np.concatenate([best_depth, best_ks, best_er])
             return sample
+print(1)
