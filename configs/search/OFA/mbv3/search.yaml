@@ -1,0 +1,29 @@
+NUM_GPUS: 1
+SPACE:
+  NAME: 'ofa_mbv3'
+LOADER:
+  DATASET: 'imagenet'
+  NUM_CLASSES: 1000
+  BATCH_SIZE: 64
+  NUM_WORKERS: 4
+  USE_VAL: True
+SEARCH:
+  MULTI_SIZES: [128,160,192,224]
+  LOSS_FUN: 'cross_entropy_smooth'
+  LABEL_SMOOTH: 0.1
+  WEIGHTS: ''
+  AUTO_RESUME: True
+OFA:
+  # TASK: 'expand'
+  # PHASE: 2
+  WIDTH_MULTI_LIST: [1.0]
+  KS_LIST: [3,5,7]
+  EXPAND_LIST: [3,4,6]
+  DEPTH_LIST: [2,3,4]
+  CHANNEL_DIVISIBLE: 8
+  SUBNET_BATCH_SIZE: 4
+  KD_RATIO: 0.
+  # KD_PATH: "exp/OFA/teacher_model.pyth"
+TEST:
+  BATCH_SIZE: 128
+  IM_SIZE: 224

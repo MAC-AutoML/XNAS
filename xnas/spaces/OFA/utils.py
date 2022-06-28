@@ -141,7 +141,7 @@ def init_model(net, model_init="he_fout"):
                 m.bias.data.zero_()
 
 
-def set_running_statistics(model, data_loader, device):
+def set_running_statistics(model, data_loader, device=None):
     """
         reset the BN statistics for different models.
     """
@@ -201,7 +201,10 @@ def set_running_statistics(model, data_loader, device):
     with torch.no_grad():
         DynamicBatchNorm2d.SET_RUNNING_STATISTICS = True
         for images, labels in data_loader:
-            images = images.to(device)
+            if device is not None:
+                images = images.to(device)
+            else:
+                images = images.cuda()
             forward_model(images)
         DynamicBatchNorm2d.SET_RUNNING_STATISTICS = False
 

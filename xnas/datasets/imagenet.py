@@ -32,7 +32,7 @@ class ImageFolder():
             batch_size = [batch_size, batch_size]
         elif batch_size is None:
             batch_size = [256, 256]
-        assert len(batch_size) == len(split), "lengths of batch_size and split should be same."
+        # assert len(batch_size) == len(split), "lengths of batch_size and split should be same."
         self.batch_size = batch_size
         self.num_workers = cfg.LOADER.NUM_WORKERS
         self.pin_memory = cfg.LOADER.PIN_MEMORY
@@ -48,7 +48,7 @@ class ImageFolder():
         else:
             from xnas.datasets.utils.msrc_loader import msrc_DataLoader
             self.loader = msrc_DataLoader
-            logger.info("Using MultiSize RandomCrop, continuous={} candidate im_sizes={}".format(self.msrc.CONTINUOUS, self.msrc.CANDIDATE_SIZES))
+            logger.info("Using MultiSize RandomCrop")
 
         # Acquiring transforms
         logger.info("Constructing transforms")
