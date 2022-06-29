@@ -246,7 +246,7 @@ class BigNASTrainer(Trainer):
 
 if __name__ == '__main__':
     os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '23333'
+    os.environ['MASTER_PORT'] = cfg.MASTER_PORT
     
     if torch.cuda.is_available():
         cfg.NUM_GPUS = torch.cuda.device_count()
