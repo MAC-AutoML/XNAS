@@ -170,11 +170,12 @@ class Architect():
             # for b, vb in zip(self.net.betas(), self.v_net.betas()):
             #    vb.copy_(b)
 
-    def unrolled_backward(self, trn_X, trn_y, val_X, val_y, xi, w_optim):
+    def unrolled_backward(self, trn_X, trn_y, val_X, val_y, xi, w_optim, unrolled=True):
         """ Compute unrolled loss and backward its gradients
         Args:
             xi: learning rate for virtual gradient step (same as net lr)
             w_optim: weights optimizer - for virtual step
+            NOTE: unrolled is not used and only for code compatibility
         """
         # do virtual step (calc w`)
         self.virtual_step(trn_X, trn_y, xi, w_optim)
